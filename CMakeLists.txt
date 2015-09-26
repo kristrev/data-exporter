@@ -1,6 +1,6 @@
 #Standard stuff
 cmake_minimum_required(VERSION 2.6)
-project(meta_exporter)
+project(data_exporter)
 
 set(CMAKE_C_FLAGS "-O1 -Wall")
 #Make sqlite and ZMQ conditional
@@ -58,26 +58,17 @@ set(CPACK_GENERATOR "DEB")
 set(CPACK_PACKAGE_VERSION_MAJOR "0")
 set(CPACK_PACKAGE_VERSION_MINOR "1")
 set(CPACK_PACKAGE_VERSION_PATCH "0")
-set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Kristian R. Evensen <kristrev@celerway.com>")
-set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_SOURCE_DIR}/../files/linux/postinst")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Kristian R. Evensen <kristian.evensen@gmail.com>")
 set (CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 include(CPack)
 
 set(CMAKE_C_LINK_EXECUTABLE "${CMAKE_C_LINK_EXECUTABLE} -s")
-add_executable(meta_exporter ${SOURCE})
-target_link_libraries(meta_exporter ${LIBS})
+add_executable(data_exporter ${SOURCE})
+target_link_libraries(data_exporter ${LIBS})
 
 
 if (TARGET_OWRT)
-    install(TARGETS meta_exporter RUNTIME DESTINATION bin)
+    install(TARGETS data_exporter RUNTIME DESTINATION bin)
 else()
-    install(TARGETS meta_exporter RUNTIME DESTINATION /usr/local/sbin)
-    #    install(FILES ${PROJECT_SOURCE_DIR}/../files/metadata_exporter_timeloop.sh DESTINATION
-    #   /usr/local/sbin PERMISSIONS OWNER_EXECUTE OWNER_READ OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-    #install(FILES ${PROJECT_SOURCE_DIR}/../files/metadata-ubuntu.init DESTINATION
-    #   /etc/init/ PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-    #   RENAME metadata.conf)
-    #install(FILES ${PROJECT_SOURCE_DIR}/../files/metadata-exporter-ubuntu.init DESTINATION
-    #    /etc/init/ PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-    #    RENAME metadata_exporter.conf)
+    install(TARGETS data_exporter RUNTIME DESTINATION /usr/local/sbin)
 endif()
