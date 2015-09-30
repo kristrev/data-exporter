@@ -36,7 +36,7 @@
 #include <pthread.h>
 
 #include <libmnl/libmnl.h>
-#include <json-c/json.h>
+#include JSON_LOC
 #include <sys/time.h>
 
 #include "metadata_exporter.h"
@@ -53,6 +53,10 @@
 #ifdef ZEROMQ_SUPPORT
     #include "metadata_writer_zeromq.h"
 #endif
+#ifdef NNE_SUPPORT
+    #include "metadata_writer_nne.h"
+#endif
+
 #include "netlink_helpers.h"
 #include "backend_event_loop.h"
 
@@ -461,6 +465,9 @@ static void default_usage()
 #ifdef ZEROMQ_SUPPORT
     fprintf(stderr, "--zeromq/-z: zeromq writer\n");
 #endif
+#ifdef NNE_SUPPORT
+    fprintf(stderr, "--nne: nornet edge measurement writer\n");
+#endif
     fprintf(stderr, "--test/-t: test mode, application generates fake data that is handled by writers\n");
     fprintf(stderr, "--packets/-p: number of packets that will be generated in debug mode (default: infinite)\n");
     fprintf(stderr, "--help/-h: Display usage of exporter and specified writers\n");
@@ -498,10 +505,13 @@ int main(int argc, char *argv[])
         {"sqlite",       no_argument,        0,  's'},
 #endif
 #ifdef NSB_GPS
-        {"nsb_gps",       no_argument,        0,  0},
+        {"nsb_gps",      no_argument,        0,  0  },
 #endif
 #ifdef ZEROMQ_SUPPORT
         {"zeromq",       no_argument,        0,  'z'},
+#endif
+#ifdef NNE_SUPPORT
+        {"nne",          no_argument,        0,  0  },
 #endif
 #ifdef GPSD_SUPPORT
         {"gpsd",         no_argument,        0,  'g'},
@@ -525,23 +535,35 @@ int main(int argc, char *argv[])
         if (i == -1)
             break;
 
-#ifdef NSB_GPS
         if (i == 0) {
-            if (strcmp(core_options[option_index].name, "nsb_gps"))
-                continue;
+#ifdef NSB_GPS
+            if (strcmp(core_options[option_index].name, "nsb_gps") == 0) {
+                mde->md_inputs[MD_INPUT_GPS_NSB] = calloc(sizeof(struct md_input_gps_nsb), 1);
 
-            mde->md_inputs[MD_INPUT_GPS_NSB] = calloc(sizeof(struct md_input_gps_nsb), 1);
+                if (mde->md_inputs[MD_INPUT_GPS_NSB] == NULL) {
+                    fprintf(stderr, "Could not allocate Netlink input\n");
+                    exit(EXIT_FAILURE);
+                }
 
-            if (mde->md_inputs[MD_INPUT_GPS_NSB] == NULL) {
-                fprintf(stderr, "Could not allocate Netlink input\n");
-                exit(EXIT_FAILURE);
+                md_gps_nsb_setup(mde, (struct md_input_gps_nsb*) mde->md_inputs[MD_INPUT_GPS_NSB]);
+                num_inputs++;
             }
+#endif
+#ifdef NNE_SUPPORT
+            if (strcmp(core_options[option_index].name, "nne") == 0) {
+                mde->md_writers[MD_WRITER_NNE] = calloc(sizeof(struct md_writer_nne), 1);
 
-            md_gps_nsb_setup(mde, (struct md_input_gps_nsb*) mde->md_inputs[MD_INPUT_GPS_NSB]);
-            num_inputs++;
+                if (mde->md_writers[MD_WRITER_NNE] == NULL) {
+                    fprintf(stderr, "Could not allocate NNE  writer\n");
+                    exit(EXIT_FAILURE);
+                }
+
+                md_nne_setup(mde, (struct md_writer_nne*) mde->md_writers[MD_WRITER_NNE]);
+                num_writers++;
+            }
+#endif
             continue;
         }
-#endif
 
         switch (i) {
         case 'n':

@@ -28,7 +28,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <zmq.h>
-#include <json-c/json.h>
+#include JSON_LOC
 #include <getopt.h>
 #include <sys/types.h>
 #include <sys/socket.h>

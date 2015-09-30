@@ -1,10 +1,10 @@
 #Standard stuff
 cmake_minimum_required(VERSION 2.6)
-project(data_exporter)
+project(meta_exporter)
 
-set(CMAKE_C_FLAGS "-O1 -Wall")
-#Make sqlite and ZMQ conditional
-set(LIBS pthread mnl json-c)
+set(CMAKE_C_FLAGS "-O1 -Wall -std=gnu99")
+
+set(LIBS pthread mnl)
 set(SOURCE
     metadata_exporter.c
     netlink_helpers.c
@@ -18,10 +18,18 @@ set(SOURCE
 if (TARGET_OWRT)
     MESSAGE(STATUS "OpenWRT build, will include UCI")
     add_definitions("-DOPENWRT")
-    LIST(APPEND LIBS uci)
+    LIST(APPEND LIBS uci json-c)
+    add_definitions("-DJSON_LOC=<json-c/json.h>")
+elseif(TARGET_NNE)
+    MESSAGE(STATUS "NNE build")
+    LIST(APPEND LIBS json)
+    #CMake does magic to convert this value
+    add_definitions("-DJSON_LOC=<json/json.h>")
 else()
     MESSAGE(STATUS "Standard build")
     add_definitions("-DUBUNTU_MONROE")
+    LIST(APPEND LIBS json-c)
+    add_definitions("-DJSON_LOC=<json-c/json.h>")
 endif()
 
 if (SQLITE3)
@@ -32,6 +40,12 @@ if (SQLITE3)
         metadata_writer_sqlite_conn.c
         metadata_writer_sqlite_gps.c)
     add_definitions("-DSQLITE_SUPPORT")
+endif()
+
+if (NNE)
+    set(SOURCE ${SOURCE}
+        metadata_writer_nne.c)
+    add_definitions("-DNNE_SUPPORT")
 endif()
 
 if (ZEROMQ)
@@ -58,17 +72,26 @@ set(CPACK_GENERATOR "DEB")
 set(CPACK_PACKAGE_VERSION_MAJOR "0")
 set(CPACK_PACKAGE_VERSION_MINOR "1")
 set(CPACK_PACKAGE_VERSION_PATCH "0")
-set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Kristian R. Evensen <kristian.evensen@gmail.com>")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Kristian R. Evensen <kristrev@celerway.com>")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_SOURCE_DIR}/../files/linux/postinst")
 set (CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 include(CPack)
 
 set(CMAKE_C_LINK_EXECUTABLE "${CMAKE_C_LINK_EXECUTABLE} -s")
-add_executable(data_exporter ${SOURCE})
-target_link_libraries(data_exporter ${LIBS})
+add_executable(meta_exporter ${SOURCE})
+target_link_libraries(meta_exporter ${LIBS})
 
 
 if (TARGET_OWRT)
-    install(TARGETS data_exporter RUNTIME DESTINATION bin)
+    install(TARGETS meta_exporter RUNTIME DESTINATION bin)
 else()
-    install(TARGETS data_exporter RUNTIME DESTINATION /usr/local/sbin)
+    install(TARGETS meta_exporter RUNTIME DESTINATION /usr/local/sbin)
+    #    install(FILES ${PROJECT_SOURCE_DIR}/../files/metadata_exporter_timeloop.sh DESTINATION
+    #   /usr/local/sbin PERMISSIONS OWNER_EXECUTE OWNER_READ OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+    #install(FILES ${PROJECT_SOURCE_DIR}/../files/metadata-ubuntu.init DESTINATION
+    #   /etc/init/ PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+    #   RENAME metadata.conf)
+    #install(FILES ${PROJECT_SOURCE_DIR}/../files/metadata-exporter-ubuntu.init DESTINATION
+    #    /etc/init/ PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+    #    RENAME metadata_exporter.conf)
 endif()
