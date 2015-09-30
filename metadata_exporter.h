@@ -33,7 +33,7 @@
 #include "lib/minmea.h"
 
 #define MDE_VERSION 1
-#define METADATA_NL_GROUP 0x03
+#define METADATA_NL_GROUP 0x02
 
 #define MD_INPUT_MAX (__MD_INPUT_MAX - 1)
 #define MD_WRITER_MAX (__MD_WRITER_MAX - 1)
