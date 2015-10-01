@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libmnl/libmnl.h>
-#include <json-c/json.h>
+#include JSON_LOC
 #include <getopt.h>
 
 #include "metadata_exporter.h"

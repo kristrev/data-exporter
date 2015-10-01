@@ -28,7 +28,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <zmq.h>
-#include <json-c/json.h>
+#include JSON_LOC
 #include <getopt.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -222,9 +222,9 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
     char topic[8192];
     int retval;
 
-    if (mce->event_param != CONN_EVENT_MODE_CHANGE ||
-        mce->event_param != CONN_EVENT_META_UPDATE ||
-        mce->interface_type != INTERFACE_MODEM)
+    if ((mce->event_param != CONN_EVENT_MODE_CHANGE &&
+         mce->event_param != CONN_EVENT_META_UPDATE) ||
+         mce->interface_type != INTERFACE_MODEM)
         return;
 
     if (mce->event_param == CONN_EVENT_MODE_CHANGE) {

@@ -23,6 +23,8 @@ as easy as adding a new handle callback. The current input/writers is not of
 much use outside of Monroe, but should serve as nice examples of how to write
 input/writers.
 
+Pull requests are always welcome! One nice feature would be to parallelize the writers. It should be fairly easy, "all" that is needed is a reference counter on each metadata object passed to the writers (and atomic update of this ref. counter).
+
 ### Compile instructions
 
 Data exporter is built with CMake and the available writers are selected at

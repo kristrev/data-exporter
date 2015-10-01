@@ -79,6 +79,7 @@ enum md_inputs {
 enum md_writers {
     MD_WRITER_SQLITE,
     MD_WRITER_ZEROMQ,
+    MD_WRITER_NNE,
     __MD_WRITER_MAX
 };
 
