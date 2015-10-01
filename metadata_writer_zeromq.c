@@ -149,7 +149,7 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
         return;
     }
 
-    snprintf(topic, sizeof(topic), "MONROE.GPS|%s", json_object_to_json_string_ext(gps_obj, JSON_C_TO_STRING_PLAIN));
+    snprintf(topic, sizeof(topic), "MONROE.GPS %s", json_object_to_json_string_ext(gps_obj, JSON_C_TO_STRING_PLAIN));
    
     //TODO: Error handling
     zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
@@ -165,7 +165,7 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
         return;
     }
 
-    retval = snprintf(topic, sizeof(topic), "MONROE.GPS.RAW|%s",
+    retval = snprintf(topic, sizeof(topic), "MONROE.GPS.RAW %s",
             json_object_to_json_string_ext(gps_obj, JSON_C_TO_STRING_PLAIN));
 
     if (retval >= sizeof(topic)) {
@@ -202,6 +202,12 @@ static json_object* md_zeromq_create_json_modem_default(struct md_writer_zeromq 
         return NULL;
     }
     json_object_object_add(obj, "interface_id", obj_add);
+
+    if (!(obj_add = json_object_new_string(mce->interface_name))) {
+        json_object_put(obj);
+        return NULL;
+    }
+    json_object_object_add(obj, "interface_name", obj_add);
 
     if (!(obj_add = json_object_new_int(mce->network_provider))) {
         json_object_put(obj);
@@ -263,10 +269,10 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
     }
 
     if (mce->event_param == CONN_EVENT_META_UPDATE)
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.UPDATE|%s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.UPDATE %s",
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
     else
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.MODE_CHANGE|%s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.MODE_CHANGE %s",
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
 
     if (retval >= sizeof(topic)) {

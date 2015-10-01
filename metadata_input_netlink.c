@@ -67,6 +67,9 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_conn_event *mce,
         if (!strcmp(key, "interface_id"))
             mce->interface_id = json_object_get_string(val);
 
+        if (!strcmp(key, "interface_name"))
+            mce->interface_name = json_object_get_string(val);
+
         if (!strcmp(key, "interface_type"))
             mce->interface_type = (uint8_t) json_object_get_int(val);
 

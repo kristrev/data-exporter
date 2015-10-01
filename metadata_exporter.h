@@ -121,6 +121,7 @@ struct md_conn_event {
     uint64_t l3_session_id;
     uint64_t l4_session_id;
     const char *interface_id;
+    const char *interface_name;
     uint32_t network_provider;
     const char *network_address;
     const char *event_value_str;
