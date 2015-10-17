@@ -379,6 +379,7 @@ uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws)
         //dumped to file and we handle multiple inserts), but we transfer
         //redundant data
         fprintf(stderr, "DELETE failed %s\n", sqlite3_errstr(retval));
+        remove(mws->meta_prefix);
         return RETVAL_FAILURE;
     }
 
