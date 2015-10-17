@@ -151,7 +151,7 @@
                             "quote(\"InterfaceType\"), quote(\"InterfaceIdType\"), "\
                             "quote(\"InterfaceId\"),"\
                             "quote(\"NetworkProvider\"), quote(\"NetworkAddressFamily\"), "\
-                            "quote(\"NetworkAddress\") || \")\" FROM  \"NetworkEvent\" WHERE Timestamp>=?;"
+                            "quote(\"NetworkAddress\") || \")\" FROM  \"NetworkEvent\" WHERE Timestamp>=? ORDER BY Timestamp;"
 
 #define DUMP_UPDATES        "SELECT \"REPLACE INTO NetworkUpdate"\
                             "(NodeId,Timestamp,Sequence,L3SessionId,"\
@@ -162,7 +162,7 @@
                             "quote(\"L4SessionId\"),quote(\"EventValueStr\"), "\
                             "quote(\"InterfaceType\"), quote(\"InterfaceId\"),"\
                             "quote(\"NetworkAddress\"),quote(\"NetworkProvider\") || \",Now())\""\
-                            "FROM \"NetworkUpdates\" WHERE Timestamp>=?;"
+                            "FROM \"NetworkUpdates\" WHERE Timestamp>=? ORDER BY Timestamp;"
 
 #define INSERT_GPS_EVENT    "INSERT INTO GpsEvents(NodeId,Timestamp" \
                             ",Sequence,Latitude,Longitude,Altitude" \
@@ -177,7 +177,7 @@
                             "quote(\"Sequence\"), quote(\"Latitude\"), "\
                             "quote(\"Longitude\"), quote(\"Altitude\"), "\
                             "quote(\"GroundSpeed\"), quote(\"NumOfSatelites\") "\
-                            "|| \")\" FROM \"GpsEvents\";"
+                            "|| \")\" FROM \"GpsEvents\" ORDER BY Timestamp;"
 
 struct md_event;
 struct md_writer;

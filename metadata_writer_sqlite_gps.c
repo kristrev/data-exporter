@@ -43,23 +43,16 @@ static uint8_t md_sqlite_gps_dump_db(struct md_writer_sqlite *mws, FILE *output)
 
 uint8_t md_sqlite_gps_copy_db(struct md_writer_sqlite *mws)
 {
-    int32_t retval = md_writer_helpers_copy_db(mws->gps_prefix,
-            mws->gps_prefix_len, md_sqlite_gps_dump_db, mws);
-   
-    if (retval == RETVAL_FAILURE)
-        return retval;
+    uint8_t retval = md_writer_helpers_copy_db(mws->gps_prefix,
+            mws->gps_prefix_len, md_sqlite_gps_dump_db, mws,
+            mws->delete_gps);
 
-    sqlite3_reset(mws->delete_gps);
-    retval = sqlite3_step(mws->delete_gps);
+    if (retval == RETVAL_SUCCESS)
+        mws->num_gps_events = 0;
 
-    if (retval != SQLITE_DONE) {
-        fprintf(stderr, "DELETE failed for GPS table\n");
-        return RETVAL_FAILURE;
-    }
-
-    mws->num_gps_events = 0;
-    return RETVAL_SUCCESS;
+    return retval;
 }
+
 uint8_t md_sqlite_handle_gps_event(struct md_writer_sqlite *mws,
                                    struct md_gps_event *mge)
 {

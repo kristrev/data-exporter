@@ -63,9 +63,10 @@ uint8_t md_sqlite_helpers_dump_write(sqlite3_stmt *stmt, FILE *output)
 }
 
 uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
-        dump_db_cb dump_db, struct md_writer_sqlite *mws)
+        dump_db_cb dump_db, struct md_writer_sqlite *mws,
+        sqlite3_stmt *delete_stmt)
 {
-    int32_t output_fd;
+    int32_t output_fd, retval;
     FILE *output;
     //TODO: Specify prefix from command line
     char dst_filename[128];
@@ -104,6 +105,18 @@ uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
         unlink(prefix)) {
         fprintf(stderr, "Could not link/unlink dump-file: %s\n", strerror(errno));
         remove(prefix);
+        remove(dst_filename);
+        return RETVAL_FAILURE;
+    }
+
+    sqlite3_reset(delete_stmt);
+    retval = sqlite3_step(delete_stmt);
+
+    if (retval != SQLITE_DONE) {
+        //TODO: Decide what to do here! It is not really critical (content is
+        //dumped to file and we handle multiple inserts), but we transfer
+        //redundant data
+        fprintf(stderr, "DELETE failed %s\n", sqlite3_errstr(retval));
         remove(dst_filename);
         return RETVAL_FAILURE;
     }
