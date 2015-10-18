@@ -36,6 +36,7 @@
 #include "metadata_exporter.h"
 #include "metadata_writer_sqlite_conn.h"
 #include "metadata_writer_sqlite_helpers.h"
+#include "metadata_exporter_log.h"
 
 static int32_t md_sqlite_execute_insert_update(struct md_writer_sqlite *mws,
                                                struct md_conn_event *mce)
@@ -54,13 +55,13 @@ static int32_t md_sqlite_execute_insert_update(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 7, mce->interface_type) ||
         sqlite3_bind_text(stmt, 8, mce->interface_id, strlen(mce->interface_id), SQLITE_TRANSIENT) ||
         sqlite3_bind_text(stmt, 9, mce->network_address, strlen(mce->network_address), SQLITE_TRANSIENT)){
-        fprintf(stderr, "Failed to bind values to INSERT query\n");
+        META_PRINT(mws->parent->logfile, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
     }
 
     if (mce->network_provider &&
         sqlite3_bind_int(stmt, 10, mce->network_provider)) {
-        fprintf(stderr, "Failed to bind network provider\n");
+        META_PRINT(mws->parent->logfile, "Failed to bind network provider\n");
         return SQLITE_ERROR;
     }
 
@@ -88,19 +89,19 @@ static int32_t md_sqlite_execute_insert(struct md_writer_sqlite *mws,
         sqlite3_bind_text(stmt, 12, mce->interface_id, strlen(mce->interface_id), SQLITE_TRANSIENT) ||
         sqlite3_bind_int(stmt, 14, mce->network_address_family) ||
         sqlite3_bind_text(stmt, 15, mce->network_address, strlen(mce->network_address), SQLITE_TRANSIENT)) {
-        fprintf(stderr, "Failed to bind values to INSERT query\n");
+        META_PRINT(mws->parent->logfile, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
     }
 
     if (mce->event_value != UINT8_MAX &&
         sqlite3_bind_int(stmt, 8, mce->event_value)) {
-        fprintf(stderr, "Failed bind event value (int)\n");
+        META_PRINT(mws->parent->logfile, "Failed bind event value (int)\n");
         return SQLITE_ERROR;
     }
 
     if (mce->event_value_str != NULL &&
         sqlite3_bind_text(stmt, 9, mce->event_value_str, strlen(mce->event_value_str), SQLITE_TRANSIENT)) {
-        fprintf(stderr, "Failed to bind event value (string)\n");
+        META_PRINT(mws->parent->logfile, "Failed to bind event value (string)\n");
         return SQLITE_ERROR;
     }
 
@@ -108,7 +109,7 @@ static int32_t md_sqlite_execute_insert(struct md_writer_sqlite *mws,
         retval = sqlite3_bind_int(stmt, 13, mce->network_provider);
 
         if (retval) {
-            fprintf(stderr, "Failed to bind provider to INSERT query\n");
+            META_PRINT(mws->parent->logfile, "Failed to bind provider to INSERT query\n");
             return SQLITE_ERROR;
         }
     }
@@ -130,7 +131,7 @@ static int32_t md_sqlite_update_event(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 4, mce->l4_session_id) ||
         sqlite3_bind_text(stmt, 5, mce->network_address, strlen(mce->network_address), SQLITE_TRANSIENT) ||
         sqlite3_bind_text(stmt, 6, mce->interface_id, strlen(mce->interface_id), SQLITE_TRANSIENT)) {
-        fprintf(stderr, "Failed to bind values to UPDATE query\n");
+        META_PRINT(mws->parent->logfile, "Failed to bind values to UPDATE query\n");
         return SQLITE_ERROR;
     }
 
@@ -143,7 +144,7 @@ static uint8_t md_sqlite_handle_insert_conn_event(struct md_writer_sqlite *mws,
     int32_t retval = md_sqlite_execute_insert(mws, mce);
 
     if (retval != SQLITE_DONE) {
-        fprintf(stderr, "INSERT failed: %s\n", sqlite3_errstr(retval));
+        META_PRINT(mws->parent->logfile, "INSERT failed: %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
 
@@ -169,7 +170,7 @@ static int16_t md_sqlite_get_last_update(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 2, mce->l4_session_id) ||
         sqlite3_bind_text(stmt, 3, mce->interface_id, strlen(mce->interface_id), SQLITE_TRANSIENT) ||
         sqlite3_bind_text(stmt, 4, mce->network_address, strlen(mce->network_address), SQLITE_TRANSIENT)) {
-        fprintf(stderr, "Failed to bind values to SELECT query\n");
+        META_PRINT(mws->parent->logfile, "Failed to bind values to SELECT query\n");
         return retval;
     }
 
@@ -178,7 +179,7 @@ static int16_t md_sqlite_get_last_update(struct md_writer_sqlite *mws,
         numbytes = sqlite3_column_bytes(stmt, 0);
 
         if (numbytes >= EVENT_STR_LEN) {
-            fprintf(stderr, "Event value string will not fit in buffer\n");
+            META_PRINT(mws->parent->logfile, "Event value string will not fit in buffer\n");
             return SQLITE_ERROR;
         }
 
@@ -209,9 +210,9 @@ static void md_sqlite_insert_fake_mode(struct md_writer_sqlite *mws,
     retval = md_sqlite_execute_insert(mws, mce);
 
     if (retval == SQLITE_DONE)
-        fprintf(stdout, "Inserted fake mode update\n");
+        META_PRINT(mws->parent->logfile, "Inserted fake mode update\n");
     else
-        fprintf(stdout, "Failed to insert fake mode update\n");
+        META_PRINT(mws->parent->logfile, "Failed to insert fake mode update\n");
 
     //Restore/update query after mode insert
     mce->event_param = CONN_EVENT_META_UPDATE;
@@ -234,9 +235,9 @@ static void md_sqlite_insert_fake_quality(struct md_writer_sqlite *mws,
     retval = md_sqlite_execute_insert(mws, mce);
 
     if (retval == SQLITE_DONE)
-        fprintf(stdout, "Inserted fake quality update\n");
+        META_PRINT(mws->parent->logfile, "Inserted fake quality update\n");
     else
-        fprintf(stdout, "Failed to insert fake quality update\n");
+        META_PRINT(mws->parent->logfile, "Failed to insert fake quality update\n");
 
     //Restore/update query after quality insert
     mce->event_param = CONN_EVENT_META_UPDATE;
@@ -270,7 +271,7 @@ static void md_sqlite_insert_fake_events(struct md_writer_sqlite *mws,
     event_str_len = strlen(mce->event_value_str);
 
     if (event_str_len >= EVENT_STR_LEN) {
-        fprintf(stderr, "Event string too long\n");
+        META_PRINT(mws->parent->logfile, "Event string too long\n");
         return;
     }
 
@@ -322,7 +323,7 @@ static uint8_t md_sqlite_handle_update_event(struct md_writer_sqlite *mws,
     retval = md_sqlite_update_event(mws, mce);
 
     if (retval != SQLITE_DONE) {
-        fprintf(stderr, "UPDATE failed: %s\n", sqlite3_errstr(retval));
+        META_PRINT(mws->parent->logfile, "UPDATE failed: %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
     

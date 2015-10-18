@@ -1,3 +1,29 @@
+/* Copyright (c) 2015, Celerway, Kristian Evensen <kristrev@celerway.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <getopt.h>
@@ -11,6 +37,7 @@
 #include "metadata_exporter.h"
 #include "metadata_input_gps_nsb.h"
 #include "lib/minmea.h"
+#include "metadata_exporter_log.h"
 
 static void md_input_gps_nsb_handle_event(void *ptr, int32_t fd, uint32_t events)
 {
@@ -79,19 +106,19 @@ static uint8_t md_input_gps_nsb_config(struct md_input_gps_nsb *mign,
     hints.ai_protocol = IPPROTO_UDP;
 
     if (getaddrinfo(address, port, &hints, &res)) {
-        fprintf(stderr, "Could not get address info for NSB GPS\n");
+        META_PRINT(mign->parent->logfile, "Could not get address info for NSB GPS\n");
         return RETVAL_FAILURE;
     }
 
     sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 
     if (sockfd < 0) {
-        fprintf(stderr, "Failed to create socket for NSB GPS\n");
+        META_PRINT(mign->parent->logfile, "Failed to create socket for NSB GPS\n");
         return RETVAL_FAILURE;
     }
 
     if (bind(sockfd, res->ai_addr, res->ai_addrlen)) {
-        fprintf(stderr, "Failed to bind NSB GPS socket\n");
+        META_PRINT(mign->parent->logfile, "Failed to bind NSB GPS socket\n");
         return RETVAL_FAILURE;
     }
 
@@ -132,7 +159,7 @@ static uint8_t md_input_gps_nsb_init(void *ptr, int argc, char *argv[])
     }
 
     if (address == NULL || port == NULL) {
-        fprintf(stderr, "Missing required GPSD argument\n");
+        META_PRINT(mign->parent->logfile, "Missing required GPSD argument\n");
         return RETVAL_FAILURE;
     }
 

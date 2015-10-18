@@ -146,6 +146,7 @@ struct md_exporter {
     struct mnl_socket *metadata_sock;
     struct backend_event_loop *event_loop;
     struct backend_epoll_handle *event_handle;
+    FILE *logfile;
 
     struct md_input *md_inputs[MD_INPUT_MAX + 1];
     struct md_writer *md_writers[MD_WRITER_MAX + 1];

@@ -39,6 +39,7 @@
 
 #include "system_helpers.h"
 #include "metadata_exporter.h"
+#include "metadata_exporter_log.h"
 
 #ifdef OPENWRT
 uint32_t system_helpers_get_nodeid()
@@ -49,10 +50,8 @@ uint32_t system_helpers_get_nodeid()
     long node_id;
     struct uci_context *ctx = uci_alloc_context();
 
-    if(ctx == NULL) {
-        fprintf(stdout, "Could not allocate uci context\n");
+    if(ctx == NULL)
         return 0;
-    }
 
     opt = malloc(strlen(NODEIDPATH)+1);
     strcpy(opt, NODEIDPATH);
@@ -61,7 +60,6 @@ uint32_t system_helpers_get_nodeid()
     retval = uci_lookup_ptr(ctx, &uciptr, opt, true);
 
     if (retval != UCI_OK || uciptr.o == NULL) {
-        fprintf(stdout, "Could not find uci nodeid\n");
         free(opt);
         uci_free_context(ctx);
         return 0;

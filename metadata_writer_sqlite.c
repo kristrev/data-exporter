@@ -43,6 +43,7 @@
 #include "netlink_helpers.h"
 #include "system_helpers.h"
 #include "backend_event_loop.h"
+#include "metadata_exporter_log.h"
 
 static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout);
 static void md_sqlite_handle_timeout(void *ptr);
@@ -73,7 +74,7 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
         mws->timeout_added = 0;
     }
 
-    fprintf(stdout, "Will export DB. # meta %u # gps %u\n",
+    META_PRINT(mws->parent->logfile, "Will export DB. # meta %u # gps %u\n",
             mws->num_conn_events,
             mws->num_gps_events);
 
@@ -92,7 +93,7 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
     }
 
     if (num_failed != 0) {
-        fprintf(stderr, "%u DB dump(s) failed\n", num_failed);
+        META_PRINT(mws->parent->logfile, "%u DB dump(s) failed\n", num_failed);
         mws->file_failed = 1;
     } else {
         mws->file_failed = 0;
@@ -106,19 +107,19 @@ static uint8_t md_sqlite_update_nodeid_db(struct md_writer_sqlite *mws, const ch
 
     if ((retval = sqlite3_prepare_v2(mws->db_handle, sql_str, -1,
                     &update_tables, NULL))) {
-        fprintf(stderr, "Prepare failed %s\n", sqlite3_errstr(retval));
+        META_PRINT(mws->parent->logfile, "Prepare failed %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE; 
     }
 
     if ((retval = sqlite3_bind_int(update_tables, 1, mws->node_id))) {
-        fprintf(stderr, "Bind failed %s\n", sqlite3_errstr(retval));
+        META_PRINT(mws->parent->logfile, "Bind failed %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE; 
     }
    
     retval = sqlite3_step(update_tables);
 
     if (retval != SQLITE_DONE) {
-        fprintf(stderr, "Step faild %s\n", sqlite3_errstr(retval));
+        META_PRINT(mws->parent->logfile, "Step faild %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
 
@@ -126,7 +127,7 @@ static uint8_t md_sqlite_update_nodeid_db(struct md_writer_sqlite *mws, const ch
     return RETVAL_SUCCESS;
 }
 
-static sqlite3* md_sqlite_configure_db(const char *db_filename)
+static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char *db_filename)
 {
     sqlite3 *db_handle = NULL;
     int retval = 0;
@@ -137,9 +138,9 @@ static sqlite3* md_sqlite_configure_db(const char *db_filename)
 
     if (retval != SQLITE_OK) {
         if (db_handle != NULL)
-            fprintf(stderr, "open failed with message: %s\n", sqlite3_errmsg(db_handle));
+            META_PRINT(mws->parent->logfile, "open failed with message: %s\n", sqlite3_errmsg(db_handle));
         else
-            fprintf(stderr, "not enough memory to create db_handle object\n");
+            META_PRINT(mws->parent->logfile, "not enough memory to create db_handle object\n");
 
         return NULL;
     }
@@ -148,19 +149,19 @@ static sqlite3* md_sqlite_configure_db(const char *db_filename)
     //metadata_produce, since it will first export any message stored in
     //database
     if (sqlite3_exec(db_handle, CREATE_SQL, NULL, NULL, &db_errmsg)) {
-        fprintf(stderr, "db create failed with message: %s\n", db_errmsg);
+        META_PRINT(mws->parent->logfile, "db create failed with message: %s\n", db_errmsg);
         sqlite3_close_v2(db_handle);
         return NULL;
     }
 
     if (sqlite3_exec(db_handle, CREATE_UPDATE_SQL, NULL, NULL, &db_errmsg)) {
-        fprintf(stderr, "db create (update) failed with message: %s\n", db_errmsg);
+        META_PRINT(mws->parent->logfile, "db create (update) failed with message: %s\n", db_errmsg);
         sqlite3_close_v2(db_handle);
         return NULL;
     }
 
     if (sqlite3_exec(db_handle, CREATE_GPS_SQL, NULL, NULL, &db_errmsg)) {
-        fprintf(stderr, "db create (gps) failed with message: %s\n", db_errmsg);
+        META_PRINT(mws->parent->logfile, "db create (gps) failed with message: %s\n", db_errmsg);
         sqlite3_close_v2(db_handle);
         return NULL;
     }
@@ -172,7 +173,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         const char *db_filename, uint32_t node_id, uint32_t db_interval,
         uint32_t db_events, const char *meta_prefix, const char *gps_prefix)
 {
-    sqlite3 *db_handle = md_sqlite_configure_db(db_filename);
+    sqlite3 *db_handle = md_sqlite_configure_db(mws, db_filename);
    
     if (db_handle == NULL)
         return RETVAL_FAILURE;
@@ -211,7 +212,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
             &(mws->delete_gps), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DUMP_GPS, -1,
             &(mws->dump_gps), NULL)){
-        fprintf(stderr, "Statement failed: %s\n", sqlite3_errmsg(mws->db_handle));
+        META_PRINT(mws->parent->logfile, "Statement failed: %s\n", sqlite3_errmsg(mws->db_handle));
         sqlite3_close_v2(db_handle);
         return RETVAL_FAILURE;
     }
@@ -236,7 +237,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
 
     if (mws->node_id && (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
         md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID))) {
-        fprintf(stderr, "Could not update old ements with id 0\n");
+        META_PRINT(mws->parent->logfile, "Could not update old ements with id 0\n");
         return RETVAL_FAILURE;
     }
 
@@ -294,22 +295,22 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
     }
 
     if (!db_filename || (!gps_prefix && !meta_prefix)) {
-        fprintf(stderr, "Required SQLite argument missing\n");
+        META_PRINT(mws->parent->logfile, "Required SQLite argument missing\n");
         return RETVAL_FAILURE;
     }
 
     if ((meta_prefix && strlen(meta_prefix) > 117) ||
         (gps_prefix && strlen(gps_prefix) > 117)) {
-        fprintf(stderr, "SQLite temp file prefix too long\n");
+        META_PRINT(mws->parent->logfile, "SQLite temp file prefix too long\n");
         return RETVAL_FAILURE;
     }
 
     if (!interval || !num_events) {
-        fprintf(stderr, "Invalid SQLite interval/number of events\n");
+        META_PRINT(mws->parent->logfile, "Invalid SQLite interval/number of events\n");
         return RETVAL_FAILURE;
     }
   
-    fprintf(stdout, "Done configuring SQLite handle\n");
+    META_PRINT(mws->parent->logfile, "Done configuring SQLite handle\n");
 
     return md_sqlite_configure(mws, db_filename, node_id, interval,
             num_events, meta_prefix, gps_prefix);
@@ -338,13 +339,13 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
             mws->num_gps_events++;
         break;
     default:
-        fprintf(stdout, "SQLite writer does not support event %u\n",
+        META_PRINT(mws->parent->logfile, "SQLite writer does not support event %u\n",
                 event->md_type);
         return;
     }
 
     if (retval == RETVAL_FAILURE) {
-        fprintf(stderr, "Failed/ignored to insert JSON in DB\n");
+        META_PRINT(mws->parent->logfile, "Failed/ignored to insert JSON in DB\n");
         return;
     }
 
@@ -370,25 +371,25 @@ static void md_sqlite_handle_timeout(void *ptr)
     struct md_writer_sqlite *mws = ptr;
 
     if (mws->file_failed)
-        fprintf(stdout, "DB export retry\n");
+        META_PRINT(mws->parent->logfile, "DB export retry\n");
     else
-        fprintf(stdout, "Will export DB after timeout\n");
+        META_PRINT(mws->parent->logfile, "Will export DB after timeout\n");
 
     if(!mws->node_id) {
         mws->node_id = system_helpers_get_nodeid();
 
         if(mws->node_id)
-            fprintf(stdout, "Got nodeid %d\n", mws->node_id);
+            META_PRINT(mws->parent->logfile, "Got nodeid %d\n", mws->node_id);
        
         if (!mws->node_id) {
-            fprintf(stdout, "No node id found\n");
+            META_PRINT(mws->parent->logfile, "No node id found\n");
             mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
             return;
         }
 
         if (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
             md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID)) {
-            fprintf(stderr, "Could not update node id in database\n");
+            META_PRINT(mws->parent->logfile, "Could not update node id in database\n");
 
             mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
             //TODO: Work-around for making sure we check the node id on next
