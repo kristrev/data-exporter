@@ -22,7 +22,7 @@
 /* TODO
 - handle socket disconnect/reconnect 
 */
-ssize_t readLine(int fd, void *buffer, size_t n)
+ssize_t md_munin_readLine(int fd, void *buffer, size_t n)
 {
     ssize_t numRead;                   
     size_t totRead;                  
@@ -66,7 +66,7 @@ ssize_t readLine(int fd, void *buffer, size_t n)
     return totRead;
 }
 
-uint8_t reconnect (struct md_input_munin *mim, const char *address, const char *port) {
+uint8_t md_munin_reconnect (struct md_input_munin *mim, const char *address, const char *port) {
     int n = -1;
     char buffer[256] = "\n";
     struct hostent* server;
@@ -91,7 +91,7 @@ uint8_t reconnect (struct md_input_munin *mim, const char *address, const char *
       return RETVAL_FAILURE;
     } 
     
-    if ((n = readLine(mim->munin_socket_fd, buffer, 255))<0) {
+    if ((n = md_munin_readLine(mim->munin_socket_fd, buffer, 255))<0) {
       fprintf(stderr, "Could not read munin welcome string.");
       close(mim->munin_socket_fd);
       return RETVAL_FAILURE;
@@ -101,7 +101,7 @@ uint8_t reconnect (struct md_input_munin *mim, const char *address, const char *
     return RETVAL_SUCCESS;
 }
 
-void json_add_key_value(char* kv, json_object* blob) {
+void md_munin_json_add_key_value(char* kv, json_object* blob) {
   char *running = kv;
   // a munin string is in the form uptime.value 1.23
   char *key     = strsep(&running, ".");
@@ -157,13 +157,13 @@ static void md_input_munin_handle_event(void *ptr, int32_t fd, uint32_t events)
       json_object_object_add(blob, modules[i], obj_mod);
 
       while (1) {
-        if ((n=readLine(mim->munin_socket_fd, buffer, 255))<0) {
+        if ((n=md_munin_readLine(mim->munin_socket_fd, buffer, 255))<0) {
             fprintf(stderr, "Reading from munin failed.\n");
             return;
         }
         if ((buffer[0] == '#') || (buffer[0] == '.')) 
           break;
-        json_add_key_value(buffer, obj_mod);
+        md_munin_json_add_key_value(buffer, obj_mod);
       }
     }
        
@@ -187,7 +187,7 @@ static uint8_t md_munin_config(struct md_input_munin *mim,
     int timer;
     struct itimerspec delay;
 
-    if (reconnect(mim, address, port) == RETVAL_SUCCESS) {
+    if (md_munin_reconnect(mim, address, port) == RETVAL_SUCCESS) {
       if ((timer = timerfd_create(CLOCK_REALTIME, 0)) < 0) {
         fprintf(stderr, "Could not create munin polling timer.");
         return RETVAL_FAILURE;
