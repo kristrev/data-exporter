@@ -187,7 +187,6 @@ static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
    
     //TODO: Error handling
     zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
-    json_object_put(mge->json_blob);
 }
 
 

@@ -177,6 +177,7 @@ static void md_input_munin_handle_event(void *ptr, int32_t fd, uint32_t events)
 
     //fprintf(stderr, "JSON dump: %s\n", json_object_to_json_string(blob));
     mde_publish_event_obj(mim->parent, (struct md_event *) &munin_event);
+    json_object_put(blob);
 }
 
 static uint8_t md_munin_config(struct md_input_munin *mim,
