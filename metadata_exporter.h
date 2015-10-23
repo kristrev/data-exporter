@@ -30,6 +30,8 @@
 #include <pthread.h>
 #include <stdint.h>
 
+#include JSON_LOC
+
 #include "lib/minmea.h"
 
 #define MDE_VERSION 1
@@ -41,6 +43,7 @@
 #define META_TYPE_INTERFACE  0x01
 #define META_TYPE_CONNECTION 0x02
 #define META_TYPE_POS        0x04
+#define META_TYPE_MUNIN      0x05
 
 enum conn_event {
     CONN_EVENT_L3_UP=1,
@@ -73,6 +76,7 @@ enum md_inputs {
     MD_INPUT_NETLINK,
     MD_INPUT_GPSD,
     MD_INPUT_GPS_NSB,
+    MD_INPUT_MUNIN,
     __MD_INPUT_MAX
 };
 
@@ -140,6 +144,12 @@ struct md_gps_event {
     int satellites_tracked;
     uint16_t sequence;
     uint8_t minmea_id;
+};
+
+struct md_munin_event {
+    MD_EVENT;
+    int64_t tstamp;
+    json_object* json_blob;
 };
 
 struct md_exporter {

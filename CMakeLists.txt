@@ -62,6 +62,12 @@ if (GPSD)
     add_definitions("-DGPSD_SUPPORT")
 endif()
 
+if (MUNIN)
+    set(SOURCE ${SOURCE}
+        metadata_input_munin.c)
+    add_definitions("-DMUNIN_SUPPORT")
+endif()
+
 if (GPS_NSB)
     set(SOURCE ${SOURCE}
         metadata_input_gps_nsb.c)

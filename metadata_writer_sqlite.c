@@ -29,7 +29,6 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <libmnl/libmnl.h>
-#include JSON_LOC
 #include <string.h>
 #include <sys/time.h>
 #include <stdlib.h>

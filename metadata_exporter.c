@@ -43,6 +43,9 @@
 #ifdef GPSD_SUPPORT
     #include "metadata_input_gpsd.h"
 #endif
+#ifdef MUNIN_SUPPORT
+    #include "metadata_input_munin.h"
+#endif
 #ifdef NSB_GPS
     #include "metadata_input_gps_nsb.h"
 #endif
@@ -61,6 +64,7 @@
 #include "backend_event_loop.h"
 
 struct md_input_gpsd;
+struct md_input_munin;
 struct md_writer_sqlite;
 struct md_writer_zeromq;
 
@@ -450,7 +454,7 @@ static void run_test_mode(struct md_exporter *mde, uint32_t packets)
 
 static void default_usage()
 {
-    fprintf(stderr, "Support paramteres (r is required). At least one input and one writer must be specified.\n");
+    fprintf(stderr, "Support parameters (r is required). At least one input and one writer must be specified.\n");
     fprintf(stderr, "Default:\n");
     fprintf(stderr, "--netlink/-n: netlink input\n");
 #ifdef NSB_GPS
@@ -458,6 +462,9 @@ static void default_usage()
 #endif
 #ifdef GPSD_SUPPORT
     fprintf(stderr, "--gpsd/-g: gpsd input\n");
+#endif
+#ifdef MUNIN_SUPPORT
+    fprintf(stderr, "--munin/-m: munin input\n");
 #endif
 #ifdef SQLITE_SUPPORT
     fprintf(stderr, "--sqlite/-s: sqlite writer\n");
@@ -516,6 +523,9 @@ int main(int argc, char *argv[])
 #ifdef GPSD_SUPPORT
         {"gpsd",         no_argument,        0,  'g'},
 #endif
+#ifdef MUNIN_SUPPORT
+        {"munin",         no_argument,       0,  'm'},
+#endif
         {"packets",      required_argument,  0,  'p'},
         {"test",         no_argument,        0,  't'},
         {"help",         no_argument,        0,  'h'},
@@ -530,7 +540,7 @@ int main(int argc, char *argv[])
     opterr = 0;
     while (1) {
         //Use glic extension to avoid getopt permuting array while processing
-        i = getopt_long(argc, argv, "--szhgtnp:", core_options, &option_index);
+        i = getopt_long(argc, argv, "--szhgmtnp:", core_options, &option_index);
 
         if (i == -1)
             break;
@@ -582,11 +592,24 @@ int main(int argc, char *argv[])
             mde->md_inputs[MD_INPUT_GPSD] = calloc(sizeof(struct md_input_gpsd), 1);
 
             if (mde->md_inputs[MD_INPUT_GPSD] == NULL) {
-                fprintf(stderr, "Could not allocate Netlink input\n");
+                fprintf(stderr, "Could not allocate GPSD input\n");
                 exit(EXIT_FAILURE);
             }
 
             md_gpsd_setup(mde, (struct md_input_gpsd*) mde->md_inputs[MD_INPUT_GPSD]);
+            num_inputs++;
+            break;
+#endif
+#ifdef MUNIN_SUPPORT
+        case 'm':
+            mde->md_inputs[MD_INPUT_MUNIN] = calloc(sizeof(struct md_input_munin), 1);
+
+            if (mde->md_inputs[MD_INPUT_MUNIN] == NULL) {
+                fprintf(stderr, "Could not allocate Munin input\n");
+                exit(EXIT_FAILURE);
+            }
+
+            md_munin_setup(mde, (struct md_input_munin*) mde->md_inputs[MD_INPUT_MUNIN]);
             num_inputs++;
             break;
 #endif
