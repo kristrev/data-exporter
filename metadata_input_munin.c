@@ -118,7 +118,7 @@ void json_add_key_value(char* kv, json_object* blob) {
 static void md_input_munin_handle_event(void *ptr, int32_t fd, uint32_t events)
 {
     struct md_input_munin *mim = ptr;
-    int i,n;
+    int i=0,n;
     uint64_t exp;
 
     if ((n=read(fd, &exp, sizeof(uint64_t))) < sizeof(uint64_t)) {
