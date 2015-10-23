@@ -30,6 +30,7 @@
 #include "metadata_exporter.h"
 #include "metadata_writer_sqlite_gps.h"
 #include "metadata_writer_sqlite_helpers.h"
+#include "metadata_exporter_log.h"
 
 static uint8_t md_sqlite_gps_dump_db(struct md_writer_sqlite *mws, FILE *output)
 {
@@ -43,23 +44,16 @@ static uint8_t md_sqlite_gps_dump_db(struct md_writer_sqlite *mws, FILE *output)
 
 uint8_t md_sqlite_gps_copy_db(struct md_writer_sqlite *mws)
 {
-    int32_t retval = md_writer_helpers_copy_db(mws->gps_prefix,
-            mws->gps_prefix_len, md_sqlite_gps_dump_db, mws);
-   
-    if (retval == RETVAL_FAILURE)
-        return retval;
+    uint8_t retval = md_writer_helpers_copy_db(mws->gps_prefix,
+            mws->gps_prefix_len, md_sqlite_gps_dump_db, mws,
+            mws->delete_gps);
 
-    sqlite3_reset(mws->delete_gps);
-    retval = sqlite3_step(mws->delete_gps);
+    if (retval == RETVAL_SUCCESS)
+        mws->num_gps_events = 0;
 
-    if (retval != SQLITE_DONE) {
-        fprintf(stderr, "DELETE failed for GPS table\n");
-        return RETVAL_FAILURE;
-    }
-
-    mws->num_gps_events = 0;
-    return RETVAL_SUCCESS;
+    return retval;
 }
+
 uint8_t md_sqlite_handle_gps_event(struct md_writer_sqlite *mws,
                                    struct md_gps_event *mge)
 {
@@ -78,25 +72,25 @@ uint8_t md_sqlite_handle_gps_event(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 3, mge->sequence) ||
         sqlite3_bind_double(stmt, 4, mge->latitude) ||
         sqlite3_bind_double(stmt, 5, mge->longitude)) {
-        fprintf(stderr, "Failed to bind values to INSERT query (GPS)\n");
+        META_PRINT(mws->parent->logfile, "Failed to bind values to INSERT query (GPS)\n");
         return RETVAL_FAILURE;
     }
 
     if (mge->altitude &&
         sqlite3_bind_double(stmt, 6, mge->altitude)) {
-        fprintf(stderr, "Failed to bind altitude\n");
+        META_PRINT(mws->parent->logfile, "Failed to bind altitude\n");
         return RETVAL_FAILURE;
     }
 
     if (mws->gps_speed &&
         sqlite3_bind_double(stmt, 7, mws->gps_speed)) {
-        fprintf(stderr, "Failed to bind speed\n");
+        META_PRINT(mws->parent->logfile, "Failed to bind speed\n");
         return RETVAL_FAILURE;
     }
 
     if (mge->satellites_tracked &&
         sqlite3_bind_int(stmt, 8, mge->satellites_tracked)) {
-        fprintf(stderr, "Failed to bind num. satelites\n");
+        META_PRINT(mws->parent->logfile, "Failed to bind num. satelites\n");
         return RETVAL_FAILURE;
     }
 

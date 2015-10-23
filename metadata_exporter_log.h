@@ -24,20 +24,26 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef METADATA_WRITER_SQLITE_HELPERS_H
-#define METADATA_WRITER_SQLITE_HELPERS_H
+#ifndef METADATA_EXPORTER_LOG_H
+#define METADATA_EXPORTER_LOG_H
 
-#include <stdint.h>
-#include <sqlite3.h>
+#include <stdio.h>
+#include <time.h>
 
-struct md_writer_sqlite;
+#define META_LOG_PREFIX "[%.2d:%.2d:%.2d %.2d/%.2d/%d]: "
+#define META_PRINT2(fd, ...){fprintf(fd, __VA_ARGS__);fflush(fd);}
 
-typedef uint8_t (*dump_db_cb)(struct md_writer_sqlite *mws, FILE *output);
-
-uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
-        dump_db_cb dump_db, struct md_writer_sqlite *mws,
-        sqlite3_stmt *delete_stmt);
-
-uint8_t md_sqlite_helpers_dump_write(sqlite3_stmt *stmt, FILE *output);
+//The ## is there so that I dont have to fake an argument when I use the macro
+//on string without arguments!
+#define META_PRINT(fd, _fmt, ...) \
+    do { \
+        time_t rawtime; \
+        struct tm *curtime; \
+        time(&rawtime); \
+        curtime = gmtime(&rawtime); \
+        META_PRINT2(fd, META_LOG_PREFIX _fmt, curtime->tm_hour, \
+                curtime->tm_min, curtime->tm_sec, curtime->tm_mday, \
+                curtime->tm_mon + 1, 1900 + curtime->tm_year, \
+                ##__VA_ARGS__);} while(0)
 
 #endif

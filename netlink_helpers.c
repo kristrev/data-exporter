@@ -33,20 +33,17 @@
 #include <string.h>
 
 #include "netlink_helpers.h"
+#include "metadata_exporter_log.h"
 
 struct mnl_socket *nlhelper_create_socket(int32_t bus, uint32_t groups)
 {
     struct mnl_socket *mnl_sock = NULL;
 
     if ((mnl_sock = mnl_socket_open(bus)) == NULL)
-    {
-        fprintf(stderr, "Failed to open netlink socket\n");
         return NULL;
-    }
 
     if (groups && mnl_socket_bind(mnl_sock, groups, getpid()) < 0)
     {
-        fprintf(stderr, "Failed to bind socket\n");
         mnl_socket_close(mnl_sock);
         return NULL;
     }
