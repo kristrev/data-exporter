@@ -51,10 +51,10 @@ static int32_t md_sqlite_execute_insert_update(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 3, mce->sequence) ||
         sqlite3_bind_int(stmt, 4, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 5, mce->l4_session_id) ||
-        sqlite3_bind_text(stmt, 6, mce->event_value_str, strlen(mce->event_value_str), SQLITE_TRANSIENT) ||
+        sqlite3_bind_text(stmt, 6, mce->event_value_str, strlen(mce->event_value_str), SQLITE_STATIC) ||
         sqlite3_bind_int(stmt, 7, mce->interface_type) ||
-        sqlite3_bind_text(stmt, 8, mce->interface_id, strlen(mce->interface_id), SQLITE_TRANSIENT) ||
-        sqlite3_bind_text(stmt, 9, mce->network_address, strlen(mce->network_address), SQLITE_TRANSIENT)){
+        sqlite3_bind_text(stmt, 8, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC) ||
+        sqlite3_bind_text(stmt, 9, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)){
         META_PRINT(mws->parent->logfile, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
     }
@@ -86,9 +86,9 @@ static int32_t md_sqlite_execute_insert(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 7, mce->event_param) ||
         sqlite3_bind_int(stmt, 10, mce->interface_type) ||
         sqlite3_bind_int(stmt, 11, mce->interface_id_type) ||
-        sqlite3_bind_text(stmt, 12, mce->interface_id, strlen(mce->interface_id), SQLITE_TRANSIENT) ||
+        sqlite3_bind_text(stmt, 12, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC) ||
         sqlite3_bind_int(stmt, 14, mce->network_address_family) ||
-        sqlite3_bind_text(stmt, 15, mce->network_address, strlen(mce->network_address), SQLITE_TRANSIENT)) {
+        sqlite3_bind_text(stmt, 15, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT(mws->parent->logfile, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
     }
@@ -100,7 +100,7 @@ static int32_t md_sqlite_execute_insert(struct md_writer_sqlite *mws,
     }
 
     if (mce->event_value_str != NULL &&
-        sqlite3_bind_text(stmt, 9, mce->event_value_str, strlen(mce->event_value_str), SQLITE_TRANSIENT)) {
+        sqlite3_bind_text(stmt, 9, mce->event_value_str, strlen(mce->event_value_str), SQLITE_STATIC)) {
         META_PRINT(mws->parent->logfile, "Failed to bind event value (string)\n");
         return SQLITE_ERROR;
     }
@@ -126,11 +126,11 @@ static int32_t md_sqlite_update_event(struct md_writer_sqlite *mws,
     sqlite3_reset(stmt);
 
     if (sqlite3_bind_int(stmt, 1, mce->tstamp) ||
-        sqlite3_bind_text(stmt, 2, mce->event_value_str, strlen(mce->event_value_str), SQLITE_TRANSIENT) ||
+        sqlite3_bind_text(stmt, 2, mce->event_value_str, strlen(mce->event_value_str), SQLITE_STATIC) ||
         sqlite3_bind_int(stmt, 3, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 4, mce->l4_session_id) ||
-        sqlite3_bind_text(stmt, 5, mce->network_address, strlen(mce->network_address), SQLITE_TRANSIENT) ||
-        sqlite3_bind_text(stmt, 6, mce->interface_id, strlen(mce->interface_id), SQLITE_TRANSIENT)) {
+        sqlite3_bind_text(stmt, 5, mce->network_address, strlen(mce->network_address), SQLITE_STATIC) ||
+        sqlite3_bind_text(stmt, 6, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
         META_PRINT(mws->parent->logfile, "Failed to bind values to UPDATE query\n");
         return SQLITE_ERROR;
     }
@@ -168,8 +168,8 @@ static int16_t md_sqlite_get_last_update(struct md_writer_sqlite *mws,
 
     if (sqlite3_bind_int(stmt, 1, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 2, mce->l4_session_id) ||
-        sqlite3_bind_text(stmt, 3, mce->interface_id, strlen(mce->interface_id), SQLITE_TRANSIENT) ||
-        sqlite3_bind_text(stmt, 4, mce->network_address, strlen(mce->network_address), SQLITE_TRANSIENT)) {
+        sqlite3_bind_text(stmt, 3, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC) ||
+        sqlite3_bind_text(stmt, 4, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT(mws->parent->logfile, "Failed to bind values to SELECT query\n");
         return retval;
     }
