@@ -87,12 +87,12 @@ uint8_t md_munin_reconnect (struct md_input_munin *mim, const char *address, con
     serv_addr.sin_port = htons(atoi(port));
   
     if (connect(mim->munin_socket_fd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) {
-      fprintf(stderr, "Could not connect to munin.");
+      fprintf(stderr, "Could not connect to munin.\n");
       return RETVAL_FAILURE;
     } 
     
     if ((n = md_munin_readLine(mim->munin_socket_fd, buffer, 255))<0) {
-      fprintf(stderr, "Could not read munin welcome string.");
+      fprintf(stderr, "Could not read munin welcome string.\n");
       close(mim->munin_socket_fd);
       return RETVAL_FAILURE;
     }
@@ -134,17 +134,10 @@ static void md_input_munin_handle_event(void *ptr, int32_t fd, uint32_t events)
     if (!(blob = json_object_new_object()))
         return;
 
-    const char* const modules[] = {
-      "uptime",
-      "cpu",
-      "memory",
-    }; 
-    int nmodules = 3;
-
-    for (i=0; i<nmodules; i++) {
+    for (i=0; i < mim->module_count; i++) {
       char cmd[256];
       char buffer[256];
-      snprintf(cmd, 255, "fetch %s\n", modules[i]);
+      snprintf(cmd, 255, "fetch %s\n", mim->modules[i]);
 
       if ((n=write(mim->munin_socket_fd, cmd, strlen(cmd)))<0) {
           fprintf(stderr, "Writing to munin failed.\n");
@@ -154,7 +147,7 @@ static void md_input_munin_handle_event(void *ptr, int32_t fd, uint32_t events)
       struct json_object *obj_mod = NULL;
       if (!(obj_mod = json_object_new_object()))
         break;
-      json_object_object_add(blob, modules[i], obj_mod);
+      json_object_object_add(blob, mim->modules[i], obj_mod);
 
       while (1) {
         if ((n=md_munin_readLine(mim->munin_socket_fd, buffer, 255))<0) {
@@ -182,12 +175,38 @@ static void md_input_munin_handle_event(void *ptr, int32_t fd, uint32_t events)
 
 static uint8_t md_munin_config(struct md_input_munin *mim,
                               const char *address,
-                              const char *port)
+                              const char *port,
+                              const char *modules)
 {
     int timer;
     struct itimerspec delay;
 
     if (md_munin_reconnect(mim, address, port) == RETVAL_SUCCESS) {
+ 
+      char *running;
+      if ((running = strdup(modules)) == NULL) {
+          fprintf(stderr, "Memory allocation failed.");
+          return RETVAL_FAILURE;
+      }
+
+      char **tokens = NULL;
+      char * token  = strsep(&running, ",");
+      int n_commas  = 0,
+          n_tokens  = 0;
+
+      while(token) {
+        if ((tokens = realloc(tokens, sizeof(char*)* ++n_commas))==NULL) {
+          fprintf(stderr, "Memory allocation failed.");
+          return RETVAL_FAILURE;
+        }
+        tokens[n_commas-1] = token;
+        token = strsep(&running, ",");
+        n_tokens++;
+      }
+
+      mim->module_count = n_tokens;
+      mim->modules      = tokens;
+
       if ((timer = timerfd_create(CLOCK_REALTIME, 0)) < 0) {
         fprintf(stderr, "Could not create munin polling timer.");
         return RETVAL_FAILURE;
@@ -219,11 +238,13 @@ static uint8_t md_input_munin_init(void *ptr, int argc, char *argv[])
 {
     struct md_input_munin *mim = ptr;
     const char *address = NULL, *port = NULL;
+    const char *modules = "memory,cpu";
     int c, option_index = 0;
 
     static struct option munin_options[] = {
         {"munin_address",         required_argument,  0,  0},
         {"munin_port",            required_argument,  0,  0},
+        {"munin_modules",         required_argument,  0,  0},
         {0,                                      0,  0,  0}};
 
     while (1) {
@@ -239,6 +260,8 @@ static uint8_t md_input_munin_init(void *ptr, int argc, char *argv[])
             address = optarg;
         else if (!strcmp(munin_options[option_index].name, "munin_port"))
             port = optarg;
+        else if (!strcmp(munin_options[option_index].name, "munin_modules"))
+            modules = optarg;
     }
 
     if (address == NULL || port == NULL) {
@@ -246,7 +269,7 @@ static uint8_t md_input_munin_init(void *ptr, int argc, char *argv[])
         return RETVAL_FAILURE;
     }
 
-    return md_munin_config(mim, address, port);
+    return md_munin_config(mim, address, port, modules);
 }
 
 static void md_munin_usage()
@@ -255,6 +278,7 @@ static void md_munin_usage()
     // TODO: --munin-binary (no need to run systemd, nginx or inetd)
     fprintf(stderr, "--munin_address: munin address (r)\n");
     fprintf(stderr, "--munin_port:    munin port    (r)\n");
+    fprintf(stderr, "--munin_modules: comma separated, modules to export   (o, default='memory,cpu')\n");
 }
 
 void md_munin_setup(struct md_exporter *mde, struct md_input_munin *mim)
