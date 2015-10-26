@@ -84,10 +84,6 @@
                             "Timestamp   INTEGER NOT NULL," \
                             "Sequence    INTEGER NOT NULL," \
                             "Boottime    INTEGER NOT NULL," \
-                            "Uptime      INTEGER NOT NULL," \
-                            "MemoryFree  INTEGER," \
-                            "MemoryApps  INTEGER," \
-                            "Temperature REAL," \
                             "PRIMARY KEY(NodeId,Timestamp,Sequence))"
 
 #define INSERT_PROVIDER     "INSERT INTO NetworkEvent(NodeId,Timestamp" \
@@ -110,9 +106,8 @@
                             "VALUES (?,?,?,?,?,?,?,?)"
 
 #define INSERT_MONITOR_EVENT "INSERT INTO MonitorEvents(NodeId,Timestamp" \
-                             ",Sequence,Boottime,Uptime,MemoryFree,MemoryApps" \
-                             ",Temperature) " \
-                             "VALUES (?,?,?,?,?,?,?,?)"
+                             ",Sequence,Boottime) " \
+                             "VALUES (?,?,?,?)"
 
 #define SELECT_LAST_UPDATE  "SELECT EventValueStr FROM NetworkUpdates WHERE "\
                             "L3SessionId=? AND "\
@@ -191,14 +186,10 @@
                             "quote(\"GroundSpeed\"), quote(\"NumOfSatelites\") "\
                             "|| \")\" FROM \"GpsEvents\" ORDER BY Timestamp;"
 
-
 #define DUMP_MONITOR        "SELECT \"REPLACE INTO MonitorEvents" \
-                            "(NodeId,Timestamp,Sequence,Boottime,Uptime" \
-                            ",MemoryFree,MemoryApps,Temperature) VALUES(\" "\
+                            "(NodeId,Timestamp,Sequence,Boottime) VALUES(\" "\
                             "|| quote(\"NodeId\"), quote(\"Timestamp\"), "\
-                            "quote(\"Sequence\"), quote(\"Boottime\"), "\
-                            "quote(\"Uptime\"), quote(\"MemoryFree\"), "\
-                            "quote(\"MemoryApps\"), quote(\"Temperature\") "\
+                            "quote(\"Sequence\"), quote(\"Boottime\") "\
                             "|| \")\" FROM \"MonitorEvents\" ORDER BY Timestamp;"
 
 

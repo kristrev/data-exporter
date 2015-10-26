@@ -57,14 +57,8 @@ uint8_t md_sqlite_monitor_copy_db(struct md_writer_sqlite *mws)
 uint8_t md_sqlite_handle_munin_event(struct md_writer_sqlite *mws,
                                    struct md_munin_event *mme)
 {
-    /*
-     checks: session module is loaded 
-             session.start >> year 1970
-    */
     json_object *value;
-    int64_t boottime    = 0, uptime = 0;
-    int64_t memoryfree  = 0, memoryapps = 0;
-    double  temperature = 0.0;
+    int64_t boottime    = 0;
 
     json_object *session_obj;
     if (!json_object_object_get_ex(mme->json_blob, "session", &session_obj)) {
@@ -78,23 +72,6 @@ uint8_t md_sqlite_handle_munin_event(struct md_writer_sqlite *mws,
         return RETVAL_FAILURE;
     }
 
-    if (json_object_object_get_ex(session_obj, "current", &value)) 
-      uptime = json_object_get_int64(value);
-
-    json_object *memory_obj;
-    if (json_object_object_get_ex(mme->json_blob, "memory", &memory_obj)) {
-      if (json_object_object_get_ex(memory_obj, "free", &value)) 
-        memoryfree = json_object_get_int64(value);
-      if (json_object_object_get_ex(memory_obj, "apps", &value)) 
-        memoryapps = json_object_get_int64(value);
-    }
-
-    json_object *temp_obj;
-    if (json_object_object_get_ex(mme->json_blob, "temp", &temp_obj)) {
-      if (json_object_object_get_ex(temp_obj, "cpu", &value)) 
-        temperature = json_object_get_double(value);
-    }
-
     sqlite3_stmt *stmt = mws->insert_monitor;
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
@@ -102,12 +79,8 @@ uint8_t md_sqlite_handle_munin_event(struct md_writer_sqlite *mws,
     if (sqlite3_bind_int(stmt,    1, mws->node_id)  ||
         sqlite3_bind_int(stmt,    2, mme->tstamp)   ||
         sqlite3_bind_int(stmt,    3, mme->sequence) || 
-        sqlite3_bind_int64(stmt,  4, boottime)      ||
-        sqlite3_bind_int64(stmt,  5, uptime)        || 
-        sqlite3_bind_int64(stmt,  6, memoryfree)    ||
-        sqlite3_bind_int64(stmt,  7, memoryapps)    ||
-        sqlite3_bind_double(stmt, 8, temperature))  {
-        META_PRINT(mws->parent->logfile, "Failed to bind values to INSERT query (GPS)\n");
+        sqlite3_bind_int64(stmt,  4, boottime)       ){ 
+        META_PRINT(mws->parent->logfile, "Failed to bind values to INSERT query (Monitor)\n");
         return RETVAL_FAILURE;
     }
 
