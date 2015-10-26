@@ -39,6 +39,7 @@
 #include "metadata_writer_sqlite_conn.h"
 #include "metadata_writer_sqlite_helpers.h"
 #include "metadata_writer_sqlite_gps.h"
+#include "metadata_writer_sqlite_monitor.h"
 #include "netlink_helpers.h"
 #include "system_helpers.h"
 #include "backend_event_loop.h"
@@ -73,9 +74,10 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
         mws->timeout_added = 0;
     }
 
-    META_PRINT(mws->parent->logfile, "Will export DB. # meta %u # gps %u\n",
+    META_PRINT(mws->parent->logfile, "Will export DB. # meta %u # gps %u # monitor %u\n",
             mws->num_conn_events,
-            mws->num_gps_events);
+            mws->num_gps_events,
+            mws->num_munin_events);
 
     if (mws->num_conn_events) {
         retval = md_sqlite_conn_copy_db(mws);
@@ -86,6 +88,13 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
 
     if (mws->num_gps_events) {
         retval = md_sqlite_gps_copy_db(mws);
+
+        if (retval == RETVAL_FAILURE)
+            num_failed++;
+    }
+
+    if (mws->num_munin_events) {
+        retval = md_sqlite_monitor_copy_db(mws);
 
         if (retval == RETVAL_FAILURE)
             num_failed++;
@@ -165,12 +174,19 @@ static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char 
         return NULL;
     }
 
+    if (sqlite3_exec(db_handle, CREATE_MONITOR_SQL, NULL, NULL, &db_errmsg)) {
+        META_PRINT(mws->parent->logfile, "db create (monitor) failed with message: %s\n", db_errmsg);
+        sqlite3_close_v2(db_handle);
+        return NULL;
+    }
+
     return db_handle;
 }
 
 static int md_sqlite_configure(struct md_writer_sqlite *mws,
         const char *db_filename, uint32_t node_id, uint32_t db_interval,
-        uint32_t db_events, const char *meta_prefix, const char *gps_prefix)
+        uint32_t db_events, const char *meta_prefix, const char *gps_prefix,
+        const char *monitor_prefix)
 {
     sqlite3 *db_handle = md_sqlite_configure_db(mws, db_filename);
    
@@ -210,7 +226,13 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
        sqlite3_prepare_v2(mws->db_handle, DELETE_GPS_TABLE, -1,
             &(mws->delete_gps), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DUMP_GPS, -1,
-            &(mws->dump_gps), NULL)){
+            &(mws->dump_gps), NULL) ||
+       sqlite3_prepare_v2(mws->db_handle, INSERT_MONITOR_EVENT, -1,
+            &(mws->insert_monitor), NULL) ||
+       sqlite3_prepare_v2(mws->db_handle, DELETE_MONITOR_TABLE, -1,
+            &(mws->delete_monitor), NULL) ||
+       sqlite3_prepare_v2(mws->db_handle, DUMP_MONITOR, -1,
+            &(mws->dump_monitor), NULL)) {
         META_PRINT(mws->parent->logfile, "Statement failed: %s\n", sqlite3_errmsg(mws->db_handle));
         sqlite3_close_v2(db_handle);
         return RETVAL_FAILURE;
@@ -234,6 +256,15 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         mws->gps_prefix_len = strlen(gps_prefix);
     }
 
+    if (monitor_prefix) {
+        memset(mws->monitor_prefix, 0, sizeof(mws->monitor_prefix));
+        memcpy(mws->monitor_prefix, monitor_prefix, strlen(monitor_prefix));
+
+        //We need to reset the last six characthers to X, so keep track of the
+        //length of the original prefix
+        mws->monitor_prefix_len = strlen(monitor_prefix);
+    }
+
     if (mws->node_id && (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
         md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID))) {
         META_PRINT(mws->parent->logfile, "Could not update old ements with id 0\n");
@@ -250,6 +281,7 @@ static void md_sqlite_usage()
     fprintf(stderr, "--sql_nodeid: node id. If not specified, will be read from system (compile option)\n");
     fprintf(stderr, "--sql_meta_prefix: location + filename prefix for connection metadata ( max 116 characters)\n");
     fprintf(stderr, "--sql_gps_prefix: location + filename prefix for GPS data (max 116 characters)\n");
+    fprintf(stderr, "--sql_monitor_prefix: location + filename prefix for monitor data (max 116 characters)\n");
     fprintf(stderr, "--sql_interval: time (in ms) from event and until database is copied (default: 5 sec)\n");
     fprintf(stderr, "--sql_events: number of events before copying database\n (default: 10)\n");
 }
@@ -259,13 +291,15 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
     struct md_writer_sqlite *mws = ptr;
     uint32_t node_id = 0, interval = DEFAULT_TIMEOUT, num_events = EVENT_LIMIT;
     int c, option_index = 0;
-    const char *db_filename = NULL, *meta_prefix = NULL, *gps_prefix = NULL;
+    const char *db_filename = NULL, *meta_prefix = NULL, *gps_prefix = NULL,
+               *monitor_prefix = NULL;
 
     static struct option sqlite_options[] = {
         {"sql_database",         required_argument,  0,  0},
         {"sql_nodeid",           required_argument,  0,  0},
         {"sql_meta_prefix",      required_argument,  0,  0},
         {"sql_gps_prefix",       required_argument,  0,  0},
+        {"sql_monitor_prefix",   required_argument,  0,  0},
         {"sql_interval",         required_argument,  0,  0},
         {"sql_events",           required_argument,  0,  0},
         {0,                                      0,  0,  0}};
@@ -287,19 +321,22 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
             meta_prefix = optarg;
         else if (!strcmp(sqlite_options[option_index].name, "sql_gps_prefix"))
             gps_prefix = optarg;
+        else if (!strcmp(sqlite_options[option_index].name, "sql_monitor_prefix"))
+            monitor_prefix = optarg;
         else if (!strcmp(sqlite_options[option_index].name, "sql_interval"))
             interval = ((uint32_t) atoi(optarg)) * 1000;
         else if (!strcmp(sqlite_options[option_index].name, "sql_events"))
             num_events = (uint32_t) atoi(optarg);
     }
 
-    if (!db_filename || (!gps_prefix && !meta_prefix)) {
+    if (!db_filename || (!gps_prefix && !meta_prefix && !monitor_prefix)) {
         META_PRINT(mws->parent->logfile, "Required SQLite argument missing\n");
         return RETVAL_FAILURE;
     }
 
-    if ((meta_prefix && strlen(meta_prefix) > 117) ||
-        (gps_prefix && strlen(gps_prefix) > 117)) {
+    if ((meta_prefix    && strlen(meta_prefix)    > 117) ||
+        (gps_prefix     && strlen(gps_prefix)     > 117) ||
+        (monitor_prefix && strlen(monitor_prefix) > 117)) {
         META_PRINT(mws->parent->logfile, "SQLite temp file prefix too long\n");
         return RETVAL_FAILURE;
     }
@@ -312,7 +349,7 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
     META_PRINT(mws->parent->logfile, "Done configuring SQLite handle\n");
 
     return md_sqlite_configure(mws, db_filename, node_id, interval,
-            num_events, meta_prefix, gps_prefix);
+            num_events, meta_prefix, gps_prefix, monitor_prefix);
 }
 
 static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
@@ -337,6 +374,14 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
         if (!retval)
             mws->num_gps_events++;
         break;
+    case META_TYPE_MUNIN:
+        if (!mws->monitor_prefix[0])
+            return;
+
+        retval = md_sqlite_handle_munin_event(mws, (struct md_munin_event*) event);
+        if (!retval)
+            mws->num_munin_events++;
+        break;
     default:
         META_PRINT(mws->parent->logfile, "SQLite writer does not support event %u\n",
                 event->md_type);
@@ -356,7 +401,7 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
     //These two are exclusive. There is no point adding timeout if event_limit
     //is hit. This can happen if event_limit is 1. The reason we do not use
     //lte is that if a copy fails, we deal with that in a timeout
-    if ((mws->num_conn_events + mws->num_gps_events) == mws->db_events) {
+    if ((mws->num_conn_events + mws->num_gps_events + mws->num_munin_events) == mws->db_events) {
         md_sqlite_copy_db(mws, 0);
     } else if (!mws->timeout_added) {
         mde_start_timer(mws->parent->event_loop, mws->timeout_handle,

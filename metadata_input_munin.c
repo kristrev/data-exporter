@@ -166,6 +166,7 @@ static void md_input_munin_handle_event(void *ptr, int32_t fd, uint32_t events)
 
     munin_event.md_type   = META_TYPE_MUNIN;
     munin_event.tstamp    = tv.tv_sec;
+    munin_event.sequence  = mde_inc_seq(mim->parent);
     munin_event.json_blob = blob;
 
     //fprintf(stderr, "JSON dump: %s\n", json_object_to_json_string(blob));

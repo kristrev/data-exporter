@@ -100,7 +100,8 @@ enum md_writers {
     void (*usage)()
 
 #define MD_EVENT \
-    uint32_t md_type
+    uint32_t md_type; \
+    uint16_t sequence
 
 struct mnl_socket;
 struct backend_event_loop;
@@ -129,7 +130,6 @@ struct md_conn_event {
     uint32_t network_provider;
     const char *network_address;
     const char *event_value_str;
-    uint16_t sequence;
 };
 
 struct md_gps_event {
@@ -142,7 +142,6 @@ struct md_gps_event {
     float speed;
     float altitude;
     int satellites_tracked;
-    uint16_t sequence;
     uint8_t minmea_id;
 };
 
