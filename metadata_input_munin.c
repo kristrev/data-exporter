@@ -235,6 +235,15 @@ static uint8_t md_munin_config(struct md_input_munin *mim,
     }
 }
 
+static uint8_t md_input_munin_destroy(void *ptr) 
+{
+    struct md_input_munin *mim = ptr;
+    if ((mim != NULL) && (mim->module_count > 0)) { 
+      free(mim->modules);
+      mim->module_count = 0;
+    }
+}
+
 static uint8_t md_input_munin_init(void *ptr, int argc, char *argv[])
 {
     struct md_input_munin *mim = ptr;
@@ -284,7 +293,8 @@ static void md_munin_usage()
 
 void md_munin_setup(struct md_exporter *mde, struct md_input_munin *mim)
 {
-    mim->parent = mde;
-    mim->init   = md_input_munin_init;
-    mim->usage  = md_munin_usage;
+    mim->parent  = mde;
+    mim->init    = md_input_munin_init;
+    mim->destroy = md_input_munin_destroy;
+    mim->usage   = md_munin_usage;
 }

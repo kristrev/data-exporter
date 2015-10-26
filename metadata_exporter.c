@@ -119,6 +119,16 @@ void mde_start_timer(struct backend_event_loop *event_loop,
     backend_insert_timeout(event_loop, timeout_handle);
 }
 
+//TODO: Find a place to catch termination signals, and call this.
+void mde_destroy(struct md_exporter *mde) 
+{
+    int i;
+    for (i=0; i<=MD_INPUT_MAX; i++) 
+        if (mde->md_inputs[i] != NULL) 
+            if (mde->md_inputs[i]->destroy != NULL) 
+                mde->md_inputs[i]->destroy(mde->md_inputs[i]);
+}
+
 static int configure_core(struct md_exporter **mde)
 {
     //Configure core variables

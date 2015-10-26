@@ -90,6 +90,7 @@ enum md_writers {
 #define MD_INPUT \
     struct md_exporter *parent; \
     uint8_t (*init)(void *ptr, int argc, char *argv[]); \
+    void (*destroy)(void *ptr); \
     void (*usage)()
 
 #define MD_WRITER \
