@@ -178,6 +178,19 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
     json_object_put(gps_obj);
 }
 
+static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
+                                   struct md_munin_event *mge)
+{
+    char topic[8192];
+
+    snprintf(topic, sizeof(topic), "MONROE.MONITOR %s", json_object_to_json_string_ext(mge->json_blob, JSON_C_TO_STRING_PLAIN));
+   
+    //TODO: Error handling
+    zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+}
+
+
+
 static json_object* md_zeromq_create_json_modem_default(struct md_writer_zeromq *mwz,
                                                         struct md_conn_event *mce)
 {
@@ -295,6 +308,9 @@ static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
         break;
     case META_TYPE_CONNECTION:
         md_zeromq_handle_conn(mwz, (struct md_conn_event*) event);
+        break;
+    case META_TYPE_MUNIN:
+        md_zeromq_handle_munin(mwz, (struct md_munin_event*) event);
     default:
         break;
     }

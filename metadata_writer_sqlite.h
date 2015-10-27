@@ -79,6 +79,13 @@
                             "NumOfSatelites INTEGER," \
                             "PRIMARY KEY(NodeId,Timestamp,Sequence))"
 
+#define CREATE_MONITOR_SQL  "CREATE TABLE IF NOT EXISTS MonitorEvents(" \
+                            "NodeId      INTEGER NOT NULL," \
+                            "Timestamp   INTEGER NOT NULL," \
+                            "Sequence    INTEGER NOT NULL," \
+                            "Boottime    INTEGER NOT NULL," \
+                            "PRIMARY KEY(NodeId,Timestamp,Sequence))"
+
 #define INSERT_PROVIDER     "INSERT INTO NetworkEvent(NodeId,Timestamp" \
                             ",Sequence,L3SessionId,L4SessionId,EventType" \
                             ",EventParam,EventValue,EventValueStr,InterfaceType" \
@@ -97,6 +104,10 @@
                             ",Sequence,Latitude,Longitude,Altitude" \
                             ",GroundSpeed,NumOfSatelites) " \
                             "VALUES (?,?,?,?,?,?,?,?)"
+
+#define INSERT_MONITOR_EVENT "INSERT INTO MonitorEvents(NodeId,Timestamp" \
+                             ",Sequence,Boottime) " \
+                             "VALUES (?,?,?,?)"
 
 #define SELECT_LAST_UPDATE  "SELECT EventValueStr FROM NetworkUpdates WHERE "\
                             "L3SessionId=? AND "\
@@ -125,9 +136,11 @@
                             "NodeId=? "\
                             "WHERE NodeId=0"
 
-#define DELETE_TABLE        "DELETE FROM NetworkEvent"
+#define DELETE_TABLE         "DELETE FROM NetworkEvent"
 
-#define DELETE_GPS_TABLE    "DELETE FROM GpsEvents"
+#define DELETE_GPS_TABLE     "DELETE FROM GpsEvents"
+
+#define DELETE_MONITOR_TABLE "DELETE FROM MonitorEvents"
 
 //This statement is a static version of what the .dump command does. A dynamic
 //version would query the master table to get tables and then PRAGMA to get
@@ -164,12 +177,6 @@
                             "quote(\"NetworkAddress\"),quote(\"NetworkProvider\") || \",Now())\""\
                             "FROM \"NetworkUpdates\" WHERE Timestamp>=? ORDER BY Timestamp;"
 
-#define INSERT_GPS_EVENT    "INSERT INTO GpsEvents(NodeId,Timestamp" \
-                            ",Sequence,Latitude,Longitude,Altitude" \
-                            ",GroundSpeed,NumOfSatelites) " \
-                            "VALUES (?,?,?,?,?,?,?,?)"
-
-
 #define DUMP_GPS            "SELECT \"REPLACE INTO GpsEvents" \
                             "(NodeId,Timestamp,Sequence,Latitude,Longitude" \
                             ",Altitude,GroundSpeed,NumOfSatelites) VALUES(\" "\
@@ -178,6 +185,14 @@
                             "quote(\"Longitude\"), quote(\"Altitude\"), "\
                             "quote(\"GroundSpeed\"), quote(\"NumOfSatelites\") "\
                             "|| \")\" FROM \"GpsEvents\" ORDER BY Timestamp;"
+
+#define DUMP_MONITOR        "SELECT \"REPLACE INTO MonitorEvents" \
+                            "(NodeId,Timestamp,Sequence,Boottime) VALUES(\" "\
+                            "|| quote(\"NodeId\"), quote(\"Timestamp\"), "\
+                            "quote(\"Sequence\"), quote(\"Boottime\") "\
+                            "|| \")\" FROM \"MonitorEvents\" ORDER BY Timestamp;"
+
+
 
 struct md_event;
 struct md_writer;
@@ -194,12 +209,14 @@ struct md_writer_sqlite {
     sqlite3_stmt *last_update;
 
     sqlite3_stmt *insert_gps, *delete_gps, *dump_gps;
+    sqlite3_stmt *insert_monitor, *delete_monitor, *dump_monitor;
 
     uint32_t node_id;
     uint32_t db_interval;
     uint32_t db_events;
     uint32_t num_conn_events;
     uint32_t num_gps_events;
+    uint32_t num_munin_events;
 
     uint8_t timeout_added;
     uint8_t file_failed;
@@ -212,8 +229,8 @@ struct md_writer_sqlite {
     float gps_speed;
 
     struct backend_timeout_handle *timeout_handle;
-    char meta_prefix[128], gps_prefix[128];
-    size_t meta_prefix_len, gps_prefix_len;
+    char   meta_prefix[128], gps_prefix[128], monitor_prefix[128];
+    size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len;
 };
 
 void md_sqlite_setup(struct md_exporter *mde, struct md_writer_sqlite* mws);
