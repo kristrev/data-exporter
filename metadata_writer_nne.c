@@ -64,7 +64,7 @@ static uint8_t md_nne_handle_gps_event(struct md_writer_nne *mwn,
         }
     }
 
-    if ((gtm = gmtime((time_t *)&mge->tstamp)) == NULL) {
+    if ((gtm = gmtime((time_t *)&mge->tstamp_tv.tv_sec)) == NULL) {
         META_PRINT(mwn->parent->logfile, "NNE writer: Invalid GPS timestamp\n");
         return RETVAL_FAILURE;
     }    
@@ -84,8 +84,8 @@ static uint8_t md_nne_handle_gps_event(struct md_writer_nne *mwn,
 
     mwn->sequence += 1;
 
-    if (fprintf(mwn->dat_file, "%s\t%i\t%i\t%s\n", tm_buf, mwn->instance_id,
-                mwn->sequence, xml_buf) < 0) {
+    if (fprintf(mwn->dat_file, "%s.%06ld\t%i\t%i\t%s\n", tm_buf, mge->tstamp_tv.tv_usec,
+                mwn->instance_id, mwn->sequence, xml_buf) < 0) {
         META_PRINT(mwn->parent->logfile, "NNE writer: Failed to write to export file%s\n",
                 name_buf);
         return RETVAL_FAILURE;

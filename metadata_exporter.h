@@ -135,7 +135,7 @@ struct md_conn_event {
 
 struct md_gps_event {
     MD_EVENT;
-    int64_t tstamp;
+    struct timeval tstamp_tv;
     const char *nmea_raw;
     struct minmea_time time;
     float latitude;
