@@ -57,7 +57,7 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
     }
     json_object_object_add(obj, "seq", obj_add);
 
-    if (!(obj_add = json_object_new_int64(mge->tstamp))) {
+    if (!(obj_add = json_object_new_int64(mge->tstamp_tv.tv_sec))) {
         json_object_put(obj);
         return NULL;
     }
@@ -122,7 +122,7 @@ static json_object* md_zeromq_create_json_gps_raw(struct md_writer_zeromq *mwz,
     }
     json_object_object_add(obj, "seq", obj_add);
 
-    if (!(obj_add = json_object_new_int64(mge->tstamp))) {
+    if (!(obj_add = json_object_new_int64(mge->tstamp_tv.tv_sec))) {
         json_object_put(obj);
         return NULL;
     }

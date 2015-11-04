@@ -68,7 +68,7 @@ uint8_t md_sqlite_handle_gps_event(struct md_writer_sqlite *mws,
     sqlite3_reset(stmt);
 
     if (sqlite3_bind_int(stmt, 1, mws->node_id) ||
-        sqlite3_bind_int(stmt, 2, mge->tstamp) ||
+        sqlite3_bind_int(stmt, 2, mge->tstamp_tv.tv_sec) ||
         sqlite3_bind_int(stmt, 3, mge->sequence) ||
         sqlite3_bind_double(stmt, 4, mge->latitude) ||
         sqlite3_bind_double(stmt, 5, mge->longitude)) {

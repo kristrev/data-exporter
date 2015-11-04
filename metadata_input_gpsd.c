@@ -42,7 +42,6 @@ static void md_input_gpsd_handle_event(void *ptr, int32_t fd, uint32_t events)
 {
     struct md_input_gpsd *mig = ptr;
     struct md_gps_event gps_event;
-    struct timeval tv;
 
     if (gps_read(&(mig->gps_data)) <= 0) {
         META_PRINT(mig->parent->logfile, "Failed to read data from GPS\n");
@@ -54,11 +53,10 @@ static void md_input_gpsd_handle_event(void *ptr, int32_t fd, uint32_t events)
         return;
 
     memset(&gps_event, 0, sizeof(struct md_gps_event));
-    gettimeofday(&tv, NULL);
+    gettimeofday(&gps_event.tstamp_tv, NULL);
     gps_event.md_type = META_TYPE_POS;
     gps_event.minmea_id = MINMEA_UNKNOWN;
     gps_event.sequence = mde_inc_seq(mig->parent);
-    gps_event.tstamp = tv.tv_sec;
     gps_event.latitude = mig->gps_data.fix.latitude;
     gps_event.longitude = mig->gps_data.fix.longitude;
     gps_event.satellites_tracked = mig->gps_data.satellites_visible;

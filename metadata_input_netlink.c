@@ -156,7 +156,7 @@ static void md_input_netlink_handle_gps_event(struct md_input_netlink *min,
             gps_event.sequence = (uint16_t) json_object_get_int(val);
 
         if (!strcmp(key, "timestamp"))
-            gps_event.tstamp = json_object_get_int64(val);
+            gps_event.tstamp_tv.tv_sec = json_object_get_int64(val);
 
         if (!strcmp(key, "nmea_string"))
             gps_event.nmea_raw = json_object_get_string(val);

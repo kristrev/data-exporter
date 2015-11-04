@@ -47,20 +47,19 @@ static void md_input_gps_nsb_handle_event(void *ptr, int32_t fd, uint32_t events
     int8_t sentence_id = 0;
     struct minmea_sentence_rmc rmc;
     int32_t retval;
-    struct timeval tv;
 
     retval = recv(fd, rcv_buf, sizeof(rcv_buf), 0);
 
     if (retval <= 0)
         return;
 
-    gettimeofday(&tv, NULL);
     sentence_id = minmea_sentence_id(rcv_buf, 0);
 
     if (sentence_id <= 0)
         return;
 
     memset(&gps_event, 0, sizeof(struct md_gps_event));
+    gettimeofday(&gps_event.tstamp_tv, NULL);
     gps_event.md_type = META_TYPE_POS;
     //TODO: HACK until we implement better GPS handling in sqlite writer, NSB
     //only export RMC as far as I can tell
@@ -89,7 +88,6 @@ static void md_input_gps_nsb_handle_event(void *ptr, int32_t fd, uint32_t events
         return;
 
     gps_event.sequence = mde_inc_seq(mign->parent);
-    gps_event.tstamp = tv.tv_sec;
     mde_publish_event_obj(mign->parent, (struct md_event *) &gps_event);
 }
 
