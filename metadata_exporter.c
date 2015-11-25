@@ -43,6 +43,9 @@
 #ifdef GPSD_SUPPORT
     #include "metadata_input_gpsd.h"
 #endif
+#ifdef MUNIN_SUPPORT
+    #include "metadata_input_munin.h"
+#endif
 #ifdef NSB_GPS
     #include "metadata_input_gps_nsb.h"
 #endif
@@ -59,8 +62,10 @@
 
 #include "netlink_helpers.h"
 #include "backend_event_loop.h"
+#include "metadata_exporter_log.h"
 
 struct md_input_gpsd;
+struct md_input_munin;
 struct md_writer_sqlite;
 struct md_writer_zeromq;
 
@@ -114,6 +119,16 @@ void mde_start_timer(struct backend_event_loop *event_loop,
     backend_insert_timeout(event_loop, timeout_handle);
 }
 
+//TODO: Find a place to catch termination signals, and call this.
+void mde_destroy(struct md_exporter *mde) 
+{
+    int i;
+    for (i=0; i<=MD_INPUT_MAX; i++) 
+        if (mde->md_inputs[i] != NULL) 
+            if (mde->md_inputs[i]->destroy != NULL) 
+                mde->md_inputs[i]->destroy(mde->md_inputs[i]);
+}
+
 static int configure_core(struct md_exporter **mde)
 {
     //Configure core variables
@@ -130,6 +145,7 @@ static int configure_core(struct md_exporter **mde)
     (*mde)->seq = 1;
     (*mde)->event_loop->itr_cb = mde_itr_cb;
     (*mde)->event_loop->itr_data = *mde;
+    (*mde)->logfile = stderr;
 
     return RETVAL_SUCCESS;
 }
@@ -445,12 +461,12 @@ static void run_test_mode(struct md_exporter *mde, uint32_t packets)
 
     pthread_join(thread, NULL);
 
-    fprintf(stderr, "Threads should NEVER exit\n");
+    META_PRINT(mde->logfile, "Threads should NEVER exit\n");
 }
 
 static void default_usage()
 {
-    fprintf(stderr, "Support paramteres (r is required). At least one input and one writer must be specified.\n");
+    fprintf(stderr, "Support parameters (r is required). At least one input and one writer must be specified.\n");
     fprintf(stderr, "Default:\n");
     fprintf(stderr, "--netlink/-n: netlink input\n");
 #ifdef NSB_GPS
@@ -458,6 +474,9 @@ static void default_usage()
 #endif
 #ifdef GPSD_SUPPORT
     fprintf(stderr, "--gpsd/-g: gpsd input\n");
+#endif
+#ifdef MUNIN_SUPPORT
+    fprintf(stderr, "--munin/-m: munin input\n");
 #endif
 #ifdef SQLITE_SUPPORT
     fprintf(stderr, "--sqlite/-s: sqlite writer\n");
@@ -470,6 +489,7 @@ static void default_usage()
 #endif
     fprintf(stderr, "--test/-t: test mode, application generates fake data that is handled by writers\n");
     fprintf(stderr, "--packets/-p: number of packets that will be generated in debug mode (default: infinite)\n");
+    fprintf(stderr, "--logfile/-l: path to logfile (default: stderr)\n");
     fprintf(stderr, "--help/-h: Display usage of exporter and specified writers\n");
 }
 
@@ -498,6 +518,7 @@ int main(int argc, char *argv[])
     int32_t i, option_index = 0;
     uint32_t packets = 0;
     uint8_t test_mode = 0, show_help = 0, num_writers = 0, num_inputs = 0;
+    const char *logfile_path = NULL;
 
     static struct option core_options[] = {
         {"netlink",      no_argument,        0,  'n'},
@@ -516,8 +537,12 @@ int main(int argc, char *argv[])
 #ifdef GPSD_SUPPORT
         {"gpsd",         no_argument,        0,  'g'},
 #endif
+#ifdef MUNIN_SUPPORT
+        {"munin",         no_argument,       0,  'm'},
+#endif
         {"packets",      required_argument,  0,  'p'},
         {"test",         no_argument,        0,  't'},
+        {"logfile",      required_argument,  0,  'l'},
         {"help",         no_argument,        0,  'h'},
         {0,              0,                  0,   0 }};
 
@@ -530,7 +555,7 @@ int main(int argc, char *argv[])
     opterr = 0;
     while (1) {
         //Use glic extension to avoid getopt permuting array while processing
-        i = getopt_long(argc, argv, "--szhgtnp:", core_options, &option_index);
+        i = getopt_long(argc, argv, "--szhmgtnp:l:", core_options, &option_index);
 
         if (i == -1)
             break;
@@ -541,7 +566,7 @@ int main(int argc, char *argv[])
                 mde->md_inputs[MD_INPUT_GPS_NSB] = calloc(sizeof(struct md_input_gps_nsb), 1);
 
                 if (mde->md_inputs[MD_INPUT_GPS_NSB] == NULL) {
-                    fprintf(stderr, "Could not allocate Netlink input\n");
+                    META_PRINT(mde->logfile, "Could not allocate Netlink input\n");
                     exit(EXIT_FAILURE);
                 }
 
@@ -554,7 +579,7 @@ int main(int argc, char *argv[])
                 mde->md_writers[MD_WRITER_NNE] = calloc(sizeof(struct md_writer_nne), 1);
 
                 if (mde->md_writers[MD_WRITER_NNE] == NULL) {
-                    fprintf(stderr, "Could not allocate NNE  writer\n");
+                    META_PRINT(mde->logfile, "Could not allocate NNE  writer\n");
                     exit(EXIT_FAILURE);
                 }
 
@@ -570,7 +595,7 @@ int main(int argc, char *argv[])
             mde->md_inputs[MD_INPUT_NETLINK] = calloc(sizeof(struct md_input_netlink),1);
 
             if (mde->md_inputs[MD_INPUT_NETLINK] == NULL) {
-                fprintf(stderr, "Could not allocate Netlink input\n");
+                META_PRINT(mde->logfile, "Could not allocate Netlink input\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -582,11 +607,24 @@ int main(int argc, char *argv[])
             mde->md_inputs[MD_INPUT_GPSD] = calloc(sizeof(struct md_input_gpsd), 1);
 
             if (mde->md_inputs[MD_INPUT_GPSD] == NULL) {
-                fprintf(stderr, "Could not allocate Netlink input\n");
+                META_PRINT(mde->logfile, "Could not allocate GPSD input\n");
                 exit(EXIT_FAILURE);
             }
 
             md_gpsd_setup(mde, (struct md_input_gpsd*) mde->md_inputs[MD_INPUT_GPSD]);
+            num_inputs++;
+            break;
+#endif
+#ifdef MUNIN_SUPPORT
+        case 'm':
+            mde->md_inputs[MD_INPUT_MUNIN] = calloc(sizeof(struct md_input_munin), 1);
+
+            if (mde->md_inputs[MD_INPUT_MUNIN] == NULL) {
+                META_PRINT(mde->logfile, "Could not allocate Munin input\n");
+                exit(EXIT_FAILURE);
+            }
+
+            md_munin_setup(mde, (struct md_input_munin*) mde->md_inputs[MD_INPUT_MUNIN]);
             num_inputs++;
             break;
 #endif
@@ -595,7 +633,7 @@ int main(int argc, char *argv[])
             mde->md_writers[MD_WRITER_SQLITE] = calloc(sizeof(struct md_writer_sqlite), 1);
 
             if (mde->md_writers[MD_WRITER_SQLITE] == NULL) {
-                fprintf(stderr, "Could not allocate SQLite writer\n");
+                META_PRINT(mde->logfile, "Could not allocate SQLite writer\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -608,7 +646,7 @@ int main(int argc, char *argv[])
             mde->md_writers[MD_WRITER_ZEROMQ] = calloc(sizeof(struct md_writer_zeromq), 1);
 
             if (mde->md_writers[MD_WRITER_ZEROMQ] == NULL) {
-                fprintf(stderr, "Could not allocate SQLite writer\n");
+                META_PRINT(mde->logfile, "Could not allocate SQLite writer\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -621,6 +659,9 @@ int main(int argc, char *argv[])
             break;
         case 'p':
             packets = (uint32_t) atoi(optarg);
+            break;
+        case 'l':
+            logfile_path = optarg;
             break;
         case 'h':
             show_help = 1;
@@ -638,9 +679,18 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    if (logfile_path) {
+        mde->logfile = fopen(logfile_path, "a");
+
+        if (mde->logfile == NULL) {
+            fprintf(stderr, "Could not open logfile: %s\n", logfile_path);
+            exit(EXIT_FAILURE);
+        }
+    }
+
     for (i=0; i<=MD_INPUT_MAX; i++) {
         if (mde->md_inputs[i] != NULL) {
-            fprintf(stdout, "Will configure input %d\n", i);
+            META_PRINT(mde->logfile, "Will configure input %d\n", i);
             //glic requires optind to be 0 for internal state to be reset when
             //using extensions
             optind = 0;
@@ -651,7 +701,7 @@ int main(int argc, char *argv[])
 
     for (i=0; i<=MD_WRITER_MAX; i++) {
         if (mde->md_writers[i] != NULL) {
-            fprintf(stdout, "Will configure writer %d\n", i);
+            META_PRINT(mde->logfile, "Will configure writer %d\n", i);
             //glic requires optind to be 0 for internal state to be reset when
             //using extensions
             optind = 0;
@@ -665,6 +715,6 @@ int main(int argc, char *argv[])
     else
         backend_event_loop_run(mde->event_loop);
 
-    fprintf(stderr, "Threads should NEVER exit\n");
+    META_PRINT(mde->logfile, "Threads should NEVER exit\n");
     exit(EXIT_FAILURE);
 }

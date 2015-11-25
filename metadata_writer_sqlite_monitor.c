@@ -28,69 +28,59 @@
 #include <sqlite3.h>
 
 #include "metadata_exporter.h"
-#include "metadata_writer_sqlite_gps.h"
+#include "metadata_writer_sqlite_monitor.h"
 #include "metadata_writer_sqlite_helpers.h"
 #include "metadata_exporter_log.h"
 
-static uint8_t md_sqlite_gps_dump_db(struct md_writer_sqlite *mws, FILE *output)
+static uint8_t md_sqlite_monitor_dump_db(struct md_writer_sqlite *mws, FILE *output)
 {
-    sqlite3_reset(mws->dump_gps);
+    sqlite3_reset(mws->dump_monitor);
     
-    if (md_sqlite_helpers_dump_write(mws->dump_gps, output))
+    if (md_sqlite_helpers_dump_write(mws->dump_monitor, output))
         return RETVAL_FAILURE;
     else
         return RETVAL_SUCCESS;
 }
 
-uint8_t md_sqlite_gps_copy_db(struct md_writer_sqlite *mws)
+uint8_t md_sqlite_monitor_copy_db(struct md_writer_sqlite *mws)
 {
-    uint8_t retval = md_writer_helpers_copy_db(mws->gps_prefix,
-            mws->gps_prefix_len, md_sqlite_gps_dump_db, mws,
-            mws->delete_gps);
+    uint8_t retval = md_writer_helpers_copy_db(mws->monitor_prefix,
+            mws->monitor_prefix_len, md_sqlite_monitor_dump_db, mws,
+            mws->delete_monitor);
 
     if (retval == RETVAL_SUCCESS)
-        mws->num_gps_events = 0;
+        mws->num_munin_events = 0;
 
     return retval;
 }
 
-uint8_t md_sqlite_handle_gps_event(struct md_writer_sqlite *mws,
-                                   struct md_gps_event *mge)
+uint8_t md_sqlite_handle_munin_event(struct md_writer_sqlite *mws,
+                                   struct md_munin_event *mme)
 {
-    if (mge->speed)
-        mws->gps_speed = mge->speed;
+    json_object *value;
+    int64_t boottime    = 0;
 
-    if (mge->minmea_id == MINMEA_SENTENCE_RMC)
-        return RETVAL_IGNORE;
+    json_object *session_obj;
+    if (!json_object_object_get_ex(mme->json_blob, "session", &session_obj)) {
+        META_PRINT(mws->parent->logfile, "Failed to read data from session module (Munin)\n");
+        return RETVAL_FAILURE;
+    }
+    if (!json_object_object_get_ex(session_obj, "start", &value)) 
+        return RETVAL_FAILURE;
+    if ((boottime = json_object_get_int64(value)) < 1400000000 ) {
+        META_PRINT(mws->parent->logfile, "Failed to read valid start time from session module (Munin): %" PRId64 "\n", boottime);
+        return RETVAL_FAILURE;
+    }
 
-    sqlite3_stmt *stmt = mws->insert_gps;
+    sqlite3_stmt *stmt = mws->insert_monitor;
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
 
-    if (sqlite3_bind_int(stmt, 1, mws->node_id) ||
-        sqlite3_bind_int(stmt, 2, mge->tstamp_tv.tv_sec) ||
-        sqlite3_bind_int(stmt, 3, mge->sequence) ||
-        sqlite3_bind_double(stmt, 4, mge->latitude) ||
-        sqlite3_bind_double(stmt, 5, mge->longitude)) {
-        META_PRINT(mws->parent->logfile, "Failed to bind values to INSERT query (GPS)\n");
-        return RETVAL_FAILURE;
-    }
-
-    if (mge->altitude &&
-        sqlite3_bind_double(stmt, 6, mge->altitude)) {
-        META_PRINT(mws->parent->logfile, "Failed to bind altitude\n");
-        return RETVAL_FAILURE;
-    }
-
-    if (mws->gps_speed &&
-        sqlite3_bind_double(stmt, 7, mws->gps_speed)) {
-        META_PRINT(mws->parent->logfile, "Failed to bind speed\n");
-        return RETVAL_FAILURE;
-    }
-
-    if (mge->satellites_tracked &&
-        sqlite3_bind_int(stmt, 8, mge->satellites_tracked)) {
-        META_PRINT(mws->parent->logfile, "Failed to bind num. satelites\n");
+    if (sqlite3_bind_int(stmt,    1, mws->node_id)  ||
+        sqlite3_bind_int(stmt,    2, mme->tstamp)   ||
+        sqlite3_bind_int(stmt,    3, mme->sequence) || 
+        sqlite3_bind_int64(stmt,  4, boottime)       ){ 
+        META_PRINT(mws->parent->logfile, "Failed to bind values to INSERT query (Monitor)\n");
         return RETVAL_FAILURE;
     }
 

@@ -38,7 +38,8 @@ if (SQLITE3)
         metadata_writer_sqlite.c
         metadata_writer_sqlite_helpers.c
         metadata_writer_sqlite_conn.c
-        metadata_writer_sqlite_gps.c)
+        metadata_writer_sqlite_gps.c
+        metadata_writer_sqlite_monitor.c)
     add_definitions("-DSQLITE_SUPPORT")
 endif()
 
@@ -60,6 +61,12 @@ if (GPSD)
     set(SOURCE ${SOURCE}
         metadata_input_gpsd.c)
     add_definitions("-DGPSD_SUPPORT")
+endif()
+
+if (MUNIN)
+    set(SOURCE ${SOURCE}
+        metadata_input_munin.c)
+    add_definitions("-DMUNIN_SUPPORT")
 endif()
 
 if (GPS_NSB)

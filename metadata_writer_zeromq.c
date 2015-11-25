@@ -41,6 +41,7 @@
 #include "metadata_writer_zeromq.h"
 #include "system_helpers.h"
 #include "metadata_utils.h"
+#include "metadata_exporter_log.h"
 
 static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
                                               struct md_gps_event *mge)
@@ -56,7 +57,7 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
     }
     json_object_object_add(obj, "seq", obj_add);
 
-    if (!(obj_add = json_object_new_int64(mge->tstamp))) {
+    if (!(obj_add = json_object_new_int64(mge->tstamp_tv.tv_sec))) {
         json_object_put(obj);
         return NULL;
     }
@@ -121,7 +122,7 @@ static json_object* md_zeromq_create_json_gps_raw(struct md_writer_zeromq *mwz,
     }
     json_object_object_add(obj, "seq", obj_add);
 
-    if (!(obj_add = json_object_new_int64(mge->tstamp))) {
+    if (!(obj_add = json_object_new_int64(mge->tstamp_tv.tv_sec))) {
         json_object_put(obj);
         return NULL;
     }
@@ -145,7 +146,7 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
     int retval;
 
     if (gps_obj == NULL) {
-        fprintf(stderr, "Failed to create GPS ZMQ JSON\n");
+        META_PRINT(mwz->parent->logfile, "Failed to create GPS ZMQ JSON\n");
         return;
     }
 
@@ -161,7 +162,7 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
     gps_obj = md_zeromq_create_json_gps_raw(mwz, mge);
 
     if (gps_obj == NULL) {
-        fprintf(stderr, "Failed to create RAW GPS JSON\n");
+        META_PRINT(mwz->parent->logfile, "Failed to create RAW GPS JSON\n");
         return;
     }
 
@@ -176,6 +177,19 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
     zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
     json_object_put(gps_obj);
 }
+
+static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
+                                   struct md_munin_event *mge)
+{
+    char topic[8192];
+
+    snprintf(topic, sizeof(topic), "MONROE.MONITOR %s", json_object_to_json_string_ext(mge->json_blob, JSON_C_TO_STRING_PLAIN));
+   
+    //TODO: Error handling
+    zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+}
+
+
 
 static json_object* md_zeromq_create_json_modem_default(struct md_writer_zeromq *mwz,
                                                         struct md_conn_event *mce)
@@ -239,7 +253,7 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
         event_str_len = strlen(mce->event_value_str);
 
         if (event_str_len >= EVENT_STR_LEN) {
-            fprintf(stderr, "Event string too long\n");
+            META_PRINT(mwz->parent->logfile, "Event string too long\n");
             return;
         }
 
@@ -294,6 +308,9 @@ static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
         break;
     case META_TYPE_CONNECTION:
         md_zeromq_handle_conn(mwz, (struct md_conn_event*) event);
+        break;
+    case META_TYPE_MUNIN:
+        md_zeromq_handle_munin(mwz, (struct md_munin_event*) event);
     default:
         break;
     }
@@ -355,12 +372,12 @@ static int32_t md_zeromq_init(void *ptr, int argc, char *argv[])
     }
 
     if (address == NULL || port == 0) {
-        fprintf(stderr, "Missing required ZeroMQ argument\n");
+        META_PRINT(mwz->parent->logfile, "Missing required ZeroMQ argument\n");
         return RETVAL_FAILURE;
     }
 
     if (system_helpers_check_address(address)) {
-        fprintf(stderr, "Error in ZeroMQ address\n");
+        META_PRINT(mwz->parent->logfile, "Error in ZeroMQ address\n");
         return RETVAL_FAILURE;
     }
 

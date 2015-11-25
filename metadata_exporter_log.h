@@ -24,29 +24,26 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef METADATA_EXPORTER_LOG_H
+#define METADATA_EXPORTER_LOG_H
+
 #include <stdio.h>
-#include <stdint.h>
-#include <libmnl/libmnl.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <string.h>
+#include <time.h>
 
-#include "netlink_helpers.h"
-#include "metadata_exporter_log.h"
+#define META_LOG_PREFIX "[%.2d:%.2d:%.2d %.2d/%.2d/%d]: "
+#define META_PRINT2(fd, ...){fprintf(fd, __VA_ARGS__);fflush(fd);}
 
-struct mnl_socket *nlhelper_create_socket(int32_t bus, uint32_t groups)
-{
-    struct mnl_socket *mnl_sock = NULL;
+//The ## is there so that I dont have to fake an argument when I use the macro
+//on string without arguments!
+#define META_PRINT(fd, _fmt, ...) \
+    do { \
+        time_t rawtime; \
+        struct tm *curtime; \
+        time(&rawtime); \
+        curtime = gmtime(&rawtime); \
+        META_PRINT2(fd, META_LOG_PREFIX _fmt, curtime->tm_hour, \
+                curtime->tm_min, curtime->tm_sec, curtime->tm_mday, \
+                curtime->tm_mon + 1, 1900 + curtime->tm_year, \
+                ##__VA_ARGS__);} while(0)
 
-    if ((mnl_sock = mnl_socket_open(bus)) == NULL)
-        return NULL;
-
-    if (groups && mnl_socket_bind(mnl_sock, groups, getpid()) < 0)
-    {
-        mnl_socket_close(mnl_sock);
-        return NULL;
-    }
-
-    return mnl_sock;
-}
+#endif

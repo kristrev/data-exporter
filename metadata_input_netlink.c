@@ -38,10 +38,13 @@
 #include "backend_event_loop.h"
 
 #include "lib/minmea.h"
+#include "metadata_exporter_log.h"
 
-static uint8_t md_input_netlink_parse_conn_event(struct md_conn_event *mce,
+static uint8_t md_input_netlink_parse_conn_event(struct md_input_netlink *min,
         struct json_object *meta_obj)
 {
+    struct md_conn_event *mce = min->mce;
+
     json_object_object_foreach(meta_obj, key, val) {
         if (!strcmp(key, "md_seq"))
             mce->sequence = (uint16_t) json_object_get_int(val);
@@ -100,7 +103,7 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_conn_event *mce,
         !mce->interface_type || !mce->network_address_family ||
         !mce->network_address || !mce->interface_id ||
         !mce->interface_id_type) {
-        fprintf(stderr, "Missing required argument in JSON\n");
+        META_PRINT(min->parent->logfile, "Missing required argument in JSON\n");
         return RETVAL_FAILURE;
     }
 
@@ -108,7 +111,7 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_conn_event *mce,
     //is a string
     //TODO: Implement a more elegant technique if we get more cases like this
     if (mce->event_param == CONN_EVENT_META_UPDATE && !mce->event_value_str) {
-        fprintf(stderr, "Missing event value for connection update\n");
+        META_PRINT(min->parent->logfile, "Missing event value for connection update\n");
         return RETVAL_FAILURE;
     }
 
@@ -125,7 +128,7 @@ static void md_input_netlink_handle_conn_event(struct md_input_netlink *min,
     //255 is reserved value used to indicate that there is no value to export
     //(look at writers)
     min->mce->event_value = UINT8_MAX;
-    retval = md_input_netlink_parse_conn_event(min->mce, obj);
+    retval = md_input_netlink_parse_conn_event(min, obj);
     
     if (retval == RETVAL_FAILURE)
         return;
@@ -153,7 +156,7 @@ static void md_input_netlink_handle_gps_event(struct md_input_netlink *min,
             gps_event.sequence = (uint16_t) json_object_get_int(val);
 
         if (!strcmp(key, "timestamp"))
-            gps_event.tstamp = json_object_get_int64(val);
+            gps_event.tstamp_tv.tv_sec = json_object_get_int64(val);
 
         if (!strcmp(key, "nmea_string"))
             gps_event.nmea_raw = json_object_get_string(val);
@@ -242,7 +245,7 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
     nlh_obj = json_tokener_parse(nlh_payload);
 
     if (!nlh_obj) {
-        fprintf(stderr, "Received invalid JSON object on Netlink socket\n");
+        META_PRINT(min->parent->logfile, "Received invalid JSON object on Netlink socket\n");
         return;
     }
 
@@ -259,7 +262,7 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
     }
 
     if (!json_object_object_get_ex(nlh_obj, "event_type", &json_event)) {
-        fprintf(stderr, "Missing event type\n");
+        META_PRINT(min->parent->logfile, "Missing event type\n");
         json_object_put(nlh_obj);
         return;
     }
@@ -269,11 +272,11 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
     if (!(event_type & min->md_nl_mask))
         return;
 
-    fprintf(stdout, "Got JSON %s\n", json_object_to_json_string(nlh_obj));
+    META_PRINT(min->parent->logfile, "Got JSON %s\n", json_object_to_json_string(nlh_obj));
 
     switch (event_type) {
     case META_TYPE_INTERFACE:
-        fprintf(stderr, "Interface event type is not implemented yet\n");
+        META_PRINT(min->parent->logfile, "Interface event type is not implemented yet\n");
         break;
     case META_TYPE_CONNECTION:
         md_input_netlink_handle_conn_event(min, nlh_obj);
@@ -282,7 +285,7 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
         md_input_netlink_handle_gps_event(min, nlh_obj);
         break;
     default:
-        fprintf(stderr, "Unknown event type\n");
+        META_PRINT(min->parent->logfile, "Unknown event type\n");
         break;
     }
 
@@ -344,7 +347,7 @@ static uint8_t md_input_netlink_init(void *ptr, int argc, char *argv[])
     }
 
     if (!md_nl_mask) {
-        fprintf(stderr, "At least one netlink event type must be present\n");
+        META_PRINT(min->parent->logfile, "At least one netlink event type must be present\n");
         return RETVAL_FAILURE;
     }
 

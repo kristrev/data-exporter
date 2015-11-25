@@ -1,3 +1,29 @@
+/* Copyright (c) 2015, Celerway, Kristian Evensen <kristrev@celerway.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <gps.h>
@@ -10,15 +36,15 @@
 #include "metadata_exporter.h"
 #include "metadata_input_gpsd.h"
 #include "backend_event_loop.h"
+#include "metadata_exporter_log.h"
 
 static void md_input_gpsd_handle_event(void *ptr, int32_t fd, uint32_t events)
 {
     struct md_input_gpsd *mig = ptr;
     struct md_gps_event gps_event;
-    struct timeval tv;
 
     if (gps_read(&(mig->gps_data)) <= 0) {
-        fprintf(stderr, "Failed to read data from GPS\n");
+        META_PRINT(mig->parent->logfile, "Failed to read data from GPS\n");
         return;
     }
 
@@ -27,11 +53,10 @@ static void md_input_gpsd_handle_event(void *ptr, int32_t fd, uint32_t events)
         return;
 
     memset(&gps_event, 0, sizeof(struct md_gps_event));
-    gettimeofday(&tv, NULL);
+    gettimeofday(&gps_event.tstamp_tv, NULL);
     gps_event.md_type = META_TYPE_POS;
     gps_event.minmea_id = MINMEA_UNKNOWN;
     gps_event.sequence = mde_inc_seq(mig->parent);
-    gps_event.tstamp = tv.tv_sec;
     gps_event.latitude = mig->gps_data.fix.latitude;
     gps_event.longitude = mig->gps_data.fix.longitude;
     gps_event.satellites_tracked = mig->gps_data.satellites_visible;
@@ -52,12 +77,12 @@ static uint8_t md_gpsd_config(struct md_input_gpsd *mig,
     memset(&(mig->gps_data), 0, sizeof(struct gps_data_t));
 
     if (gps_open(address, port, &(mig->gps_data))) {
-        fprintf(stderr, "GPS error: %s\n", gps_errstr(errno));
+        META_PRINT(mig->parent->logfile, "GPS error: %s\n", gps_errstr(errno));
         return RETVAL_FAILURE;
     }
 
     if (gps_stream(&(mig->gps_data), WATCH_ENABLE | WATCH_JSON, NULL)) {
-        fprintf(stderr, "GPS error: %s\n", gps_errstr(errno));
+        META_PRINT(mig->parent->logfile, "GPS error: %s\n", gps_errstr(errno));
         return RETVAL_FAILURE;
     }
 
@@ -98,7 +123,7 @@ static uint8_t md_input_gpsd_init(void *ptr, int argc, char *argv[])
     }
 
     if (address == NULL || port == NULL) {
-        fprintf(stderr, "Missing required GPSD argument\n");
+        META_PRINT(mig->parent->logfile, "Missing required GPSD argument\n");
         return RETVAL_FAILURE;
     }
 
