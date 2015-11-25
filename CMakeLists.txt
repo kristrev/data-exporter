@@ -85,7 +85,7 @@ target_link_libraries(meta_exporter ${LIBS})
 if (TARGET_OWRT)
     install(TARGETS meta_exporter RUNTIME DESTINATION bin)
 else()
-    install(TARGETS meta_exporter RUNTIME DESTINATION /usr/local/sbin)
+    install(TARGETS meta_exporter RUNTIME DESTINATION /usr/sbin)
     #    install(FILES ${PROJECT_SOURCE_DIR}/../files/metadata_exporter_timeloop.sh DESTINATION
     #   /usr/local/sbin PERMISSIONS OWNER_EXECUTE OWNER_READ OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
     #install(FILES ${PROJECT_SOURCE_DIR}/../files/metadata-ubuntu.init DESTINATION

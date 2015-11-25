@@ -369,7 +369,7 @@ static void test_netlink(uint32_t packets)
         if (cnt == 0)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,");
         else
-            obj_to_send = create_fake_conn_obj(2, 3, CONN_EVENT_META_UPDATE, "1,2,1,4");
+            obj_to_send = create_fake_conn_obj(2, 2, CONN_EVENT_META_UPDATE, "1,2,1,4");
 
         if (!obj_to_send)
             continue;
