@@ -337,7 +337,6 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
         printf("%d %s\n", errno, zmq_strerror(errno));
         return RETVAL_FAILURE;
     }
-
     printf("ZeroMQ init done\n");
 
     return RETVAL_SUCCESS;

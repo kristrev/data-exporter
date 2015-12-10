@@ -37,6 +37,9 @@ struct md_input_gpsd {
     MD_INPUT;
     struct gps_data_t gps_data;
     struct backend_epoll_handle *event_handle;
+    struct backend_timeout_handle *connect_timeout_handle;
+    const char *gpsd_addr;
+    const char *gpsd_port;
 };
 
 void md_gpsd_setup(struct md_exporter *mde, struct md_input_gpsd *mig);
