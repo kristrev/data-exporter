@@ -334,10 +334,12 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
         return RETVAL_FAILURE;
 
     if ((retval = zmq_bind(mwz->zmq_publisher, zmq_addr)) != 0) {
-        printf("%d %s\n", errno, zmq_strerror(errno));
+        META_PRINT(mwz->parent->logfile, "zmq_bind failed (%d): %s\n", errno,
+                zmq_strerror(errno));
         return RETVAL_FAILURE;
     }
-    printf("ZeroMQ init done\n");
+
+    META_PRINT(mwz->parent->logfile, "ZeroMQ init done\n");
 
     return RETVAL_SUCCESS;
 }
