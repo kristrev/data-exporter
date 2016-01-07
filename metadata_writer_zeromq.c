@@ -105,35 +105,13 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
         json_object_object_add(obj, "num_sat", obj_add);
     }
 
-    return obj;
-}
-
-static json_object* md_zeromq_create_json_gps_raw(struct md_writer_zeromq *mwz,
-                                                  struct md_gps_event *mge)
-{
-    struct json_object *obj = NULL, *obj_add = NULL;
-
-    if (!(obj = json_object_new_object()))
-        return NULL;
-
-    if (!(obj_add = json_object_new_int(mde_inc_seq(mwz->parent)))) {
-        json_object_put(obj);
-        return NULL;
+    if (mge->nmea_raw) {
+        if (!(obj_add = json_object_new_string(mge->nmea_raw))) {
+            json_object_put(obj);
+            return NULL;
+        }
+        json_object_object_add(obj, "nmea_raw", obj_add);
     }
-    json_object_object_add(obj, "seq", obj_add);
-
-    if (!(obj_add = json_object_new_int64(mge->tstamp_tv.tv_sec))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "tstamp", obj_add);
-
-    if (!(obj_add = json_object_new_string(mge->nmea_raw))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "nmea_raw", obj_add);
-
     
     return obj;
 }
@@ -153,27 +131,6 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
     snprintf(topic, sizeof(topic), "MONROE.GPS %s", json_object_to_json_string_ext(gps_obj, JSON_C_TO_STRING_PLAIN));
    
     //TODO: Error handling
-    zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
-    json_object_put(gps_obj);
-
-    if (!mge->nmea_raw)
-        return;
-
-    gps_obj = md_zeromq_create_json_gps_raw(mwz, mge);
-
-    if (gps_obj == NULL) {
-        META_PRINT(mwz->parent->logfile, "Failed to create RAW GPS JSON\n");
-        return;
-    }
-
-    retval = snprintf(topic, sizeof(topic), "MONROE.GPS.RAW %s",
-            json_object_to_json_string_ext(gps_obj, JSON_C_TO_STRING_PLAIN));
-
-    if (retval >= sizeof(topic)) {
-        json_object_put(gps_obj);
-        return;
-    }
-
     zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
     json_object_put(gps_obj);
 }
