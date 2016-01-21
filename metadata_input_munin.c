@@ -105,10 +105,17 @@ void md_munin_json_add_key_value(char* kv, json_object* blob) {
   char *running = kv;
   // a munin string is in the form uptime.value 1.23
   char *key     = strsep(&running, ".");
-  strsep(&running, " "); //ignore .value
+  if (running == NULL) {
+    fprintf(stderr, "Munin return line did not match format key.value value\n");
+    return;
+  }
+  char *svalue = strsep(&running, " "); //ignore .value
+  if (running == NULL || (strncmp(svalue, "value", 5)!=0) ) {
+    fprintf(stderr, "Munin return line did not match format key.value value\n");
+    return;
+  }
   char *value   = strsep(&running, "\n");
   
-
   struct json_object *obj_add = NULL;
   if ((obj_add = json_object_new_string(value))==NULL) 
     return;
