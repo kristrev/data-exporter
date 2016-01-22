@@ -128,7 +128,7 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
         return;
     }
 
-    snprintf(topic, sizeof(topic), "MONROE.GPS %s", json_object_to_json_string_ext(gps_obj, JSON_C_TO_STRING_PLAIN));
+    snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.GPS %s", json_object_to_json_string_ext(gps_obj, JSON_C_TO_STRING_PLAIN));
    
     //TODO: Error handling
     zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
@@ -140,10 +140,11 @@ static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
 {
     char topic[8192];
 
-    snprintf(topic, sizeof(topic), "MONROE.MONITOR %s", json_object_to_json_string_ext(mge->json_blob, JSON_C_TO_STRING_PLAIN));
-   
-    //TODO: Error handling
-    zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+    json_object_object_foreach(mge->json_blob, key, val) {
+      snprintf(topic, sizeof(topic), "MONROE.META.NODE.SENSOR.%s %s", key, json_object_to_json_string_ext(val, JSON_C_TO_STRING_PLAIN));
+      //TODO: Error handling
+      zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+    }
 }
 
 
@@ -240,10 +241,12 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
     }
 
     if (mce->event_param == CONN_EVENT_META_UPDATE)
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.UPDATE %s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.UPDATE %s",
+                mce->interface_id,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
     else
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.MODE_CHANGE %s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.MODE_CHANGE %s",
+                mce->interface_id,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
 
     if (retval >= sizeof(topic)) {
