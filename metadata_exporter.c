@@ -50,6 +50,7 @@
     #include "metadata_input_gps_nsb.h"
 #endif
 #include "metadata_input_netlink.h"
+#include "metadata_input_iface_test.h"
 #ifdef SQLITE_SUPPORT
     #include "metadata_writer_sqlite.h"
 #endif
@@ -339,6 +340,92 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
 	return obj;	
 }
 
+static ssize_t send_netlink_json(uint8_t *snd_buf,
+        struct json_object *parsed_obj, int32_t sock_fd,
+        struct sockaddr *netlink_addr)
+{
+    struct nlmsghdr *netlink_hdr = (struct nlmsghdr*) snd_buf;
+    const char *json_str = json_object_to_json_string_ext(parsed_obj,
+            JSON_C_TO_STRING_PLAIN);
+    socklen_t netlink_addrlen = sizeof(netlink_addr);
+
+    memcpy(netlink_hdr + 1, json_str, strlen(json_str) + 1);
+    netlink_hdr->nlmsg_len = mnl_nlmsg_size(MNL_ALIGN(strlen(json_str)));
+
+    return sendto(sock_fd, snd_buf, netlink_hdr->nlmsg_len, 0, netlink_addr,
+            netlink_addrlen);
+}
+
+static void test_modem_metadata(uint8_t *snd_buf, int32_t sock_fd,
+        struct sockaddr *netlink_addr)
+{
+    struct json_object *parsed_obj = NULL;
+
+    parsed_obj = json_tokener_parse(IFACE_REGISTER_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface register object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_UNREGISTER_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface unregister object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_CONNECT_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface connect object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_MODE_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface mode changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_SUBMODE_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface submode changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_RSSI_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface rssi changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_LTE_RSSI_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface lte rssi changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_LTE_BAND_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface lte rssi changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+}
+
 //Test function which just generates some netlink messages that are sent to our
 //group
 static void test_netlink(uint32_t packets)
@@ -429,6 +516,9 @@ static void test_netlink(uint32_t packets)
                         0,
                         (struct sockaddr*) &netlink_addr,
                         netlink_addrlen);
+
+        test_modem_metadata(snd_buf, mnl_socket_get_fd(mnl_sock),
+                (struct sockaddr*) &netlink_addr);
 
         if (retval > 0)
             printf("Sent %u packets\n", ++cnt);

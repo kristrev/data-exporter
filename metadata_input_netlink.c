@@ -329,6 +329,7 @@ static uint8_t md_input_netlink_init(void *ptr, int argc, char *argv[])
     static struct option gpsd_options[] = {
         {"nl_conn", no_argument,  0,  0},
         {"nl_pos",  no_argument,  0,  0},
+        {"nl_iface",  no_argument,  0,  0},
         {0,                   0,  0,  0}};
     
     while (1) {
@@ -344,6 +345,8 @@ static uint8_t md_input_netlink_init(void *ptr, int argc, char *argv[])
             md_nl_mask |= META_TYPE_CONNECTION;
         else if (!strcmp(gpsd_options[option_index].name, "nl_pos"))
             md_nl_mask |= META_TYPE_POS;
+        else if (!strcmp(gpsd_options[option_index].name, "nl_iface"))
+            md_nl_mask |= META_TYPE_INTERFACE;
     }
 
     if (!md_nl_mask) {
@@ -362,6 +365,7 @@ static void md_netlink_usage()
     fprintf(stderr, "Netlink input (at least one event type must be present):\n");
     fprintf(stderr, "--nl_conn: Receive netlink connection events\n");
     fprintf(stderr, "--nl_pos: Receive netlink position events\n");
+    fprintf(stderr, "--nl_iface: Receive netlink interface events\n");
 }
 
 void md_netlink_setup(struct md_exporter *mde, struct md_input_netlink *min)
