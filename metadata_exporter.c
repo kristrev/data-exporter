@@ -433,13 +433,10 @@ static void test_netlink(uint32_t packets)
     struct mnl_socket *mnl_sock = NULL;
     struct sockaddr_nl netlink_addr;
 	uint8_t snd_buf[MNL_SOCKET_BUFFER_SIZE];
-    socklen_t netlink_addrlen = sizeof(netlink_addr);
     struct nlmsghdr *netlink_hdr;
     uint16_t cnt = 0;
     uint32_t i = 0;
-    ssize_t retval;
 	struct json_object *obj_to_send = NULL;
-    const char *json_str;
     struct timeval tv;
 
     gettimeofday(&tv, NULL);
@@ -477,51 +474,24 @@ static void test_netlink(uint32_t packets)
         if (!obj_to_send)
             continue;
 
-        //Every applcation will export json
-        //TODO: Refactor/split all of this code into two functions
-        json_str = json_object_to_json_string_ext(obj_to_send, JSON_C_TO_STRING_PLAIN);
-        memcpy(netlink_hdr + 1, json_str, strlen(json_str) + 1);
-        netlink_hdr->nlmsg_len = mnl_nlmsg_size(MNL_ALIGN(strlen(json_str)));
+        send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
+                (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
-
-        retval = sendto(mnl_socket_get_fd(mnl_sock),
-                        snd_buf,
-                        netlink_hdr->nlmsg_len,
-                        0,
-                        (struct sockaddr*) &netlink_addr,
-                        netlink_addrlen);
 
         obj_to_send = create_fake_gps_gga_obj();
-        json_str = json_object_to_json_string_ext(obj_to_send, JSON_C_TO_STRING_PLAIN);
-        memcpy(netlink_hdr + 1, json_str, strlen(json_str) + 1);
-        netlink_hdr->nlmsg_len = mnl_nlmsg_size(MNL_ALIGN(strlen(json_str)));
+        send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
+                (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
-
-        retval = sendto(mnl_socket_get_fd(mnl_sock),
-                        snd_buf,
-                        netlink_hdr->nlmsg_len,
-                        0,
-                        (struct sockaddr*) &netlink_addr,
-                        netlink_addrlen);
 
         obj_to_send = create_fake_gps_rmc_obj();
-        json_str = json_object_to_json_string_ext(obj_to_send, JSON_C_TO_STRING_PLAIN);
-        memcpy(netlink_hdr + 1, json_str, strlen(json_str) + 1);
-        netlink_hdr->nlmsg_len = mnl_nlmsg_size(MNL_ALIGN(strlen(json_str)));
+        send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
+                (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
-
-        retval = sendto(mnl_socket_get_fd(mnl_sock),
-                        snd_buf,
-                        netlink_hdr->nlmsg_len,
-                        0,
-                        (struct sockaddr*) &netlink_addr,
-                        netlink_addrlen);
 
         test_modem_metadata(snd_buf, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
 
-        if (retval > 0)
-            printf("Sent %u packets\n", ++cnt);
+        printf("Iteration %u\n", ++cnt);
 
         if (packets && (++i >= packets))
             break;
