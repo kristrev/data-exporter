@@ -122,6 +122,30 @@ struct md_writer;
 struct md_event;
 
 //TODO: Maybe moved this to some shared header file?
+struct md_iface_event {
+    MD_EVENT;
+    uint64_t tstamp;
+    const char *iccid;
+    const char *imsi;
+    const char *imei;
+    const char *isp_name;
+    const char *lac;
+    const char *cid;
+    uint32_t imsi_mccmnc;
+    uint32_t nw_mccmnc;
+    int16_t rssi;
+    int16_t lte_rssi;
+    int16_t lte_rsrp;
+    int16_t lte_rsrq;
+    uint16_t lte_freq;
+    uint8_t device_mode;
+    uint8_t device_submode;
+    uint8_t lte_band;
+    uint8_t device_state;
+    uint8_t event_param;
+    uint8_t event_type;
+};
+
 struct md_conn_event {
     MD_EVENT;
     uint8_t event_type;
