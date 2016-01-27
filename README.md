@@ -141,6 +141,9 @@ All signal strength values (RSSI, RSRQ, RSRP) are in dBm.
 
 The LTE frequence is in mHz.
 
+We read (and store) the operators in three different fiels. `isp_name` is the
+literal ISP name read from modem, while `network_mccmnc` is the MCC and MNC read
+from the modem. `imsi_mccmnc` is the MCC and MNC read from IMSI.
 
 #### Connection events
 
