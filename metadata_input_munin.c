@@ -242,7 +242,7 @@ static uint8_t md_munin_config(struct md_input_munin *mim,
     }
 }
 
-static uint8_t md_input_munin_destroy(void *ptr) 
+void md_input_munin_destroy(void *ptr) 
 {
     struct md_input_munin *mim = ptr;
     if ((mim != NULL) && (mim->module_count > 0)) { 
