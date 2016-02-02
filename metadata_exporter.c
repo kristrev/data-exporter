@@ -46,6 +46,9 @@
 #ifdef MUNIN_SUPPORT
     #include "metadata_input_munin.h"
 #endif
+#ifdef SYSEVENT_SUPPORT
+    #include "metadata_input_sysevent.h"
+#endif
 #ifdef NSB_GPS
     #include "metadata_input_gps_nsb.h"
 #endif
@@ -66,6 +69,7 @@
 
 struct md_input_gpsd;
 struct md_input_munin;
+struct md_input_sysevent;
 struct md_writer_sqlite;
 struct md_writer_zeromq;
 
@@ -478,6 +482,9 @@ static void default_usage()
 #ifdef MUNIN_SUPPORT
     fprintf(stderr, "--munin/-m: munin input\n");
 #endif
+#ifdef SYSEVENT_SUPPORT
+    fprintf(stderr, "--sysevent/-y: system ud socket input\n");
+#endif
 #ifdef SQLITE_SUPPORT
     fprintf(stderr, "--sqlite/-s: sqlite writer\n");
 #endif
@@ -538,7 +545,10 @@ int main(int argc, char *argv[])
         {"gpsd",         no_argument,        0,  'g'},
 #endif
 #ifdef MUNIN_SUPPORT
-        {"munin",         no_argument,       0,  'm'},
+        {"munin",        no_argument,        0,  'm'},
+#endif
+#ifdef SYSEVENT_SUPPORT
+        {"sysevent",     no_argument,        0,  'y'},
 #endif
         {"packets",      required_argument,  0,  'p'},
         {"test",         no_argument,        0,  't'},
@@ -628,6 +638,19 @@ int main(int argc, char *argv[])
             num_inputs++;
             break;
 #endif
+#ifdef SYSEVENT_SUPPORT
+        case 'y':
+            mde->md_inputs[MD_INPUT_SYSEVENT] = calloc(sizeof(struct md_input_sysevent), 1);
+
+            if (mde->md_inputs[MD_INPUT_SYSEVENT] == NULL) {
+                META_PRINT(mde->logfile, "Could not allocate Sysevent input\n");
+                exit(EXIT_FAILURE);
+            }
+
+            md_sysevent_setup(mde, (struct md_input_sysevent*) mde->md_inputs[MD_INPUT_SYSEVENT]);
+            num_inputs++;
+            break;
+#endif 
 #ifdef SQLITE_SUPPORT
         case 's':
             mde->md_writers[MD_WRITER_SQLITE] = calloc(sizeof(struct md_writer_sqlite), 1);

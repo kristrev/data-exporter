@@ -121,7 +121,6 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
 {
     char topic[8192];
     struct json_object *gps_obj = md_zeromq_create_json_gps(mwz, mge);
-    int retval;
 
     if (gps_obj == NULL) {
         META_PRINT(mwz->parent->logfile, "Failed to create GPS ZMQ JSON\n");
@@ -146,6 +145,17 @@ static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
       zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
     }
 }
+
+
+static void md_zeromq_handle_sysevent(struct md_writer_zeromq *mwz,
+                                   struct md_sysevent *mge)
+{
+    char topic[8192];
+
+    snprintf(topic, sizeof(topic), "MONROE.META.NODE.EVENT %s",json_object_to_json_string_ext(mge->json_blob, JSON_C_TO_STRING_PLAIN));
+    zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+}
+
 
 
 
@@ -271,6 +281,8 @@ static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
         break;
     case META_TYPE_MUNIN:
         md_zeromq_handle_munin(mwz, (struct md_munin_event*) event);
+    case META_TYPE_SYSEVENT:
+        md_zeromq_handle_sysevent(mwz, (struct md_sysevent*) event);
     default:
         break;
     }

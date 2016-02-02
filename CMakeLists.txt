@@ -69,6 +69,12 @@ if (MUNIN)
     add_definitions("-DMUNIN_SUPPORT")
 endif()
 
+if (SYSEVENT)
+    set(SOURCE ${SOURCE}
+        metadata_input_sysevent.c)
+    add_definitions("-DSYSEVENT_SUPPORT")
+endif()
+
 if (GPS_NSB)
     set(SOURCE ${SOURCE}
         metadata_input_gps_nsb.c)
