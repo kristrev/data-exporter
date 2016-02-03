@@ -283,8 +283,10 @@ static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
         break;
     case META_TYPE_MUNIN:
         md_zeromq_handle_munin(mwz, (struct md_munin_event*) event);
+        break;
     case META_TYPE_SYSEVENT:
         md_zeromq_handle_sysevent(mwz, (struct md_sysevent*) event);
+        break;
     default:
         break;
     }
