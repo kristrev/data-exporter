@@ -150,6 +150,20 @@ static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
     }
 }
 
+
+static void md_zeromq_handle_sysevent(struct md_writer_zeromq *mwz,
+                                   struct md_sysevent *mge)
+{
+    char topic[8192];
+    int retval;
+
+    retval = snprintf(topic, sizeof(topic), "MONROE.META.NODE.EVENT %s",json_object_to_json_string_ext(mge->json_blob, JSON_C_TO_STRING_PLAIN));
+    if (retval < sizeof(topic)) {
+        zmq_send(mwz->zmq_publisher , topic, strlen(topic), 0);
+    }
+}
+
+
 static json_object* md_zeromq_create_json_modem_default(struct md_writer_zeromq *mwz,
                                                         struct md_conn_event *mce)
 {
@@ -269,6 +283,10 @@ static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
         break;
     case META_TYPE_MUNIN:
         md_zeromq_handle_munin(mwz, (struct md_munin_event*) event);
+        break;
+    case META_TYPE_SYSEVENT:
+        md_zeromq_handle_sysevent(mwz, (struct md_sysevent*) event);
+        break;
     default:
         break;
     }
