@@ -191,7 +191,7 @@ static json_object* md_zeromq_create_json_modem_default(struct md_writer_zeromq 
     }
     json_object_object_add(obj, ZMQ_KEY_INTERFACEID, obj_add);
 
-    if (!(obj_add = json_object_new_string(mce->interface_id))) {
+    if (!(obj_add = json_object_new_string(mce->interface_name))) {
         json_object_put(obj);
         return NULL;
     }
