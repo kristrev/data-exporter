@@ -47,37 +47,45 @@ static void md_input_sysevent_handle_event(void *ptr, int32_t fd, uint32_t event
     size_t zevents_len = sizeof(zevents);    
     zmq_getsockopt(mis->responder, ZMQ_EVENTS, &zevents, &zevents_len);
 
+    if (!(zevents & ZMQ_POLLIN)) return;
+
+    json_tokener *tok = json_tokener_new();
     do {
-        if (zevents & ZMQ_POLLIN) {
-            int nbytes = zmq_recv(mis->responder, &buffer, 8192, ZMQ_NOBLOCK);
-            if (nbytes<sizeof(buffer)) {
+        int nbytes = zmq_recv(mis->responder, &buffer, 8192, ZMQ_NOBLOCK);
+        if (nbytes>=sizeof(buffer)) break;
                            
-                struct md_sysevent sys_event = {0};
-                struct timeval tv;
-                gettimeofday(&tv, NULL);
+	struct md_sysevent sys_event = {0};
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
 
-                sys_event.md_type   = META_TYPE_SYSEVENT;
-                sys_event.tstamp    = tv.tv_sec;
-                sys_event.sequence  = mde_inc_seq(mis->parent);
+	sys_event.md_type   = META_TYPE_SYSEVENT;
+	sys_event.tstamp    = tv.tv_sec;
+	sys_event.sequence  = mde_inc_seq(mis->parent);
 
-                json_tokener *tok = json_tokener_new();
-                json_object *parsed = json_tokener_parse_ex(tok, buffer, strlen(buffer));
-                if (parsed != NULL) {
-                    zmq_send(mis->responder, "Takk\n", 5, 0);
-                    sys_event.json_blob = parsed;
-                    mde_publish_event_obj(mis->parent, (struct md_event *) &sys_event);
-                    json_object_put(parsed);
-                } else {
-                    enum json_tokener_error jerr = json_tokener_get_error(tok);
-                    fprintf(stderr, "%s (Message was %s)\n", json_tokener_error_desc(jerr), buffer);
-                    zmq_send(mis->responder, "That wasn't JSON.\n", 18, 0);
-                }
-                json_tokener_free(tok);
+	json_object *parsed = json_tokener_parse_ex(tok, buffer, strlen(buffer));
+	json_object *obj_add = NULL;
 
-            }
+	if (parsed == NULL) {
+	    enum json_tokener_error jerr = json_tokener_get_error(tok);
+	    fprintf(stderr, "%s (Message was %s)\n", json_tokener_error_desc(jerr), buffer);
+	    zmq_send(mis->responder, "That wasn't JSON.\n", 18, 0);
+	    break;
         }
+
+	if (!(obj_add = json_object_new_int(sys_event.sequence))) break;
+	json_object_object_add(parsed, "SequenceNumber", obj_add);
+
+	if (!(obj_add = json_object_new_int64(sys_event.tstamp))) break;
+	json_object_object_add(parsed, "Timestamp", obj_add);
+
+        zmq_send(mis->responder, "Takk\n", 5, 0);
+	sys_event.json_blob = parsed;
+        mde_publish_event_obj(mis->parent, (struct md_event *) &sys_event);
+        json_object_put(parsed);
+
         zmq_getsockopt(mis->responder, ZMQ_EVENTS, &zevents, &zevents_len);
     } while (zevents & ZMQ_POLLIN);
+    json_tokener_free(tok);
 }
 
 static uint8_t md_sysevent_config(struct md_input_sysevent *mis)
