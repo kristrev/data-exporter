@@ -63,7 +63,6 @@ static void md_input_sysevent_handle_event(void *ptr, int32_t fd, uint32_t event
 	sys_event.sequence  = mde_inc_seq(mis->parent);
 
 	json_object *parsed = json_tokener_parse_ex(tok, buffer, strlen(buffer));
-	json_object *obj_add = NULL;
 
 	if (parsed == NULL) {
 	    enum json_tokener_error jerr = json_tokener_get_error(tok);
@@ -71,12 +70,6 @@ static void md_input_sysevent_handle_event(void *ptr, int32_t fd, uint32_t event
 	    zmq_send(mis->responder, "That wasn't JSON.\n", 18, 0);
 	    break;
         }
-
-	if (!(obj_add = json_object_new_int(sys_event.sequence))) break;
-	json_object_object_add(parsed, "SequenceNumber", obj_add);
-
-	if (!(obj_add = json_object_new_int64(sys_event.tstamp))) break;
-	json_object_object_add(parsed, "Timestamp", obj_add);
 
         zmq_send(mis->responder, "Takk\n", 5, 0);
 	sys_event.json_blob = parsed;

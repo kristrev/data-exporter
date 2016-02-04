@@ -74,7 +74,7 @@ uint32_t system_helpers_get_nodeid()
 
     return (uint32_t) node_id;
 }
-#elif UBUNTU_MONROE
+#elif MONROE
 uint32_t system_helpers_get_nodeid()
 {
     char num_buf[255];

@@ -43,6 +43,24 @@
 #include "metadata_utils.h"
 #include "metadata_exporter_log.h"
 
+static void md_zeromq_add_default_fields(json_object* obj, int seq, int64_t tstamp, char* dataid) {
+    json_object* obj_add = NULL;
+
+    if (!(obj_add = json_object_new_int(seq))) return;
+    json_object_object_add(obj, ZMQ_KEY_SEQ, obj_add);
+
+    if (!(obj_add = json_object_new_int64(tstamp))) return;
+    json_object_object_add(obj, ZMQ_KEY_TSTAMP, obj_add);
+
+#ifdef MONROE
+    if (!(obj_add = json_object_new_int(MONROE_ZMQ_DATA_VERSION))) return;
+    json_object_object_add(obj, ZMQ_KEY_DATAVERSION, obj_add);
+
+    if (!(obj_add = json_object_new_string(dataid))) return;
+    json_object_object_add(obj, ZMQ_KEY_DATAID, obj_add);
+#endif
+}
+
 static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
                                               struct md_gps_event *mge)
 {
@@ -50,30 +68,20 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
 
     if (!(obj = json_object_new_object()))
         return NULL;
-
-    if (!(obj_add = json_object_new_int(mge->sequence))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "seq", obj_add);
-
-    if (!(obj_add = json_object_new_int64(mge->tstamp_tv.tv_sec))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "tstamp", obj_add);
+    
+    md_zeromq_add_default_fields(obj, mge->sequence, mge->tstamp_tv.tv_sec, MONROE_ZMQ_DATA_ID_GPS);
 
     if (!(obj_add = json_object_new_double(mge->latitude))) {
         json_object_put(obj);
         return NULL;
     }
-    json_object_object_add(obj, "lat", obj_add);
+    json_object_object_add(obj, ZMQ_KEY_LATITUDE, obj_add);
 
     if (!(obj_add = json_object_new_double(mge->longitude))) {
         json_object_put(obj);
         return NULL;
     }
-    json_object_object_add(obj, "lng", obj_add);
+    json_object_object_add(obj, ZMQ_KEY_LONGITUDE, obj_add);
 
     if (mge->speed) {
         obj_add = json_object_new_double(mge->speed);
@@ -82,7 +90,7 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
             json_object_put(obj);
             return NULL;
         }
-        json_object_object_add(obj, "speed", obj_add);
+        json_object_object_add(obj, ZMQ_KEY_SPEED, obj_add);
     }
 
     if (mge->altitude) {
@@ -92,7 +100,7 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
             json_object_put(obj);
             return NULL;
         }
-        json_object_object_add(obj, "altitude", obj_add);
+        json_object_object_add(obj, ZMQ_KEY_ALTITUDE, obj_add);
     }
 
     if (mge->satellites_tracked) {
@@ -102,7 +110,7 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
             json_object_put(obj);
             return NULL;
         }
-        json_object_object_add(obj, "num_sat", obj_add);
+        json_object_object_add(obj, ZMQ_KEY_NUMSAT, obj_add);
     }
 
     if (mge->nmea_raw) {
@@ -110,7 +118,7 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
             json_object_put(obj);
             return NULL;
         }
-        json_object_object_add(obj, "nmea_raw", obj_add);
+        json_object_object_add(obj, ZMQ_KEY_NMEA, obj_add);
     }
     
     return obj;
@@ -143,6 +151,8 @@ static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
     int retval;
 
     json_object_object_foreach(mge->json_blob, key, val) {
+        md_zeromq_add_default_fields(val, mge->sequence, mge->tstamp, MONROE_ZMQ_DATA_ID_SENSOR);
+
         retval = snprintf(topic, sizeof(topic), "MONROE.META.NODE.SENSOR.%s %s", key, json_object_to_json_string_ext(val, JSON_C_TO_STRING_PLAIN));
         if (retval < sizeof(topic)) {
             zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
@@ -157,6 +167,7 @@ static void md_zeromq_handle_sysevent(struct md_writer_zeromq *mwz,
     char topic[8192];
     int retval;
 
+    md_zeromq_add_default_fields(mge->json_blob, mge->sequence, mge->tstamp, MONROE_ZMQ_DATA_ID_SYSEVENT);
     retval = snprintf(topic, sizeof(topic), "MONROE.META.NODE.EVENT %s",json_object_to_json_string_ext(mge->json_blob, JSON_C_TO_STRING_PLAIN));
     if (retval < sizeof(topic)) {
         zmq_send(mwz->zmq_publisher , topic, strlen(topic), 0);
@@ -172,35 +183,25 @@ static json_object* md_zeromq_create_json_modem_default(struct md_writer_zeromq 
     if (!(obj = json_object_new_object()))
         return NULL;
 
-    if (!(obj_add = json_object_new_int(mce->sequence))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "seq", obj_add);
-
-    if (!(obj_add = json_object_new_int64(mce->tstamp))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "tstamp", obj_add);
+    md_zeromq_add_default_fields(obj, mce->sequence, mce->tstamp, MONROE_ZMQ_DATA_ID_MODEM);
 
     if (!(obj_add = json_object_new_string(mce->interface_id))) {
         json_object_put(obj);
         return NULL;
     }
-    json_object_object_add(obj, "interface_id", obj_add);
+    json_object_object_add(obj, ZMQ_KEY_INTERFACEID, obj_add);
 
     if (!(obj_add = json_object_new_string(mce->interface_name))) {
         json_object_put(obj);
         return NULL;
     }
-    json_object_object_add(obj, "interface_name", obj_add);
+    json_object_object_add(obj, ZMQ_KEY_INTERFACENAME, obj_add);
 
     if (!(obj_add = json_object_new_int(mce->network_provider))) {
         json_object_put(obj);
         return NULL;
     }
-    json_object_object_add(obj, "operator", obj_add);
+    json_object_object_add(obj, ZMQ_KEY_OPERATOR, obj_add);
 
     return obj;
 }
