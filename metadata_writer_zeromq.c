@@ -191,7 +191,7 @@ static json_object* md_zeromq_create_json_modem_default(struct md_writer_zeromq 
     }
     json_object_object_add(obj, ZMQ_KEY_INTERFACEID, obj_add);
 
-    if (!(obj_add = json_object_new_string(mce->interface_name))) {
+    if (!(obj_add = json_object_new_string(mce->interface_id))) {
         json_object_put(obj);
         return NULL;
     }
@@ -242,7 +242,7 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
         json_object_put(json_obj);
         return;
     }
-    json_object_object_add(json_obj, "mode", obj_add);
+    json_object_object_add(json_obj, ZMQ_KEY_MODE, obj_add);
 
     if (mce->event_param == CONN_EVENT_META_UPDATE &&
         mce->signal_strength != -127) {
@@ -258,11 +258,11 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
 
     if (mce->event_param == CONN_EVENT_META_UPDATE)
         retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.UPDATE %s",
-                mce->interface_name,
+                mce->interface_id,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
     else
         retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.MODE_CHANGE %s",
-                mce->interface_name,
+                mce->interface_id,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
 
     if (retval < sizeof(topic)) {
