@@ -37,6 +37,14 @@
 #define MAX_PATH_LEN 128
 #define FAKE_UPDATE_LIMIT 120
 
+//This the first valid timestamp of an event and the value is not randomly
+//chosen, it is the time when this piece of code was written. And
+//since time is never supposed to move backwards ... Note that this check
+//assumes that all nodes will have some offset time lower than this, and
+//then ntp (or something else) will set a correct time. A good starting
+//point is epoch
+#define FIRST_VALID_TIMESTAMP 1455740094
+
 #define CREATE_SQL          "CREATE TABLE IF NOT EXISTS NetworkEvent(" \
                             "NodeId INTEGER NOT NULL," \
                             "Timestamp INTEGER NOT NULL," \
@@ -136,6 +144,14 @@
                             "NodeId=? "\
                             "WHERE NodeId=0"
 
+#define UPDATE_EVENT_TSTAMP "UPDATE NetworkEvent SET " \
+                            "Timestamp = Timestamp + ? "\
+                            "WHERE Timestamp < ?"
+
+#define UPDATE_UPDATES_TSTAMP     "UPDATE NetworkUpdates SET " \
+                                  "Timestamp = Timestamp + ? "\
+                                  "WHERE Timestamp < ?"
+
 #define DELETE_TABLE         "DELETE FROM NetworkEvent"
 
 #define DELETE_GPS_TABLE     "DELETE FROM GpsEvents"
@@ -221,6 +237,7 @@ struct md_writer_sqlite {
     uint8_t timeout_added;
     uint8_t file_failed;
     uint8_t do_fake_updates;
+    uint8_t valid_timestamp;
     struct timeval first_fake_update;
 
     uint64_t dump_tstamp;

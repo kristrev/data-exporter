@@ -118,6 +118,94 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_input_netlink *min,
     return RETVAL_SUCCESS;
 }
 
+static uint8_t md_input_netlink_parse_iface_event(struct md_input_netlink *min,
+        struct json_object *meta_obj, struct md_iface_event *mie)
+{
+    json_object_object_foreach(meta_obj, key, val) {
+         if (!strcmp(key, "md_seq"))
+            mie->sequence = (uint16_t) json_object_get_int(val);
+
+        if (!strcmp(key, "timestamp"))
+            mie->tstamp = json_object_get_int64(val);
+
+        if (!strcmp(key, "event_param"))
+            mie->event_param = (uint8_t) json_object_get_int(val);
+
+        if (!strcmp(key, "event_type"))
+            mie->event_type = (uint8_t) json_object_get_int(val);
+
+        if (!strcmp(key, "iccid"))
+            mie->iccid = json_object_get_string(val);
+
+        if (!strcmp(key, "imsi"))
+            mie->imsi = json_object_get_string(val);
+
+        if (!strcmp(key, "imei"))
+            mie->imei = json_object_get_string(val);
+
+        if (!strcmp(key, "imsi_mccmnc"))
+            mie->imsi_mccmnc = (uint32_t) json_object_get_int(val);
+
+        if (!strcmp(key, "network_mccmnc"))
+            mie->nw_mccmnc = (uint32_t) json_object_get_int(val);
+
+        if (!strcmp(key, "device_mode"))
+            mie->device_mode = (uint8_t) json_object_get_int(val);
+
+        if (!strcmp(key, "device_sub_mode"))
+            mie->device_submode = (uint8_t) json_object_get_int(val);
+
+        if (!strcmp(key, "isp_name"))
+            mie->isp_name = json_object_get_string(val);
+
+        if (!strcmp(key, "rssi"))
+            mie->rssi = (int16_t) json_object_get_int(val);
+
+        if (!strcmp(key, "lte_rssi"))
+            mie->lte_rssi = (int16_t) json_object_get_int(val);
+
+        if (!strcmp(key, "lte_rsrp"))
+            mie->lte_rsrp = (int16_t) json_object_get_int(val);
+
+        if (!strcmp(key, "lte_rsrq"))
+            mie->lte_rsrq = (int16_t) json_object_get_int(val);
+
+        if (!strcmp(key, "lac"))
+            mie->lac = json_object_get_string(val);
+
+        if (!strcmp(key, "cid"))
+            mie->cid = json_object_get_string(val);
+
+        if (!strcmp(key, "lte_band"))
+            mie->lte_band = (uint8_t) json_object_get_int(val);
+
+        if (!strcmp(key, "lte_freq"))
+            mie->lte_freq = (uint16_t) json_object_get_int(val);
+
+        if (!strcmp(key, "device_state"))
+            mie->device_state = (uint8_t) json_object_get_int(val);
+    }
+
+    return RETVAL_SUCCESS;
+}
+
+static void md_input_netlink_handle_iface_event(struct md_input_netlink *min,
+        struct json_object *obj)
+{
+    struct md_iface_event mie;
+    uint8_t retval = 0;
+
+    memset(&mie, 0, sizeof(struct md_iface_event));
+    mie.md_type = META_TYPE_INTERFACE;
+
+    retval = md_input_netlink_parse_iface_event(min, obj, &mie);
+
+    if (retval == RETVAL_FAILURE)
+        return;
+
+    mde_publish_event_obj(min->parent, (struct md_event*) &mie);
+}
+
 static void md_input_netlink_handle_conn_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
@@ -276,7 +364,7 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
 
     switch (event_type) {
     case META_TYPE_INTERFACE:
-        META_PRINT(min->parent->logfile, "Interface event type is not implemented yet\n");
+        md_input_netlink_handle_iface_event(min, nlh_obj);
         break;
     case META_TYPE_CONNECTION:
         md_input_netlink_handle_conn_event(min, nlh_obj);
@@ -329,6 +417,7 @@ static uint8_t md_input_netlink_init(void *ptr, int argc, char *argv[])
     static struct option gpsd_options[] = {
         {"nl_conn", no_argument,  0,  0},
         {"nl_pos",  no_argument,  0,  0},
+        {"nl_iface",  no_argument,  0,  0},
         {0,                   0,  0,  0}};
     
     while (1) {
@@ -344,6 +433,8 @@ static uint8_t md_input_netlink_init(void *ptr, int argc, char *argv[])
             md_nl_mask |= META_TYPE_CONNECTION;
         else if (!strcmp(gpsd_options[option_index].name, "nl_pos"))
             md_nl_mask |= META_TYPE_POS;
+        else if (!strcmp(gpsd_options[option_index].name, "nl_iface"))
+            md_nl_mask |= META_TYPE_INTERFACE;
     }
 
     if (!md_nl_mask) {
@@ -362,6 +453,7 @@ static void md_netlink_usage()
     fprintf(stderr, "Netlink input (at least one event type must be present):\n");
     fprintf(stderr, "--nl_conn: Receive netlink connection events\n");
     fprintf(stderr, "--nl_pos: Receive netlink position events\n");
+    fprintf(stderr, "--nl_iface: Receive netlink interface events\n");
 }
 
 void md_netlink_setup(struct md_exporter *mde, struct md_input_netlink *min)

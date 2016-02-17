@@ -45,6 +45,15 @@
 #define META_TYPE_POS        0x04
 #define META_TYPE_MUNIN      0x05
 
+enum iface_event {
+    IFACE_EVENT_REGISTER=1,
+    IFACE_EVENT_CONNECT,
+    IFACE_EVENT_MODE_CHANGE,
+    IFACE_EVENT_SIGNAL_CHANGE,
+    IFACE_EVENT_LTE_BAND_CHANGE,
+    IFACE_EVENT_UPDATE
+};
+
 enum conn_event {
     CONN_EVENT_L3_UP=1,
     CONN_EVENT_L3_DOWN,
@@ -101,6 +110,7 @@ enum md_writers {
     void (*usage)()
 
 #define MD_EVENT \
+    uint64_t tstamp; \
     uint32_t md_type; \
     uint16_t sequence
 
@@ -113,6 +123,29 @@ struct md_writer;
 struct md_event;
 
 //TODO: Maybe moved this to some shared header file?
+struct md_iface_event {
+    MD_EVENT;
+    const char *iccid;
+    const char *imsi;
+    const char *imei;
+    const char *isp_name;
+    const char *lac;
+    const char *cid;
+    uint32_t imsi_mccmnc;
+    uint32_t nw_mccmnc;
+    int16_t rssi;
+    int16_t lte_rssi;
+    int16_t lte_rsrp;
+    int16_t lte_rsrq;
+    uint16_t lte_freq;
+    uint8_t device_mode;
+    uint8_t device_submode;
+    uint8_t lte_band;
+    uint8_t device_state;
+    uint8_t event_param;
+    uint8_t event_type;
+};
+
 struct md_conn_event {
     MD_EVENT;
     uint8_t event_type;
@@ -123,7 +156,6 @@ struct md_conn_event {
     uint8_t interface_id_type;
     uint8_t network_provider_type;
     int8_t signal_strength;
-    int64_t tstamp;
     uint64_t l3_session_id;
     uint64_t l4_session_id;
     const char *interface_id;
@@ -148,7 +180,6 @@ struct md_gps_event {
 
 struct md_munin_event {
     MD_EVENT;
-    int64_t tstamp;
     json_object* json_blob;
 };
 
