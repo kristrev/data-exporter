@@ -214,7 +214,7 @@ static struct json_object *create_fake_gps_rmc_obj()
 }
 
 static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
-        uint8_t event_param, char *event_value_str)
+        uint8_t event_param, char *event_value_str, uint64_t tstamp)
 {
 	struct timeval tv;
 	struct json_object *obj = NULL, *obj_add = NULL;
@@ -224,9 +224,8 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
 	if (!(obj = json_object_new_object()))
 		return NULL;
 
-
-	gettimeofday(&tv, NULL);
-	if (!(obj_add = json_object_new_int64(tv.tv_sec))) {
+	//gettimeofday(&tv, NULL);
+	if (!(obj_add = json_object_new_int64((int64_t) tstamp))) {
         json_object_put(obj);
         return NULL;
     }
@@ -482,10 +481,17 @@ static void test_netlink(uint32_t packets)
 
     //TODO: Specify number of packets from command line
     while(1) {
-        if (cnt == 0)
-            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,");
+#if 0
+        if (i == 0)
+            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,", i+1);
         else
-            obj_to_send = create_fake_conn_obj(2, 3, CONN_EVENT_META_UPDATE, "1,2,1,4");
+            obj_to_send = create_fake_conn_obj(2, 3, CONN_EVENT_META_UPDATE, "1,2,1,4", i+1);
+#endif
+
+        if (i < 4)
+            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, NULL, i+1);
+        else
+            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, NULL, tv.tv_sec);
 
         if (!obj_to_send)
             continue;
@@ -494,6 +500,7 @@ static void test_netlink(uint32_t packets)
                 (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
 
+#if 0
         obj_to_send = create_fake_gps_gga_obj();
         send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
@@ -506,9 +513,7 @@ static void test_netlink(uint32_t packets)
 
         test_modem_metadata(snd_buf, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
-
-        printf("Iteration %u\n", ++cnt);
-
+#endif
         if (packets && (++i >= packets))
             break;
 

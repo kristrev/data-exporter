@@ -125,3 +125,21 @@ uint8_t system_helpers_check_address(const char *addr)
     freeaddrinfo(res);
     return RETVAL_SUCCESS;
 }
+
+//Reads uptime and stores value in uptime.
+uint8_t system_helpers_read_uptime(uint64_t *uptime)
+{
+    FILE *uptime_file = fopen("/proc/uptime", "r");
+    int retval;
+
+    if (!uptime_file)
+        return RETVAL_FAILURE;
+
+    retval = fscanf(uptime_file, "%lu", uptime);
+    fclose(uptime_file);
+
+    if (retval != 1 || retval == EOF)
+        return RETVAL_FAILURE;
+
+    return RETVAL_SUCCESS;
+}

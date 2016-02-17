@@ -35,5 +35,6 @@
 
 uint32_t system_helpers_get_nodeid();
 uint8_t system_helpers_check_address(const char *addr);
+uint8_t system_helpers_read_uptime(uint64_t *uptime);
 
 #endif

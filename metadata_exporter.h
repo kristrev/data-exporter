@@ -110,6 +110,7 @@ enum md_writers {
     void (*usage)()
 
 #define MD_EVENT \
+    uint64_t tstamp; \
     uint32_t md_type; \
     uint16_t sequence
 
@@ -124,7 +125,6 @@ struct md_event;
 //TODO: Maybe moved this to some shared header file?
 struct md_iface_event {
     MD_EVENT;
-    uint64_t tstamp;
     const char *iccid;
     const char *imsi;
     const char *imei;
@@ -156,7 +156,6 @@ struct md_conn_event {
     uint8_t interface_id_type;
     uint8_t network_provider_type;
     int8_t signal_strength;
-    int64_t tstamp;
     uint64_t l3_session_id;
     uint64_t l4_session_id;
     const char *interface_id;
@@ -168,7 +167,6 @@ struct md_conn_event {
 
 struct md_gps_event {
     MD_EVENT;
-    int64_t tstamp;
     const char *nmea_raw;
     struct minmea_time time;
     float latitude;
@@ -181,7 +179,6 @@ struct md_gps_event {
 
 struct md_munin_event {
     MD_EVENT;
-    int64_t tstamp;
     json_object* json_blob;
 };
 

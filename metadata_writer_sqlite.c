@@ -66,7 +66,7 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
     uint8_t retval = RETVAL_FAILURE;
     uint8_t num_failed = 0;
 
-    if (!mws->node_id)
+    if (!mws->node_id || !mws->valid_timestamp)
         return;
 
     if (mws->timeout_added && !from_timeout) {
@@ -132,6 +132,40 @@ static uint8_t md_sqlite_update_nodeid_db(struct md_writer_sqlite *mws, const ch
     }
 
     sqlite3_finalize(update_tables);
+    return RETVAL_SUCCESS;
+}
+
+static uint8_t md_sqlite_update_timestamp_db(struct md_writer_sqlite *mws,
+        const char *sql_str, uint64_t tstamp_offset)
+{
+    int32_t retval;
+    sqlite3_stmt *update_timestamp;
+
+    if ((retval = sqlite3_prepare_v2(mws->db_handle, sql_str, -1,
+                    &update_timestamp, NULL))) {
+        META_PRINT(mws->parent->logfile, "Prepare failed %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    if ((retval = sqlite3_bind_int64(update_timestamp, 1, tstamp_offset))) {
+        META_PRINT(mws->parent->logfile, "Bind failed %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    if ((retval = sqlite3_bind_int64(update_timestamp, 2, FIRST_VALID_TIMESTAMP))) {
+        META_PRINT(mws->parent->logfile, "Bind failed %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    retval = sqlite3_step(update_timestamp);
+
+    if (retval != SQLITE_DONE) {
+        META_PRINT(mws->parent->logfile, "Step faild %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    sqlite3_finalize(update_timestamp);
+
     return RETVAL_SUCCESS;
 }
 
@@ -352,10 +386,40 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
             num_events, meta_prefix, gps_prefix, monitor_prefix);
 }
 
+static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
+{
+    struct timeval tv;
+    uint64_t real_boot_time, uptime;
+    gettimeofday(&tv, NULL);
+
+    //We have yet to get proper timestamp, so do not export any events
+    if (tv.tv_sec < FIRST_VALID_TIMESTAMP)
+        return RETVAL_FAILURE;
+
+    //read uptime
+    if (system_helpers_read_uptime(&uptime))
+        return RETVAL_FAILURE;
+
+    real_boot_time = tv.tv_sec - uptime;
+
+    if (md_sqlite_update_timestamp_db(mws, UPDATE_EVENT_TSTAMP,
+                real_boot_time) ||
+        md_sqlite_update_timestamp_db(mws, UPDATE_UPDATES_TSTAMP,
+            real_boot_time)) {
+        META_PRINT(mws->parent->logfile, "Could not update tstamp in database\n");
+        return RETVAL_FAILURE;
+    }
+
+    mws->valid_timestamp = 1;
+    return RETVAL_SUCCESS;
+}
+
 static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
 {
     uint8_t retval = RETVAL_SUCCESS;
     struct md_writer_sqlite *mws = (struct md_writer_sqlite*) writer;
+
+
 
     switch (event->md_type) {
     case META_TYPE_CONNECTION:
@@ -394,9 +458,19 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
     }
 
     //Something failed when dumping database, we have already rearmed timer for
-    //checking again
+    //checking again. So wait with trying new export etc. This also means that
+    //we have a good timestamp
     if (mws->file_failed)
         return;
+
+    //We have received an indication that a valid timestamp is present, so
+    //check and update
+    if (!mws->valid_timestamp && event->tstamp > FIRST_VALID_TIMESTAMP) {
+        if (md_sqlite_check_valid_tstamp(mws))
+            return;
+
+        META_PRINT(mws->parent->logfile, "Tstamp update from event\n");
+    }
 
     //These two are exclusive. There is no point adding timeout if event_limit
     //is hit. This can happen if event_limit is 1. The reason we do not use
@@ -439,6 +513,13 @@ static void md_sqlite_handle_timeout(void *ptr)
             //TODO: Work-around for making sure we check the node id on next
             //timeout, we should do something nicer
             mws->node_id = 0;
+            return;
+        }
+    }
+
+    if (!mws->valid_timestamp) {
+        if (md_sqlite_check_valid_tstamp(mws)) {
+            mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
             return;
         }
     }
