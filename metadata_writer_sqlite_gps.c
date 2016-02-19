@@ -26,6 +26,7 @@
 
 #include <stdint.h>
 #include <sqlite3.h>
+#include <sys/time.h>
 
 #include "metadata_exporter.h"
 #include "metadata_writer_sqlite_gps.h"

@@ -66,7 +66,8 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
     uint8_t retval = RETVAL_FAILURE;
     uint8_t num_failed = 0;
 
-    if (!mws->node_id || !mws->valid_timestamp)
+    if (!mws->node_id || !mws->valid_timestamp ||
+            (mws->session_id_file && !mws->session_id))
         return;
 
     if (mws->timeout_added && !from_timeout) {
@@ -169,6 +170,41 @@ static uint8_t md_sqlite_update_timestamp_db(struct md_writer_sqlite *mws,
     return RETVAL_SUCCESS;
 }
 
+static uint8_t md_sqlite_update_session_id_db(struct md_writer_sqlite *mws,
+        const char *sql_str)
+{
+    int32_t retval;
+    sqlite3_stmt *update_session_id;
+
+    if ((retval = sqlite3_prepare_v2(mws->db_handle, sql_str, -1,
+                    &update_session_id, NULL))) {
+        META_PRINT(mws->parent->logfile, "Prepare failed %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    if ((retval = sqlite3_bind_int64(update_session_id, 1, mws->session_id))) {
+        META_PRINT(mws->parent->logfile, "Bind failed %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    if ((retval = sqlite3_bind_int64(update_session_id, 2,
+                    mws->session_id_multip))) {
+        META_PRINT(mws->parent->logfile, "Bind failed #2 %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    retval = sqlite3_step(update_session_id);
+
+    if (retval != SQLITE_DONE) {
+        META_PRINT(mws->parent->logfile, "Step faild %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    sqlite3_finalize(update_session_id);
+
+    return RETVAL_SUCCESS;
+}
+
 static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char *db_filename)
 {
     sqlite3 *db_handle = NULL;
@@ -241,8 +277,8 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         return RETVAL_FAILURE;
     }
     
-    if(sqlite3_prepare_v2(mws->db_handle, INSERT_PROVIDER, -1,
-            &(mws->insert_provider), NULL) ||
+    if(sqlite3_prepare_v2(mws->db_handle, INSERT_EVENT, -1,
+            &(mws->insert_event), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DELETE_TABLE, -1,
             &(mws->delete_table), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, INSERT_UPDATE, -1,
@@ -318,6 +354,7 @@ static void md_sqlite_usage()
     fprintf(stderr, "--sql_monitor_prefix: location + filename prefix for monitor data (max 116 characters)\n");
     fprintf(stderr, "--sql_interval: time (in ms) from event and until database is copied (default: 5 sec)\n");
     fprintf(stderr, "--sql_events: number of events before copying database\n (default: 10)\n");
+    fprintf(stderr, "--sql_session_id: path tosession id file\n");
 }
 
 int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
@@ -336,6 +373,7 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
         {"sql_monitor_prefix",   required_argument,  0,  0},
         {"sql_interval",         required_argument,  0,  0},
         {"sql_events",           required_argument,  0,  0},
+        {"sql_session_id",       required_argument,  0,  0},
         {0,                                      0,  0,  0}};
 
     while (1) {
@@ -361,6 +399,9 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
             interval = ((uint32_t) atoi(optarg)) * 1000;
         else if (!strcmp(sqlite_options[option_index].name, "sql_events"))
             num_events = (uint32_t) atoi(optarg);
+        else if (!strcmp(sqlite_options[option_index].name, "sql_session_id"))
+            mws->session_id_file = optarg;
+
     }
 
     if (!db_filename || (!gps_prefix && !meta_prefix && !monitor_prefix)) {
@@ -414,12 +455,33 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
     return RETVAL_SUCCESS;
 }
 
+static uint8_t md_sqlite_check_session_id(struct md_writer_sqlite *mws)
+{
+    if (system_helpers_read_session_id(mws->session_id_file,
+        &(mws->session_id), &(mws->session_id_multip))) {
+        mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
+        return RETVAL_FAILURE;
+    }
+
+    if (md_sqlite_update_session_id_db(mws, UPDATE_EVENT_SESSION_ID) ||
+        md_sqlite_update_session_id_db(mws, UPDATE_UPDATES_SESSION_ID)) {
+        META_PRINT(mws->parent->logfile, "Could not update session id in database\n");
+        mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
+        mws->session_id = 0;
+        mws->session_id_multip = 0;
+        return RETVAL_FAILURE;
+    }
+
+    META_PRINT(mws->parent->logfile, "Session ID values: %llu %llu\n",
+            mws->session_id, mws->session_id_multip);
+
+    return RETVAL_SUCCESS;
+}
+
 static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
 {
     uint8_t retval = RETVAL_SUCCESS;
     struct md_writer_sqlite *mws = (struct md_writer_sqlite*) writer;
-
-
 
     switch (event->md_type) {
     case META_TYPE_CONNECTION:
@@ -472,6 +534,11 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
         META_PRINT(mws->parent->logfile, "Tstamp update from event\n");
     }
 
+    if (mws->session_id_file && !mws->session_id) {
+        if (md_sqlite_check_session_id(mws))
+            return;
+    }
+
     //These two are exclusive. There is no point adding timeout if event_limit
     //is hit. This can happen if event_limit is 1. The reason we do not use
     //lte is that if a copy fails, we deal with that in a timeout
@@ -487,6 +554,7 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
 static void md_sqlite_handle_timeout(void *ptr)
 {
     struct md_writer_sqlite *mws = ptr;
+    uint64_t session_id = 0, session_id_multip = 0;
 
     if (mws->file_failed)
         META_PRINT(mws->parent->logfile, "DB export retry\n");
@@ -519,6 +587,14 @@ static void md_sqlite_handle_timeout(void *ptr)
 
     if (!mws->valid_timestamp) {
         if (md_sqlite_check_valid_tstamp(mws)) {
+            mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
+            return;
+        }
+    }
+
+    //Try to read session id
+    if (mws->session_id_file && !mws->session_id) {
+        if (md_sqlite_check_session_id(mws)) {
             mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
             return;
         }

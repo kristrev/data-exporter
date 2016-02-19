@@ -121,6 +121,7 @@ struct backend_timeout_handle;
 struct md_input;
 struct md_writer;
 struct md_event;
+struct timeval;
 
 //TODO: Maybe moved this to some shared header file?
 struct md_iface_event {

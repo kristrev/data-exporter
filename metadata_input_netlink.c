@@ -31,6 +31,7 @@
 #include <libmnl/libmnl.h>
 #include JSON_LOC
 #include <getopt.h>
+#include <sys/time.h>
 
 #include "metadata_exporter.h"
 #include "metadata_input_netlink.h"

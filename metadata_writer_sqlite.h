@@ -47,10 +47,12 @@
 
 #define CREATE_SQL          "CREATE TABLE IF NOT EXISTS NetworkEvent(" \
                             "NodeId INTEGER NOT NULL," \
+                            "SessionId INTEGER NOT NULL," \
+                            "SessionIdMultip INTEGER NOT NULL," \
                             "Timestamp INTEGER NOT NULL," \
                             "Sequence INTEGER NOT NULL," \
                             "L3SessionId INTEGER NOT NULL," \
-                            "L4SessionId INTEGER," \
+                            "L4SessionId INTEGER NOT NULL DEFAULT 0," \
                             "EventType INTEGER NOT NULL," \
                             "EventParam INTEGER NOT NULL," \
                             "EventValue INTEGER," \
@@ -61,10 +63,13 @@
                             "NetworkProvider INT," \
                             "NetworkAddressFamily INTEGER NOT NULL," \
                             "NetworkAddress TEXT NOT NULL," \
-                            "PRIMARY KEY(NodeId,Timestamp,Sequence))"
+                            "PRIMARY KEY(SessionId,SessionIdMultip,Timestamp,"\
+                            "Sequence))"
 
 #define CREATE_UPDATE_SQL   "CREATE TABLE IF NOT EXISTS NetworkUpdates(" \
                             "NodeId INTEGER NOT NULL," \
+                            "SessionId INTEGER NOT NULL," \
+                            "SessionIdMultip INTEGER NOT NULL," \
                             "Timestamp INTEGER NOT NULL," \
                             "Sequence INTEGER NOT NULL," \
                             "L3SessionId INTEGER NOT NULL," \
@@ -74,7 +79,9 @@
                             "InterfaceId TEXT NOT NULL," \
                             "NetworkAddress TEXT NOT NULL," \
                             "NetworkProvider INT," \
-                            "PRIMARY KEY(L3SessionId,L4SessionId,InterfaceId,NetworkAddress))"
+                            "PRIMARY KEY(SessionId,SessionIdMultip,"\
+                            "L3SessionId,L4SessionId,InterfaceId,"\
+                            "NetworkAddress))"
 
 #define CREATE_GPS_SQL      "CREATE TABLE IF NOT EXISTS GpsEvents(" \
                             "NodeId INTEGER NOT NULL," \
@@ -94,19 +101,19 @@
                             "Boottime    INTEGER NOT NULL," \
                             "PRIMARY KEY(NodeId,Timestamp,Sequence))"
 
-#define INSERT_PROVIDER     "INSERT INTO NetworkEvent(NodeId,Timestamp" \
-                            ",Sequence,L3SessionId,L4SessionId,EventType" \
-                            ",EventParam,EventValue,EventValueStr,InterfaceType" \
-                            ",InterfaceIdType,InterfaceId" \
-                            ",NetworkProvider" \
-                            ",NetworkAddressFamily,NetworkAddress) " \
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+#define INSERT_EVENT        "INSERT INTO NetworkEvent(NodeId,SessionId,"\
+                            "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
+                            "L4SessionId,EventType,EventParam,EventValue,"\
+                            "EventValueStr,InterfaceType,InterfaceIdType,"\
+                            "InterfaceId,NetworkProvider,NetworkAddressFamily,"\
+                            "NetworkAddress) " \
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
-#define INSERT_UPDATE       "INSERT INTO NetworkUpdates(NodeId,Timestamp" \
-                            ",Sequence,L3SessionId,L4SessionId" \
-                            ",EventValueStr,InterfaceType,InterfaceId" \
-                            ",NetworkAddress,NetworkProvider) " \
-                            "VALUES (?,?,?,?,?,?,?,?,?,?)"
+#define INSERT_UPDATE       "INSERT INTO NetworkUpdates(NodeId,SessionId,"\
+                            "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
+                            "L4SessionId,EventValueStr,InterfaceType,"\
+                            "InterfaceId,NetworkAddress,NetworkProvider) " \
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_GPS_EVENT    "INSERT INTO GpsEvents(NodeId,Timestamp" \
                             ",Sequence,Latitude,Longitude,Altitude" \
@@ -152,6 +159,14 @@
                                   "Timestamp = Timestamp + ? "\
                                   "WHERE Timestamp < ?"
 
+#define UPDATE_EVENT_SESSION_ID "UPDATE NetworkEvent SET "\
+                                "SessionId=?,SessionIdMultip=? "\
+                                "WHERE SessionId = 0"
+
+#define UPDATE_UPDATES_SESSION_ID "UPDATE NetworkUpdates SET "\
+                                  "SessionId=?,SessionIdMultip=? "\
+                                  "WHERE SessionId = 0"
+
 #define DELETE_TABLE         "DELETE FROM NetworkEvent"
 
 #define DELETE_GPS_TABLE     "DELETE FROM GpsEvents"
@@ -165,14 +180,15 @@
 //do here. quote() gives a quoted string of the row content, suitable for
 //inclusion in another SQL query. The || is string concation. So, the query
 //queries for all columns, and each row is prefixed with some string
-#define DUMP_EVENTS         "SELECT \"INSERT IGNORE INTO NetworkEvent"\
-                            "(NodeId,Timestamp,Sequence,L3SessionId,"\
-                            "L4SessionId,EventType,EventParam,"\
-                            "EventValue,EventValueStr,InterfaceType,"\
-                            "InterfaceIdType,InterfaceId,"\
+#define DUMP_EVENTS         "SELECT \"INSERT IGNORE INTO NetworkEventV2"\
+                            "(NodeId,SessionId,SessionIdMultip,Timestamp,"\
+                            "Sequence,L3SessionId,L4SessionId,EventType,"\
+                            "EventParam,EventValue,EventValueStr,"\
+                            "InterfaceType,InterfaceIdType,InterfaceId,"\
                             "NetworkProvider,NetworkAddressFamily,"\
                             "NetworkAddress) VALUES(\" "\
-                            "|| quote(\"NodeId\"), quote(\"Timestamp\"), "\
+                            "|| quote(\"NodeId\"), quote(\"SessionId\"),"\
+                            "quote(\"SessionIdMultip\"),quote(\"Timestamp\"), "\
                             "quote(\"Sequence\"), quote(\"L3SessionId\"), "\
                             "quote(\"L4SessionId\"), quote(\"EventType\"), "\
                             "quote(\"EventParam\"), quote(\"EventValue\"), "\
@@ -182,11 +198,13 @@
                             "quote(\"NetworkProvider\"), quote(\"NetworkAddressFamily\"), "\
                             "quote(\"NetworkAddress\") || \")\" FROM  \"NetworkEvent\" WHERE Timestamp>=? ORDER BY Timestamp;"
 
-#define DUMP_UPDATES        "SELECT \"REPLACE INTO NetworkUpdate"\
-                            "(NodeId,Timestamp,Sequence,L3SessionId,"\
-                            "L4SessionId,EventValueStr,InterfaceType, InterfaceId,"\
-                            "NetworkAddress,NetworkProvider,ServerTimestamp) VALUES(\" "\
-                            "|| quote(\"NodeId\"), quote(\"Timestamp\"), "\
+#define DUMP_UPDATES        "SELECT \"REPLACE INTO NetworkUpdateV2"\
+                            "(NodeId,SessionId,SessionIdMultip,Timestamp,"\
+                            "Sequence,L3SessionId,L4SessionId,EventValueStr,"\
+                            "InterfaceType, InterfaceId,NetworkAddress,"\
+                            "NetworkProvider,ServerTimestamp) VALUES(\" "\
+                            "|| quote(\"NodeId\"), quote(\"SessionId\"),"\
+                            "quote(\"SessionIdMultip\"),quote(\"Timestamp\"), "\
                             "quote(\"Sequence\"), quote(\"L3SessionId\"), "\
                             "quote(\"L4SessionId\"),quote(\"EventValueStr\"), "\
                             "quote(\"InterfaceType\"), quote(\"InterfaceId\"),"\
@@ -219,13 +237,15 @@ struct md_writer_sqlite {
 
     sqlite3 *db_handle;
 
-    sqlite3_stmt *insert_provider, *insert_update;
+    sqlite3_stmt *insert_event, *insert_update;
     sqlite3_stmt *update_update, *dump_update;
     sqlite3_stmt *delete_table, *dump_table;
     sqlite3_stmt *last_update;
 
     sqlite3_stmt *insert_gps, *delete_gps, *dump_gps;
     sqlite3_stmt *insert_monitor, *delete_monitor, *dump_monitor;
+
+    const char *session_id_file;
 
     uint32_t node_id;
     uint32_t db_interval;
@@ -242,6 +262,12 @@ struct md_writer_sqlite {
 
     uint64_t dump_tstamp;
     uint64_t last_msg_tstamp;
+
+    //TODO: Consider moving this to the generic writer struct if need be
+    //These values keep track of the unique session id (and multiplier), which
+    //are normally assumed to be the boot counter (+ multiplier)
+    uint64_t session_id;
+    uint64_t session_id_multip;
 
     float gps_speed;
 
