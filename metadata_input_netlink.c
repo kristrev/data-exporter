@@ -144,11 +144,23 @@ static uint8_t md_input_netlink_parse_iface_event(struct md_input_netlink *min,
         if (!strcmp(key, "imei"))
             mie->imei = json_object_get_string(val);
 
+        if (!strcmp(key, "ip_addr"))
+            mie->ip_addr = json_object_get_string(val);
+
+        if (!strcmp(key, "internal_ip_addr"))
+            mie->internal_ip_addr = json_object_get_string(val);
+
+        if (!strcmp(key, "isp_name"))
+            mie->isp_name = json_object_get_string(val);
+
         if (!strcmp(key, "imsi_mccmnc"))
             mie->imsi_mccmnc = (uint32_t) json_object_get_int(val);
 
         if (!strcmp(key, "network_mccmnc"))
             mie->nw_mccmnc = (uint32_t) json_object_get_int(val);
+
+        if (!strcmp(key, "cid"))
+            mie->cid = json_object_get_int(val);
 
         if (!strcmp(key, "device_mode"))
             mie->device_mode = (uint8_t) json_object_get_int(val);
@@ -156,26 +168,26 @@ static uint8_t md_input_netlink_parse_iface_event(struct md_input_netlink *min,
         if (!strcmp(key, "device_sub_mode"))
             mie->device_submode = (uint8_t) json_object_get_int(val);
 
-        if (!strcmp(key, "isp_name"))
-            mie->isp_name = json_object_get_string(val);
-
         if (!strcmp(key, "rssi"))
-            mie->rssi = (int16_t) json_object_get_int(val);
+            mie->rssi = (int8_t) json_object_get_int(val);
+
+        if (!strcmp(key, "ecio"))
+            mie->ecio = (int8_t) json_object_get_int(val);
+
+        if (!strcmp(key, "rscp"))
+            mie->rscp = (int16_t) json_object_get_int(val);
 
         if (!strcmp(key, "lte_rssi"))
-            mie->lte_rssi = (int16_t) json_object_get_int(val);
+            mie->lte_rssi = (int8_t) json_object_get_int(val);
 
         if (!strcmp(key, "lte_rsrp"))
             mie->lte_rsrp = (int16_t) json_object_get_int(val);
 
         if (!strcmp(key, "lte_rsrq"))
-            mie->lte_rsrq = (int16_t) json_object_get_int(val);
+            mie->lte_rsrq = (int8_t) json_object_get_int(val);
 
         if (!strcmp(key, "lac"))
-            mie->lac = json_object_get_string(val);
-
-        if (!strcmp(key, "cid"))
-            mie->cid = json_object_get_string(val);
+            mie->lac = (uint16_t) json_object_get_int(val);
 
         if (!strcmp(key, "lte_band"))
             mie->lte_band = (uint8_t) json_object_get_int(val);

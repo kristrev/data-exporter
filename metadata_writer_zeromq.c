@@ -314,50 +314,75 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
         return NULL;
     }
 
-    if ((mie->lac && mie->cid) &&
-            (!md_zeromq_create_json_string(obj, "lac", mie->lac) ||
-             !md_zeromq_create_json_string(obj, "cid", mie->cid))) {
+    if (mie->ip_addr && !md_zeromq_create_json_string(obj, "ip_addr",
+                mie->ip_addr)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->internal_ip_addr && !md_zeromq_create_json_string(obj,
+                "internal_ip_addr", mie->internal_ip_addr)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->imsi_mccmnc &&
-            !md_zeromq_create_json_int(obj, "imsi_mccmnc", mie->imsi_mccmnc)) {
+            !md_zeromq_create_json_int64(obj, "imsi_mccmnc", mie->imsi_mccmnc)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->nw_mccmnc &&
-            !md_zeromq_create_json_int(obj, "nw_mccmnc", mie->nw_mccmnc)) {
+            !md_zeromq_create_json_int64(obj, "nw_mccmnc", mie->nw_mccmnc)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->rssi && !md_zeromq_create_json_int(obj, "rssi", mie->rssi)) {
+    if ((mie->cid > -1 && mie->lac > -1) &&
+            (!md_zeromq_create_json_int(obj, "lac", mie->lac) ||
+             !md_zeromq_create_json_int(obj, "cid", mie->cid))) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->lte_rssi && !md_zeromq_create_json_int(obj, "lte_rssi",
-                mie->lte_rssi)) {
+    if (mie->rscp != META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "rscp", mie->rscp)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->lte_rsrp && !md_zeromq_create_json_int(obj, "lte_rsrp",
-                mie->lte_rsrp)) {
+    if (mie->lte_rsrp != META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "lte_rsrp", mie->rscp)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->lte_rsrq && !md_zeromq_create_json_int(obj, "lte_rsrq",
-                mie->lte_rsrq)) {
+    if (mie->lte_freq &&
+            !md_zeromq_create_json_int(obj, "lte_freq", mie->lte_freq)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->lte_freq && !md_zeromq_create_json_int(obj, "lte_freq",
-                mie->lte_freq)) {
+    if (mie->rssi != META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "rssi", mie->rssi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->ecio != META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "ecio", mie->ecio)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->lte_rssi != META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "lte_rssi", mie->lte_rssi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->lte_rsrq != META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "lte_rsrq", mie->lte_rsrq)) {
         json_object_put(obj);
         return NULL;
     }

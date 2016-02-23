@@ -432,6 +432,30 @@ static void test_modem_metadata(uint8_t *snd_buf, int32_t sock_fd,
         json_object_put(parsed_obj);
     }
 
+    parsed_obj = json_tokener_parse(IFACE_ISP_NAME_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface isp name changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_EXTERNAL_ADDR_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface addr changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_LOCATION_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface location changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
     parsed_obj = json_tokener_parse(IFACE_UPDATE_TEST);
     if (parsed_obj == NULL) {
         fprintf(stderr, "Failed to create iface lte rssi changed object\n");
