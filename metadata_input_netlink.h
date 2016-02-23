@@ -38,6 +38,7 @@ struct md_input_netlink {
     struct mnl_socket *metadata_sock;
     struct backend_epoll_handle *event_handle;
     struct md_conn_event *mce;
+    struct md_iface_event *mie;
 };
 
 void md_netlink_setup(struct md_exporter *mde, struct md_input_netlink *min);

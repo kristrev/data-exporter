@@ -205,18 +205,26 @@ static uint8_t md_input_netlink_parse_iface_event(struct md_input_netlink *min,
 static void md_input_netlink_handle_iface_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
-    struct md_iface_event mie;
+    //struct md_iface_event mie;
     uint8_t retval = 0;
 
-    memset(&mie, 0, sizeof(struct md_iface_event));
-    mie.md_type = META_TYPE_INTERFACE;
+    memset(min->mie, 0, sizeof(struct md_iface_event));
+    min->mie.md_type = META_TYPE_INTERFACE;
+    min->mie.lac = -1;
+    min->mie.cid = -1;
+    min->mie.rscp = META_IFACE_INVALID;
+    min->mie.lte_rsrp = META_IFACE_INVALID;
+    min->mie.rssi = META_IFACE_INVALID;
+    min->mie.ecio = META_IFACE_INVALID;
+    min->mie.lte_rssi = META_IFACE_INVALID;
+    min->mie.lte_rsrq = META_IFACE_INVALID;
 
-    retval = md_input_netlink_parse_iface_event(min, obj, &mie);
+    retval = md_input_netlink_parse_iface_event(min, obj, min->mie);
 
     if (retval == RETVAL_FAILURE)
         return;
 
-    mde_publish_event_obj(min->parent, (struct md_event*) &mie);
+    mde_publish_event_obj(min->parent, (struct md_event*) min->mie);
 }
 
 static void md_input_netlink_handle_conn_event(struct md_input_netlink *min,
