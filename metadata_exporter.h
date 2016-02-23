@@ -137,10 +137,12 @@ struct md_iface_event {
     uint32_t imsi_mccmnc;
     uint32_t nw_mccmnc;
     int32_t cid;
+    int32_t enodeb_id;
     int16_t rscp;
     int16_t lte_rsrp;
     uint16_t lte_freq;
     uint16_t lac;
+    uint16_t lte_pci;
     int8_t rssi;
     int8_t ecio;
     int8_t lte_rssi;

@@ -195,6 +195,9 @@ static uint8_t md_input_netlink_parse_iface_event(struct md_input_netlink *min,
         if (!strcmp(key, "lte_freq"))
             mie->lte_freq = (uint16_t) json_object_get_int(val);
 
+        if (!strcmp(key, "lte_pci"))
+            mie->lte_pci = (uint16_t) json_object_get_int(val);
+
         if (!strcmp(key, "device_state"))
             mie->device_state = (uint8_t) json_object_get_int(val);
     }
@@ -209,15 +212,17 @@ static void md_input_netlink_handle_iface_event(struct md_input_netlink *min,
     uint8_t retval = 0;
 
     memset(min->mie, 0, sizeof(struct md_iface_event));
-    min->mie.md_type = META_TYPE_INTERFACE;
-    min->mie.lac = -1;
-    min->mie.cid = -1;
-    min->mie.rscp = META_IFACE_INVALID;
-    min->mie.lte_rsrp = META_IFACE_INVALID;
-    min->mie.rssi = META_IFACE_INVALID;
-    min->mie.ecio = META_IFACE_INVALID;
-    min->mie.lte_rssi = META_IFACE_INVALID;
-    min->mie.lte_rsrq = META_IFACE_INVALID;
+    min->mie->md_type = META_TYPE_INTERFACE;
+    min->mie->lac = -1;
+    min->mie->cid = -1;
+    min->mie->rscp = META_IFACE_INVALID;
+    min->mie->lte_rsrp = META_IFACE_INVALID;
+    min->mie->rssi = META_IFACE_INVALID;
+    min->mie->ecio = META_IFACE_INVALID;
+    min->mie->lte_rssi = META_IFACE_INVALID;
+    min->mie->lte_rsrq = META_IFACE_INVALID;
+    min->mie->lte_pci = 0xFFFF;
+    min->mie->enodeb_id = -1;
 
     retval = md_input_netlink_parse_iface_event(min, obj, min->mie);
 
@@ -424,7 +429,11 @@ static uint8_t md_input_netlink_config(struct md_input_netlink *min)
     min->mce = calloc(sizeof(struct md_conn_event), 1);
     if (min->mce == NULL)
         return RETVAL_FAILURE;
-    
+   
+    min->mie = calloc(sizeof(struct md_iface_event), 1);
+    if (min->mie == NULL)
+        return RETVAL_FAILURE;
+
     return RETVAL_SUCCESS;
 }
 

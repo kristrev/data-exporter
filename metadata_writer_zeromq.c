@@ -411,6 +411,18 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
         return NULL;
     }
 
+    if (mie->lte_pci != 0xFFFF &&
+            !md_zeromq_create_json_int(obj, "lte_pci", mie->lte_pci)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->enodeb_id >= 0 &&
+            !md_zeromq_create_json_int(obj, "enodeb_id", mie->enodeb_id)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
     return obj;
 }
 
