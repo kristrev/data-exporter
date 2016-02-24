@@ -277,18 +277,16 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
         }
     }
 
-    if (mce->event_param == CONN_EVENT_META_UPDATE)
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.UPDATE %s",
-                mce->interface_name,
-                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
-    else
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.MODE_CHANGE %s",
-                mce->interface_name,
-                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+    if (mce->event_param != CONN_EVENT_META_UPDATE)
+        return;
 
-    if (retval < sizeof(topic)) {
+    retval = snprintf(topic, sizeof(topic), "MONROE.META.CONN.MODEM.%s.UPDATE %s",
+            mce->interface_name,
+            json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+
+    if (retval < sizeof(topic))
         zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
-    }
+
     json_object_put(json_obj);
 }
 
@@ -447,39 +445,48 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
     //Switch on topic
     switch (mie->event_param) {
     case IFACE_EVENT_DEV_STATE:
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.STATE %s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.STATE %s",
+                mie->iccid,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
         break;
     case IFACE_EVENT_MODE_CHANGE:
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.MODE %s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.MODE %s",
+                mie->iccid,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
         break;
     case IFACE_EVENT_SIGNAL_CHANGE:
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.SIGNAL %s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.SIGNAL %s",
+                mie->iccid,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
         break;
     case IFACE_EVENT_LTE_BAND_CHANGE:
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.LTE_BAND %s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.LTE_BAND %s",
+                mie->iccid,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
         break;
     case IFACE_EVENT_ISP_NAME_CHANGE:
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.ISP_NAME %s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.ISP_NAME %s",
+                mie->iccid,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
         break;
     case IFACE_EVENT_UPDATE:
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.UPDATE %s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.UPDATE %s",
+                mie->iccid,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
         break;
     case IFACE_EVENT_IP_ADDR_CHANGE:
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.IP_ADDR %s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.IP_ADDR %s",
+                mie->iccid,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
         break;
     case IFACE_EVENT_LOC_CHANGE:
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.LOC_CHANGE %s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.LOC_CHANGE %s",
+                mie->iccid,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
         break;
     case IFACE_EVENT_NW_MCCMNC_CHANGE:
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.NW_MCCMNC_CHANGE %s",
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.NW_MCCMNC_CHANGE %s",
+                mie->iccid,
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
         break;
 
