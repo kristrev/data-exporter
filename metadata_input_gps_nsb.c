@@ -104,19 +104,19 @@ static uint8_t md_input_gps_nsb_config(struct md_input_gps_nsb *mign,
     hints.ai_protocol = IPPROTO_UDP;
 
     if (getaddrinfo(address, port, &hints, &res)) {
-        META_PRINT(mign->parent->logfile, "Could not get address info for NSB GPS\n");
+        META_PRINT_SYSLOG(mign->parent, LOG_ERR, "Could not get address info for NSB GPS\n");
         return RETVAL_FAILURE;
     }
 
     sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 
     if (sockfd < 0) {
-        META_PRINT(mign->parent->logfile, "Failed to create socket for NSB GPS\n");
+        META_PRINT_SYSLOG(mign->parent, LOG_ERR, "Failed to create socket for NSB GPS\n");
         return RETVAL_FAILURE;
     }
 
     if (bind(sockfd, res->ai_addr, res->ai_addrlen)) {
-        META_PRINT(mign->parent->logfile, "Failed to bind NSB GPS socket\n");
+        META_PRINT_SYSLOG(mign->parent, LOG_ERR, "Failed to bind NSB GPS socket\n");
         return RETVAL_FAILURE;
     }
 
@@ -157,7 +157,7 @@ static uint8_t md_input_gps_nsb_init(void *ptr, int argc, char *argv[])
     }
 
     if (address == NULL || port == NULL) {
-        META_PRINT(mign->parent->logfile, "Missing required GPSD argument\n");
+        META_PRINT_SYSLOG(mign->parent, LOG_ERR, "Missing required GPSD argument\n");
         return RETVAL_FAILURE;
     }
 

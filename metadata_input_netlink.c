@@ -104,7 +104,7 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_input_netlink *min,
         !mce->interface_type || !mce->network_address_family ||
         !mce->network_address || !mce->interface_id ||
         !mce->interface_id_type) {
-        META_PRINT(min->parent->logfile, "Missing required argument in JSON\n");
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "Missing required argument in JSON\n");
         return RETVAL_FAILURE;
     }
 
@@ -112,7 +112,7 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_input_netlink *min,
     //is a string
     //TODO: Implement a more elegant technique if we get more cases like this
     if (mce->event_param == CONN_EVENT_META_UPDATE && !mce->event_value_str) {
-        META_PRINT(min->parent->logfile, "Missing event value for connection update\n");
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "Missing event value for connection update\n");
         return RETVAL_FAILURE;
     }
 
@@ -365,7 +365,7 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
     nlh_obj = json_tokener_parse(nlh_payload);
 
     if (!nlh_obj) {
-        META_PRINT(min->parent->logfile, "Received invalid JSON object on Netlink socket\n");
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "Received invalid JSON object on Netlink socket\n");
         return;
     }
 
@@ -382,7 +382,7 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
     }
 
     if (!json_object_object_get_ex(nlh_obj, "event_type", &json_event)) {
-        META_PRINT(min->parent->logfile, "Missing event type\n");
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "Missing event type\n");
         json_object_put(nlh_obj);
         return;
     }
@@ -474,7 +474,7 @@ static uint8_t md_input_netlink_init(void *ptr, int argc, char *argv[])
     }
 
     if (!md_nl_mask) {
-        META_PRINT(min->parent->logfile, "At least one netlink event type must be present\n");
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "At least one netlink event type must be present\n");
         return RETVAL_FAILURE;
     }
 

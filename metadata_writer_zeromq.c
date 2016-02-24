@@ -160,7 +160,7 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
     int retval;
 
     if (gps_obj == NULL) {
-        META_PRINT(mwz->parent->logfile, "Failed to create GPS ZMQ JSON\n");
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to create GPS ZMQ JSON\n");
         return;
     }
 
@@ -248,7 +248,7 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
         event_str_len = strlen(mce->event_value_str);
 
         if (event_str_len >= EVENT_STR_LEN) {
-            META_PRINT(mwz->parent->logfile, "Event string too long\n");
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Event string too long\n");
             return;
         }
 
@@ -501,7 +501,6 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
     }
 
     retval = zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
-    printf("sent %d bytes\n", retval);
     json_object_put(json_obj);
 }
 
@@ -545,12 +544,12 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
         return RETVAL_FAILURE;
 
     if ((retval = zmq_bind(mwz->zmq_publisher, zmq_addr)) != 0) {
-        META_PRINT(mwz->parent->logfile, "zmq_bind failed (%d): %s\n", errno,
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "zmq_bind failed (%d): %s\n", errno,
                 zmq_strerror(errno));
         return RETVAL_FAILURE;
     }
 
-    META_PRINT(mwz->parent->logfile, "ZeroMQ init done\n");
+    META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "ZeroMQ init done\n");
 
     return RETVAL_SUCCESS;
 }
@@ -584,12 +583,12 @@ static int32_t md_zeromq_init(void *ptr, int argc, char *argv[])
     }
 
     if (address == NULL || port == 0) {
-        META_PRINT(mwz->parent->logfile, "Missing required ZeroMQ argument\n");
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Missing required ZeroMQ argument\n");
         return RETVAL_FAILURE;
     }
 
     if (system_helpers_check_address(address)) {
-        META_PRINT(mwz->parent->logfile, "Error in ZeroMQ address\n");
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Error in ZeroMQ address\n");
         return RETVAL_FAILURE;
     }
 

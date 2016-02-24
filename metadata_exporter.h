@@ -209,6 +209,7 @@ struct md_exporter {
     //Keep track of order in which events arrived at metadata exporter. There
     //could also be a per-app sequence number
     uint16_t seq;
+    uint8_t use_syslog;
 };
 
 struct md_input {

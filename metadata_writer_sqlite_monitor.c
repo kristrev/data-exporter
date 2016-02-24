@@ -63,13 +63,13 @@ uint8_t md_sqlite_handle_munin_event(struct md_writer_sqlite *mws,
 
     json_object *session_obj;
     if (!json_object_object_get_ex(mme->json_blob, "session", &session_obj)) {
-        META_PRINT(mws->parent->logfile, "Failed to read data from session module (Munin)\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to read data from session module (Munin)\n");
         return RETVAL_FAILURE;
     }
     if (!json_object_object_get_ex(session_obj, "start", &value)) 
         return RETVAL_FAILURE;
     if ((boottime = json_object_get_int64(value)) < 1400000000 ) {
-        META_PRINT(mws->parent->logfile, "Failed to read valid start time from session module (Munin): %" PRId64 "\n", boottime);
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to read valid start time from session module (Munin): %" PRId64 "\n", boottime);
         return RETVAL_FAILURE;
     }
 
@@ -81,7 +81,7 @@ uint8_t md_sqlite_handle_munin_event(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt,    2, mme->tstamp)   ||
         sqlite3_bind_int(stmt,    3, mme->sequence) || 
         sqlite3_bind_int64(stmt,  4, boottime)       ){ 
-        META_PRINT(mws->parent->logfile, "Failed to bind values to INSERT query (Monitor)\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT query (Monitor)\n");
         return RETVAL_FAILURE;
     }
 
