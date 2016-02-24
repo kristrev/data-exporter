@@ -326,6 +326,12 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
         return NULL;
     }
 
+    if (mie->ifname && !md_zeromq_create_json_string(obj, "ifname",
+                mie->ifname)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
     if (mie->imsi_mccmnc &&
             !md_zeromq_create_json_int64(obj, "imsi_mccmnc", mie->imsi_mccmnc)) {
         json_object_put(obj);
@@ -345,14 +351,14 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
         return NULL;
     }
 
-    if (mie->rscp != META_IFACE_INVALID &&
+    if (mie->rscp != (int16_t) META_IFACE_INVALID &&
             !md_zeromq_create_json_int(obj, "rscp", mie->rscp)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->lte_rsrp != META_IFACE_INVALID &&
-            !md_zeromq_create_json_int(obj, "lte_rsrp", mie->rscp)) {
+    if (mie->lte_rsrp != (int16_t) META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "lte_rsrp", mie->lte_rsrp)) {
         json_object_put(obj);
         return NULL;
     }
@@ -363,25 +369,25 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
         return NULL;
     }
 
-    if (mie->rssi != META_IFACE_INVALID &&
+    if (mie->rssi != (int8_t) META_IFACE_INVALID &&
             !md_zeromq_create_json_int(obj, "rssi", mie->rssi)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->ecio != META_IFACE_INVALID &&
+    if (mie->ecio != (int8_t) META_IFACE_INVALID &&
             !md_zeromq_create_json_int(obj, "ecio", mie->ecio)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->lte_rssi != META_IFACE_INVALID &&
+    if (mie->lte_rssi != (int8_t) META_IFACE_INVALID &&
             !md_zeromq_create_json_int(obj, "lte_rssi", mie->lte_rssi)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->lte_rsrq != META_IFACE_INVALID &&
+    if (mie->lte_rsrq != (int8_t) META_IFACE_INVALID &&
             !md_zeromq_create_json_int(obj, "lte_rsrq", mie->lte_rsrq)) {
         json_object_put(obj);
         return NULL;
@@ -436,14 +442,12 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
     if (json_obj == NULL)
         return;
 
+    printf("%u\n", mie->event_param);
+
     //Switch on topic
     switch (mie->event_param) {
-    case IFACE_EVENT_REGISTER:
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.REGISTER %s",
-                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
-        break;
-    case IFACE_EVENT_CONNECT:
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.CONNECT %s",
+    case IFACE_EVENT_DEV_STATE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.STATE %s",
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
         break;
     case IFACE_EVENT_MODE_CHANGE:
@@ -458,10 +462,27 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
         retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.LTE_BAND %s",
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
         break;
+    case IFACE_EVENT_ISP_NAME_CHANGE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.ISP_NAME %s",
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
     case IFACE_EVENT_UPDATE:
         retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.UPDATE %s",
                 json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
         break;
+    case IFACE_EVENT_IP_ADDR_CHANGE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.IP_ADDR %s",
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
+    case IFACE_EVENT_LOC_CHANGE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.LOC_CHANGE %s",
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
+    case IFACE_EVENT_NW_MCCMNC_CHANGE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.NW_MCCMNC_CHANGE %s",
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
+
     default:
         json_object_put(json_obj);
         return;
@@ -472,7 +493,8 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
         return;
     }
 
-    zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+    retval = zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+    printf("sent %d bytes\n", retval);
     json_object_put(json_obj);
 }
 

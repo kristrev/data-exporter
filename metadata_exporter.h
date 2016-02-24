@@ -48,12 +48,15 @@
 #define META_TYPE_MUNIN      0x05
 
 enum iface_event {
-    IFACE_EVENT_REGISTER=1,
-    IFACE_EVENT_CONNECT,
+    IFACE_EVENT_DEV_STATE=1,
     IFACE_EVENT_MODE_CHANGE,
     IFACE_EVENT_SIGNAL_CHANGE,
     IFACE_EVENT_LTE_BAND_CHANGE,
-    IFACE_EVENT_UPDATE
+    IFACE_EVENT_ISP_NAME_CHANGE,
+    IFACE_EVENT_UPDATE,
+    IFACE_EVENT_IP_ADDR_CHANGE,
+    IFACE_EVENT_LOC_CHANGE,
+    IFACE_EVENT_NW_MCCMNC_CHANGE
 };
 
 enum conn_event {
@@ -134,6 +137,7 @@ struct md_iface_event {
     const char *isp_name;
     const char *ip_addr;
     const char *internal_ip_addr;
+    const char *ifname;
     uint32_t imsi_mccmnc;
     uint32_t nw_mccmnc;
     int32_t cid;

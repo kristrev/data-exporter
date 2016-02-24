@@ -463,6 +463,15 @@ static void test_modem_metadata(uint8_t *snd_buf, int32_t sock_fd,
         send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
         json_object_put(parsed_obj);
     }
+
+    parsed_obj = json_tokener_parse(IFACE_NETWORK_MCC_CHANGED);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface lte rssi changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
 }
 
 //Test function which just generates some netlink messages that are sent to our
@@ -535,9 +544,9 @@ static void test_netlink(uint32_t packets)
                 (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
 
+#endif
         test_modem_metadata(snd_buf, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
-#endif
         if (packets && (++i >= packets))
             break;
 
