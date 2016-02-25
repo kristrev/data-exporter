@@ -38,6 +38,7 @@
 #define ZMQ_KEY_IMSI_MCCMNC    "IMSIMCCMNC"
 #define ZMQ_KEY_IMEI           "IMEI"
 #define ZMQ_KEY_IP_ADDR        "IPAddress"
+#define ZMQ_KEY_INTERNAL_IP_ADDR "InternalIPAddress"
 #define ZMQ_KEY_ISP_NAME       "Operator"
 #define ZMQ_KEY_LAC            "LAC"
 #define ZMQ_KEY_LTE_RSRP       "LTERSRP"
