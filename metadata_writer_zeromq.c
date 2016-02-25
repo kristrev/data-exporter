@@ -297,7 +297,7 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
 
     retval = snprintf(topic, sizeof(topic), "%s.%s.%s %s",
             MONROE_ZMQ_TOPIC_MODEM,
-            mce->interface_name,
+            mce->interface_id,
             MONROE_ZMQ_TOPIC_MODEM_UPDATE,
             json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
 
