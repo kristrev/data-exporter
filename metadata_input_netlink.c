@@ -104,7 +104,7 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_input_netlink *min,
         !mce->interface_type || !mce->network_address_family ||
         !mce->network_address || !mce->interface_id ||
         !mce->interface_id_type) {
-        META_PRINT(min->parent->logfile, "Missing required argument in JSON\n");
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "Missing required argument in JSON\n");
         return RETVAL_FAILURE;
     }
 
@@ -112,7 +112,7 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_input_netlink *min,
     //is a string
     //TODO: Implement a more elegant technique if we get more cases like this
     if (mce->event_param == CONN_EVENT_META_UPDATE && !mce->event_value_str) {
-        META_PRINT(min->parent->logfile, "Missing event value for connection update\n");
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "Missing event value for connection update\n");
         return RETVAL_FAILURE;
     }
 
@@ -144,11 +144,26 @@ static uint8_t md_input_netlink_parse_iface_event(struct md_input_netlink *min,
         if (!strcmp(key, "imei"))
             mie->imei = json_object_get_string(val);
 
+        if (!strcmp(key, "ip_addr"))
+            mie->ip_addr = json_object_get_string(val);
+
+        if (!strcmp(key, "internal_ip_addr"))
+            mie->internal_ip_addr = json_object_get_string(val);
+
+        if (!strcmp(key, "isp_name"))
+            mie->isp_name = json_object_get_string(val);
+
+        if (!strcmp(key, "ifname"))
+            mie->ifname = json_object_get_string(val);
+
         if (!strcmp(key, "imsi_mccmnc"))
             mie->imsi_mccmnc = (uint32_t) json_object_get_int(val);
 
         if (!strcmp(key, "network_mccmnc"))
             mie->nw_mccmnc = (uint32_t) json_object_get_int(val);
+
+        if (!strcmp(key, "cid"))
+            mie->cid = json_object_get_int(val);
 
         if (!strcmp(key, "device_mode"))
             mie->device_mode = (uint8_t) json_object_get_int(val);
@@ -156,26 +171,26 @@ static uint8_t md_input_netlink_parse_iface_event(struct md_input_netlink *min,
         if (!strcmp(key, "device_sub_mode"))
             mie->device_submode = (uint8_t) json_object_get_int(val);
 
-        if (!strcmp(key, "isp_name"))
-            mie->isp_name = json_object_get_string(val);
-
         if (!strcmp(key, "rssi"))
-            mie->rssi = (int16_t) json_object_get_int(val);
+            mie->rssi = (int8_t) json_object_get_int(val);
+
+        if (!strcmp(key, "ecio"))
+            mie->ecio = (int8_t) json_object_get_int(val);
+
+        if (!strcmp(key, "rscp"))
+            mie->rscp = (int16_t) json_object_get_int(val);
 
         if (!strcmp(key, "lte_rssi"))
-            mie->lte_rssi = (int16_t) json_object_get_int(val);
+            mie->lte_rssi = (int8_t) json_object_get_int(val);
 
         if (!strcmp(key, "lte_rsrp"))
             mie->lte_rsrp = (int16_t) json_object_get_int(val);
 
         if (!strcmp(key, "lte_rsrq"))
-            mie->lte_rsrq = (int16_t) json_object_get_int(val);
+            mie->lte_rsrq = (int8_t) json_object_get_int(val);
 
         if (!strcmp(key, "lac"))
-            mie->lac = json_object_get_string(val);
-
-        if (!strcmp(key, "cid"))
-            mie->cid = json_object_get_string(val);
+            mie->lac = (uint16_t) json_object_get_int(val);
 
         if (!strcmp(key, "lte_band"))
             mie->lte_band = (uint8_t) json_object_get_int(val);
@@ -183,8 +198,14 @@ static uint8_t md_input_netlink_parse_iface_event(struct md_input_netlink *min,
         if (!strcmp(key, "lte_freq"))
             mie->lte_freq = (uint16_t) json_object_get_int(val);
 
+        if (!strcmp(key, "lte_pci"))
+            mie->lte_pci = (uint16_t) json_object_get_int(val);
+
         if (!strcmp(key, "device_state"))
             mie->device_state = (uint8_t) json_object_get_int(val);
+
+        if (!strcmp(key, "enodeb_id"))
+            mie->enodeb_id = json_object_get_int(val);
     }
 
     return RETVAL_SUCCESS;
@@ -193,18 +214,28 @@ static uint8_t md_input_netlink_parse_iface_event(struct md_input_netlink *min,
 static void md_input_netlink_handle_iface_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
-    struct md_iface_event mie;
+    //struct md_iface_event mie;
     uint8_t retval = 0;
 
-    memset(&mie, 0, sizeof(struct md_iface_event));
-    mie.md_type = META_TYPE_INTERFACE;
+    memset(min->mie, 0, sizeof(struct md_iface_event));
+    min->mie->md_type = META_TYPE_INTERFACE;
+    min->mie->lac = -1;
+    min->mie->cid = -1;
+    min->mie->rscp = (int16_t) META_IFACE_INVALID;
+    min->mie->lte_rsrp = (int16_t) META_IFACE_INVALID;
+    min->mie->rssi = (int8_t) META_IFACE_INVALID;
+    min->mie->ecio = (int8_t) META_IFACE_INVALID;
+    min->mie->lte_rssi = (int8_t) META_IFACE_INVALID;
+    min->mie->lte_rsrq = (int8_t) META_IFACE_INVALID;
+    min->mie->lte_pci = 0xFFFF;
+    min->mie->enodeb_id = -1;
 
-    retval = md_input_netlink_parse_iface_event(min, obj, &mie);
+    retval = md_input_netlink_parse_iface_event(min, obj, min->mie);
 
     if (retval == RETVAL_FAILURE)
         return;
 
-    mde_publish_event_obj(min->parent, (struct md_event*) &mie);
+    mde_publish_event_obj(min->parent, (struct md_event*) min->mie);
 }
 
 static void md_input_netlink_handle_conn_event(struct md_input_netlink *min,
@@ -334,7 +365,7 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
     nlh_obj = json_tokener_parse(nlh_payload);
 
     if (!nlh_obj) {
-        META_PRINT(min->parent->logfile, "Received invalid JSON object on Netlink socket\n");
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "Received invalid JSON object on Netlink socket\n");
         return;
     }
 
@@ -351,7 +382,7 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
     }
 
     if (!json_object_object_get_ex(nlh_obj, "event_type", &json_event)) {
-        META_PRINT(min->parent->logfile, "Missing event type\n");
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "Missing event type\n");
         json_object_put(nlh_obj);
         return;
     }
@@ -404,7 +435,11 @@ static uint8_t md_input_netlink_config(struct md_input_netlink *min)
     min->mce = calloc(sizeof(struct md_conn_event), 1);
     if (min->mce == NULL)
         return RETVAL_FAILURE;
-    
+   
+    min->mie = calloc(sizeof(struct md_iface_event), 1);
+    if (min->mie == NULL)
+        return RETVAL_FAILURE;
+
     return RETVAL_SUCCESS;
 }
 
@@ -439,7 +474,7 @@ static uint8_t md_input_netlink_init(void *ptr, int argc, char *argv[])
     }
 
     if (!md_nl_mask) {
-        META_PRINT(min->parent->logfile, "At least one netlink event type must be present\n");
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "At least one netlink event type must be present\n");
         return RETVAL_FAILURE;
     }
 

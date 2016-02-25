@@ -40,18 +40,24 @@
 #define MD_INPUT_MAX (__MD_INPUT_MAX - 1)
 #define MD_WRITER_MAX (__MD_WRITER_MAX - 1)
 
+#define META_IFACE_INVALID   0x81
+
 #define META_TYPE_INTERFACE  0x01
 #define META_TYPE_CONNECTION 0x02
 #define META_TYPE_POS        0x04
 #define META_TYPE_MUNIN      0x05
+#define META_TYPE_SYSEVENT   0x06
 
 enum iface_event {
-    IFACE_EVENT_REGISTER=1,
-    IFACE_EVENT_CONNECT,
+    IFACE_EVENT_DEV_STATE=1,
     IFACE_EVENT_MODE_CHANGE,
     IFACE_EVENT_SIGNAL_CHANGE,
     IFACE_EVENT_LTE_BAND_CHANGE,
-    IFACE_EVENT_UPDATE
+    IFACE_EVENT_ISP_NAME_CHANGE,
+    IFACE_EVENT_UPDATE,
+    IFACE_EVENT_IP_ADDR_CHANGE,
+    IFACE_EVENT_LOC_CHANGE,
+    IFACE_EVENT_NW_MCCMNC_CHANGE
 };
 
 enum conn_event {
@@ -86,6 +92,7 @@ enum md_inputs {
     MD_INPUT_GPSD,
     MD_INPUT_GPS_NSB,
     MD_INPUT_MUNIN,
+    MD_INPUT_SYSEVENT,
     __MD_INPUT_MAX
 };
 
@@ -130,15 +137,22 @@ struct md_iface_event {
     const char *imsi;
     const char *imei;
     const char *isp_name;
-    const char *lac;
-    const char *cid;
+    const char *ip_addr;
+    const char *internal_ip_addr;
+    const char *ifname;
     uint32_t imsi_mccmnc;
     uint32_t nw_mccmnc;
-    int16_t rssi;
-    int16_t lte_rssi;
+    int32_t cid;
+    int32_t enodeb_id;
+    int16_t rscp;
     int16_t lte_rsrp;
-    int16_t lte_rsrq;
     uint16_t lte_freq;
+    uint16_t lac;
+    uint16_t lte_pci;
+    int8_t rssi;
+    int8_t ecio;
+    int8_t lte_rssi;
+    int8_t lte_rsrq;
     uint8_t device_mode;
     uint8_t device_submode;
     uint8_t lte_band;
@@ -183,6 +197,7 @@ struct md_munin_event {
     MD_EVENT;
     json_object* json_blob;
 };
+#define md_sysevent md_munin_event
 
 struct md_exporter {
     struct mnl_socket *metadata_sock;
@@ -197,6 +212,7 @@ struct md_exporter {
     //Keep track of order in which events arrived at metadata exporter. There
     //could also be a per-app sequence number
     uint16_t seq;
+    uint8_t use_syslog;
 };
 
 struct md_input {

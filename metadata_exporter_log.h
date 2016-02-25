@@ -29,21 +29,35 @@
 
 #include <stdio.h>
 #include <time.h>
+#include <syslog.h>
 
 #define META_LOG_PREFIX "[%.2d:%.2d:%.2d %.2d/%.2d/%d]: "
 #define META_PRINT2(fd, ...){fprintf(fd, __VA_ARGS__);fflush(fd);}
-
+#define META_SYSLOG(priority, ...){syslog(LOG_MAKEPRI(LOG_DAEMON, priority), __VA_ARGS__);}
 //The ## is there so that I dont have to fake an argument when I use the macro
 //on string without arguments!
 #define META_PRINT(fd, _fmt, ...) \
     do { \
-        time_t rawtime; \
-        struct tm *curtime; \
-        time(&rawtime); \
-        curtime = gmtime(&rawtime); \
-        META_PRINT2(fd, META_LOG_PREFIX _fmt, curtime->tm_hour, \
-                curtime->tm_min, curtime->tm_sec, curtime->tm_mday, \
-                curtime->tm_mon + 1, 1900 + curtime->tm_year, \
-                ##__VA_ARGS__);} while(0)
+    time_t rawtime; \
+    struct tm *curtime; \
+    time(&rawtime); \
+    curtime = gmtime(&rawtime); \
+    META_PRINT2(fd, META_LOG_PREFIX _fmt, curtime->tm_hour, \
+        curtime->tm_min, curtime->tm_sec, curtime->tm_mday, \
+        curtime->tm_mon + 1, 1900 + curtime->tm_year, \
+        ##__VA_ARGS__);} while(0)
 
+#define META_PRINT_SYSLOG(mde, priority, _fmt, ...) \
+    do { \
+    time_t rawtime; \
+    struct tm *curtime; \
+    time(&rawtime); \
+    curtime = gmtime(&rawtime); \
+    if (mde->use_syslog) \
+        META_SYSLOG(priority, _fmt, ##__VA_ARGS__); \
+    META_PRINT2(mde->logfile, META_LOG_PREFIX _fmt, \
+        curtime->tm_hour, \
+        curtime->tm_min, curtime->tm_sec, curtime->tm_mday, \
+        curtime->tm_mon + 1, 1900 + curtime->tm_year, \
+        ##__VA_ARGS__);} while(0)
 #endif

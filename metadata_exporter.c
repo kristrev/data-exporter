@@ -34,6 +34,7 @@
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
+#include <syslog.h>
 
 #include <libmnl/libmnl.h>
 #include JSON_LOC
@@ -45,6 +46,9 @@
 #endif
 #ifdef MUNIN_SUPPORT
     #include "metadata_input_munin.h"
+#endif
+#ifdef SYSEVENT_SUPPORT
+    #include "metadata_input_sysevent.h"
 #endif
 #ifdef NSB_GPS
     #include "metadata_input_gps_nsb.h"
@@ -67,6 +71,7 @@
 
 struct md_input_gpsd;
 struct md_input_munin;
+struct md_input_sysevent;
 struct md_writer_sqlite;
 struct md_writer_zeromq;
 
@@ -216,7 +221,6 @@ static struct json_object *create_fake_gps_rmc_obj()
 static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
         uint8_t event_param, char *event_value_str, uint64_t tstamp)
 {
-	struct timeval tv;
 	struct json_object *obj = NULL, *obj_add = NULL;
     uint8_t rand_value = 0;
     uint64_t rand_value_64 = 0;
@@ -224,7 +228,6 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
 	if (!(obj = json_object_new_object()))
 		return NULL;
 
-	//gettimeofday(&tv, NULL);
 	if (!(obj_add = json_object_new_int64((int64_t) tstamp))) {
         json_object_put(obj);
         return NULL;
@@ -432,6 +435,30 @@ static void test_modem_metadata(uint8_t *snd_buf, int32_t sock_fd,
         json_object_put(parsed_obj);
     }
 
+    parsed_obj = json_tokener_parse(IFACE_ISP_NAME_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface isp name changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_EXTERNAL_ADDR_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface addr changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_LOCATION_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface location changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
     parsed_obj = json_tokener_parse(IFACE_UPDATE_TEST);
     if (parsed_obj == NULL) {
         fprintf(stderr, "Failed to create iface lte rssi changed object\n");
@@ -439,6 +466,15 @@ static void test_modem_metadata(uint8_t *snd_buf, int32_t sock_fd,
         send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
         json_object_put(parsed_obj);
     }
+
+    parsed_obj = json_tokener_parse(IFACE_NETWORK_MCC_CHANGED);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface lte rssi changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
 }
 
 //Test function which just generates some netlink messages that are sent to our
@@ -449,7 +485,6 @@ static void test_netlink(uint32_t packets)
     struct sockaddr_nl netlink_addr;
 	uint8_t snd_buf[MNL_SOCKET_BUFFER_SIZE];
     struct nlmsghdr *netlink_hdr;
-    uint16_t cnt = 0;
     uint32_t i = 0;
 	struct json_object *obj_to_send = NULL;
     struct timeval tv;
@@ -511,9 +546,9 @@ static void test_netlink(uint32_t packets)
                 (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
 
+#endif
         test_modem_metadata(snd_buf, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
-#endif
         if (packets && (++i >= packets))
             break;
 
@@ -542,7 +577,7 @@ static void run_test_mode(struct md_exporter *mde, uint32_t packets)
 
     pthread_join(thread, NULL);
 
-    META_PRINT(mde->logfile, "Threads should NEVER exit\n");
+    META_PRINT_SYSLOG(mde, LOG_ERR, "Threads should NEVER exit\n");
 }
 
 static void default_usage()
@@ -558,6 +593,9 @@ static void default_usage()
 #endif
 #ifdef MUNIN_SUPPORT
     fprintf(stderr, "--munin/-m: munin input\n");
+#endif
+#ifdef SYSEVENT_SUPPORT
+    fprintf(stderr, "--sysevent/-y: system ud socket input\n");
 #endif
 #ifdef SQLITE_SUPPORT
     fprintf(stderr, "--sqlite/-s: sqlite writer\n");
@@ -619,7 +657,10 @@ int main(int argc, char *argv[])
         {"gpsd",         no_argument,        0,  'g'},
 #endif
 #ifdef MUNIN_SUPPORT
-        {"munin",         no_argument,       0,  'm'},
+        {"munin",        no_argument,        0,  'm'},
+#endif
+#ifdef SYSEVENT_SUPPORT
+        {"sysevent",     no_argument,        0,  'y'},
 #endif
         {"packets",      required_argument,  0,  'p'},
         {"test",         no_argument,        0,  't'},
@@ -636,7 +677,7 @@ int main(int argc, char *argv[])
     opterr = 0;
     while (1) {
         //Use glic extension to avoid getopt permuting array while processing
-        i = getopt_long(argc, argv, "--szhmgtnp:l:", core_options, &option_index);
+        i = getopt_long(argc, argv, "--szhmgtnkp:l:", core_options, &option_index);
 
         if (i == -1)
             break;
@@ -647,7 +688,7 @@ int main(int argc, char *argv[])
                 mde->md_inputs[MD_INPUT_GPS_NSB] = calloc(sizeof(struct md_input_gps_nsb), 1);
 
                 if (mde->md_inputs[MD_INPUT_GPS_NSB] == NULL) {
-                    META_PRINT(mde->logfile, "Could not allocate Netlink input\n");
+                    META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate NSB GPS input\n");
                     exit(EXIT_FAILURE);
                 }
 
@@ -660,7 +701,7 @@ int main(int argc, char *argv[])
                 mde->md_writers[MD_WRITER_NNE] = calloc(sizeof(struct md_writer_nne), 1);
 
                 if (mde->md_writers[MD_WRITER_NNE] == NULL) {
-                    META_PRINT(mde->logfile, "Could not allocate NNE  writer\n");
+                    META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate NNE  writer\n");
                     exit(EXIT_FAILURE);
                 }
 
@@ -676,7 +717,7 @@ int main(int argc, char *argv[])
             mde->md_inputs[MD_INPUT_NETLINK] = calloc(sizeof(struct md_input_netlink),1);
 
             if (mde->md_inputs[MD_INPUT_NETLINK] == NULL) {
-                META_PRINT(mde->logfile, "Could not allocate Netlink input\n");
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate Netlink input\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -688,7 +729,7 @@ int main(int argc, char *argv[])
             mde->md_inputs[MD_INPUT_GPSD] = calloc(sizeof(struct md_input_gpsd), 1);
 
             if (mde->md_inputs[MD_INPUT_GPSD] == NULL) {
-                META_PRINT(mde->logfile, "Could not allocate GPSD input\n");
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate GPSD input\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -701,7 +742,7 @@ int main(int argc, char *argv[])
             mde->md_inputs[MD_INPUT_MUNIN] = calloc(sizeof(struct md_input_munin), 1);
 
             if (mde->md_inputs[MD_INPUT_MUNIN] == NULL) {
-                META_PRINT(mde->logfile, "Could not allocate Munin input\n");
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate Munin input\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -709,12 +750,25 @@ int main(int argc, char *argv[])
             num_inputs++;
             break;
 #endif
+#ifdef SYSEVENT_SUPPORT
+        case 'y':
+            mde->md_inputs[MD_INPUT_SYSEVENT] = calloc(sizeof(struct md_input_sysevent), 1);
+
+            if (mde->md_inputs[MD_INPUT_SYSEVENT] == NULL) {
+                META_PRINT(mde->logfile, "Could not allocate Sysevent input\n");
+                exit(EXIT_FAILURE);
+            }
+
+            md_sysevent_setup(mde, (struct md_input_sysevent*) mde->md_inputs[MD_INPUT_SYSEVENT]);
+            num_inputs++;
+            break;
+#endif 
 #ifdef SQLITE_SUPPORT
         case 's':
             mde->md_writers[MD_WRITER_SQLITE] = calloc(sizeof(struct md_writer_sqlite), 1);
 
             if (mde->md_writers[MD_WRITER_SQLITE] == NULL) {
-                META_PRINT(mde->logfile, "Could not allocate SQLite writer\n");
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate SQLite writer\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -727,7 +781,7 @@ int main(int argc, char *argv[])
             mde->md_writers[MD_WRITER_ZEROMQ] = calloc(sizeof(struct md_writer_zeromq), 1);
 
             if (mde->md_writers[MD_WRITER_ZEROMQ] == NULL) {
-                META_PRINT(mde->logfile, "Could not allocate SQLite writer\n");
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate SQLite writer\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -743,6 +797,9 @@ int main(int argc, char *argv[])
             break;
         case 'l':
             logfile_path = optarg;
+            break;
+        case 'k':
+            mde->use_syslog = 1;
             break;
         case 'h':
             show_help = 1;
@@ -771,7 +828,7 @@ int main(int argc, char *argv[])
 
     for (i=0; i<=MD_INPUT_MAX; i++) {
         if (mde->md_inputs[i] != NULL) {
-            META_PRINT(mde->logfile, "Will configure input %d\n", i);
+            META_PRINT_SYSLOG(mde, LOG_INFO, "Will configure input %d\n", i);
             //glic requires optind to be 0 for internal state to be reset when
             //using extensions
             optind = 0;
@@ -782,7 +839,7 @@ int main(int argc, char *argv[])
 
     for (i=0; i<=MD_WRITER_MAX; i++) {
         if (mde->md_writers[i] != NULL) {
-            META_PRINT(mde->logfile, "Will configure writer %d\n", i);
+            META_PRINT_SYSLOG(mde, LOG_INFO, "Will configure writer %d\n", i);
             //glic requires optind to be 0 for internal state to be reset when
             //using extensions
             optind = 0;
@@ -796,6 +853,6 @@ int main(int argc, char *argv[])
     else
         backend_event_loop_run(mde->event_loop);
 
-    META_PRINT(mde->logfile, "Threads should NEVER exit\n");
+    META_PRINT_SYSLOG(mde, LOG_ERR, "Threads should NEVER exit\n");
     exit(EXIT_FAILURE);
 }
