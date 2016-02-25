@@ -24,10 +24,15 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef METADATA_WRITER_ZEROMQ_H
-#define METADATA_WRITER_ZEROMQ_H
+#pragma once
 
 #include "metadata_exporter.h"
+
+#ifdef MONROE
+#include "monroe_zmq_format.h"
+#else
+#include "compact_zmq_format.h"
+#endif
 
 struct md_writer_zeromq {
     MD_WRITER;
@@ -37,4 +42,3 @@ struct md_writer_zeromq {
 };
 
 void md_zeromq_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz);
-#endif

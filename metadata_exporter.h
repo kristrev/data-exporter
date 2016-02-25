@@ -46,6 +46,7 @@
 #define META_TYPE_CONNECTION 0x02
 #define META_TYPE_POS        0x04
 #define META_TYPE_MUNIN      0x05
+#define META_TYPE_SYSEVENT   0x06
 
 enum iface_event {
     IFACE_EVENT_DEV_STATE=1,
@@ -91,6 +92,7 @@ enum md_inputs {
     MD_INPUT_GPSD,
     MD_INPUT_GPS_NSB,
     MD_INPUT_MUNIN,
+    MD_INPUT_SYSEVENT,
     __MD_INPUT_MAX
 };
 
@@ -195,6 +197,7 @@ struct md_munin_event {
     MD_EVENT;
     json_object* json_blob;
 };
+#define md_sysevent md_munin_event
 
 struct md_exporter {
     struct mnl_socket *metadata_sock;

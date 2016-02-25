@@ -47,6 +47,9 @@
 #ifdef MUNIN_SUPPORT
     #include "metadata_input_munin.h"
 #endif
+#ifdef SYSEVENT_SUPPORT
+    #include "metadata_input_sysevent.h"
+#endif
 #ifdef NSB_GPS
     #include "metadata_input_gps_nsb.h"
 #endif
@@ -68,6 +71,7 @@
 
 struct md_input_gpsd;
 struct md_input_munin;
+struct md_input_sysevent;
 struct md_writer_sqlite;
 struct md_writer_zeromq;
 
@@ -217,7 +221,6 @@ static struct json_object *create_fake_gps_rmc_obj()
 static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
         uint8_t event_param, char *event_value_str, uint64_t tstamp)
 {
-	struct timeval tv;
 	struct json_object *obj = NULL, *obj_add = NULL;
     uint8_t rand_value = 0;
     uint64_t rand_value_64 = 0;
@@ -225,7 +228,6 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
 	if (!(obj = json_object_new_object()))
 		return NULL;
 
-	//gettimeofday(&tv, NULL);
 	if (!(obj_add = json_object_new_int64((int64_t) tstamp))) {
         json_object_put(obj);
         return NULL;
@@ -483,7 +485,6 @@ static void test_netlink(uint32_t packets)
     struct sockaddr_nl netlink_addr;
 	uint8_t snd_buf[MNL_SOCKET_BUFFER_SIZE];
     struct nlmsghdr *netlink_hdr;
-    uint16_t cnt = 0;
     uint32_t i = 0;
 	struct json_object *obj_to_send = NULL;
     struct timeval tv;
@@ -593,6 +594,9 @@ static void default_usage()
 #ifdef MUNIN_SUPPORT
     fprintf(stderr, "--munin/-m: munin input\n");
 #endif
+#ifdef SYSEVENT_SUPPORT
+    fprintf(stderr, "--sysevent/-y: system ud socket input\n");
+#endif
 #ifdef SQLITE_SUPPORT
     fprintf(stderr, "--sqlite/-s: sqlite writer\n");
 #endif
@@ -653,7 +657,10 @@ int main(int argc, char *argv[])
         {"gpsd",         no_argument,        0,  'g'},
 #endif
 #ifdef MUNIN_SUPPORT
-        {"munin",         no_argument,       0,  'm'},
+        {"munin",        no_argument,        0,  'm'},
+#endif
+#ifdef SYSEVENT_SUPPORT
+        {"sysevent",     no_argument,        0,  'y'},
 #endif
         {"packets",      required_argument,  0,  'p'},
         {"test",         no_argument,        0,  't'},
@@ -743,6 +750,19 @@ int main(int argc, char *argv[])
             num_inputs++;
             break;
 #endif
+#ifdef SYSEVENT_SUPPORT
+        case 'y':
+            mde->md_inputs[MD_INPUT_SYSEVENT] = calloc(sizeof(struct md_input_sysevent), 1);
+
+            if (mde->md_inputs[MD_INPUT_SYSEVENT] == NULL) {
+                META_PRINT(mde->logfile, "Could not allocate Sysevent input\n");
+                exit(EXIT_FAILURE);
+            }
+
+            md_sysevent_setup(mde, (struct md_input_sysevent*) mde->md_inputs[MD_INPUT_SYSEVENT]);
+            num_inputs++;
+            break;
+#endif 
 #ifdef SQLITE_SUPPORT
         case 's':
             mde->md_writers[MD_WRITER_SQLITE] = calloc(sizeof(struct md_writer_sqlite), 1);

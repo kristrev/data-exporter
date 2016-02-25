@@ -27,7 +27,7 @@ elseif(TARGET_NNE)
     add_definitions("-DJSON_LOC=<json/json.h>")
 else()
     MESSAGE(STATUS "Standard build")
-    add_definitions("-DUBUNTU_MONROE")
+    add_definitions("-DMONROE")
     LIST(APPEND LIBS json-c)
     add_definitions("-DJSON_LOC=<json-c/json.h>")
 endif()
@@ -67,6 +67,12 @@ if (MUNIN)
     set(SOURCE ${SOURCE}
         metadata_input_munin.c)
     add_definitions("-DMUNIN_SUPPORT")
+endif()
+
+if (SYSEVENT)
+    set(SOURCE ${SOURCE}
+        metadata_input_sysevent.c)
+    add_definitions("-DSYSEVENT_SUPPORT")
 endif()
 
 if (GPS_NSB)
