@@ -221,7 +221,6 @@ static struct json_object *create_fake_gps_rmc_obj()
 static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
         uint8_t event_param, char *event_value_str, uint64_t tstamp)
 {
-	struct timeval tv;
 	struct json_object *obj = NULL, *obj_add = NULL;
     uint8_t rand_value = 0;
     uint64_t rand_value_64 = 0;
@@ -229,7 +228,6 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
 	if (!(obj = json_object_new_object()))
 		return NULL;
 
-	//gettimeofday(&tv, NULL);
 	if (!(obj_add = json_object_new_int64((int64_t) tstamp))) {
         json_object_put(obj);
         return NULL;
@@ -487,7 +485,6 @@ static void test_netlink(uint32_t packets)
     struct sockaddr_nl netlink_addr;
 	uint8_t snd_buf[MNL_SOCKET_BUFFER_SIZE];
     struct nlmsghdr *netlink_hdr;
-    uint16_t cnt = 0;
     uint32_t i = 0;
 	struct json_object *obj_to_send = NULL;
     struct timeval tv;
