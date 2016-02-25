@@ -297,7 +297,7 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
 
     retval = snprintf(topic, sizeof(topic), "%s.%s.%s %s",
             MONROE_ZMQ_TOPIC_MODEM,
-            mce->interface_name,
+            mce->interface_id,
             MONROE_ZMQ_TOPIC_MODEM_UPDATE,
             json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
 
@@ -338,7 +338,7 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
     }
 
     if (mie->internal_ip_addr && !md_zeromq_create_json_string(obj,
-                "internal_ip_addr", mie->internal_ip_addr)) {
+                ZMQ_KEY_INTERNAL_IP_ADDR, mie->internal_ip_addr)) {
         json_object_put(obj);
         return NULL;
     }
