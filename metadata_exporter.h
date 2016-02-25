@@ -40,11 +40,25 @@
 #define MD_INPUT_MAX (__MD_INPUT_MAX - 1)
 #define MD_WRITER_MAX (__MD_WRITER_MAX - 1)
 
+#define META_IFACE_INVALID   0x81
+
 #define META_TYPE_INTERFACE  0x01
 #define META_TYPE_CONNECTION 0x02
 #define META_TYPE_POS        0x04
 #define META_TYPE_MUNIN      0x05
 #define META_TYPE_SYSEVENT   0x06
+
+enum iface_event {
+    IFACE_EVENT_DEV_STATE=1,
+    IFACE_EVENT_MODE_CHANGE,
+    IFACE_EVENT_SIGNAL_CHANGE,
+    IFACE_EVENT_LTE_BAND_CHANGE,
+    IFACE_EVENT_ISP_NAME_CHANGE,
+    IFACE_EVENT_UPDATE,
+    IFACE_EVENT_IP_ADDR_CHANGE,
+    IFACE_EVENT_LOC_CHANGE,
+    IFACE_EVENT_NW_MCCMNC_CHANGE
+};
 
 enum conn_event {
     CONN_EVENT_L3_UP=1,
@@ -103,6 +117,7 @@ enum md_writers {
     void (*usage)()
 
 #define MD_EVENT \
+    uint64_t tstamp; \
     uint32_t md_type; \
     uint16_t sequence
 
@@ -113,8 +128,39 @@ struct backend_timeout_handle;
 struct md_input;
 struct md_writer;
 struct md_event;
+struct timeval;
 
 //TODO: Maybe moved this to some shared header file?
+struct md_iface_event {
+    MD_EVENT;
+    const char *iccid;
+    const char *imsi;
+    const char *imei;
+    const char *isp_name;
+    const char *ip_addr;
+    const char *internal_ip_addr;
+    const char *ifname;
+    uint32_t imsi_mccmnc;
+    uint32_t nw_mccmnc;
+    int32_t cid;
+    int32_t enodeb_id;
+    int16_t rscp;
+    int16_t lte_rsrp;
+    uint16_t lte_freq;
+    uint16_t lac;
+    uint16_t lte_pci;
+    int8_t rssi;
+    int8_t ecio;
+    int8_t lte_rssi;
+    int8_t lte_rsrq;
+    uint8_t device_mode;
+    uint8_t device_submode;
+    uint8_t lte_band;
+    uint8_t device_state;
+    uint8_t event_param;
+    uint8_t event_type;
+};
+
 struct md_conn_event {
     MD_EVENT;
     uint8_t event_type;
@@ -125,7 +171,6 @@ struct md_conn_event {
     uint8_t interface_id_type;
     uint8_t network_provider_type;
     int8_t signal_strength;
-    int64_t tstamp;
     uint64_t l3_session_id;
     uint64_t l4_session_id;
     const char *interface_id;
@@ -150,7 +195,6 @@ struct md_gps_event {
 
 struct md_munin_event {
     MD_EVENT;
-    int64_t tstamp;
     json_object* json_blob;
 };
 #define md_sysevent md_munin_event
@@ -168,6 +212,7 @@ struct md_exporter {
     //Keep track of order in which events arrived at metadata exporter. There
     //could also be a per-app sequence number
     uint16_t seq;
+    uint8_t use_syslog;
 };
 
 struct md_input {

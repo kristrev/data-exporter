@@ -66,7 +66,8 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
     uint8_t retval = RETVAL_FAILURE;
     uint8_t num_failed = 0;
 
-    if (!mws->node_id)
+    if (!mws->node_id || !mws->valid_timestamp ||
+            (mws->session_id_file && !mws->session_id))
         return;
 
     if (mws->timeout_added && !from_timeout) {
@@ -74,7 +75,7 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
         mws->timeout_added = 0;
     }
 
-    META_PRINT(mws->parent->logfile, "Will export DB. # meta %u # gps %u # monitor %u\n",
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Will export DB. # meta %u # gps %u # monitor %u\n",
             mws->num_conn_events,
             mws->num_gps_events,
             mws->num_munin_events);
@@ -101,7 +102,7 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
     }
 
     if (num_failed != 0) {
-        META_PRINT(mws->parent->logfile, "%u DB dump(s) failed\n", num_failed);
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "%u DB dump(s) failed\n", num_failed);
         mws->file_failed = 1;
     } else {
         mws->file_failed = 0;
@@ -115,23 +116,92 @@ static uint8_t md_sqlite_update_nodeid_db(struct md_writer_sqlite *mws, const ch
 
     if ((retval = sqlite3_prepare_v2(mws->db_handle, sql_str, -1,
                     &update_tables, NULL))) {
-        META_PRINT(mws->parent->logfile, "Prepare failed %s\n", sqlite3_errstr(retval));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Prepare failed %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE; 
     }
 
     if ((retval = sqlite3_bind_int(update_tables, 1, mws->node_id))) {
-        META_PRINT(mws->parent->logfile, "Bind failed %s\n", sqlite3_errstr(retval));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Bind failed %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE; 
     }
    
     retval = sqlite3_step(update_tables);
 
     if (retval != SQLITE_DONE) {
-        META_PRINT(mws->parent->logfile, "Step faild %s\n", sqlite3_errstr(retval));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Step faild %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
 
     sqlite3_finalize(update_tables);
+    return RETVAL_SUCCESS;
+}
+
+static uint8_t md_sqlite_update_timestamp_db(struct md_writer_sqlite *mws,
+        const char *sql_str, uint64_t tstamp_offset)
+{
+    int32_t retval;
+    sqlite3_stmt *update_timestamp;
+
+    if ((retval = sqlite3_prepare_v2(mws->db_handle, sql_str, -1,
+                    &update_timestamp, NULL))) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Prepare failed %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    if ((retval = sqlite3_bind_int64(update_timestamp, 1, tstamp_offset))) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Bind failed %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    if ((retval = sqlite3_bind_int64(update_timestamp, 2, FIRST_VALID_TIMESTAMP))) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Bind failed %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    retval = sqlite3_step(update_timestamp);
+
+    if (retval != SQLITE_DONE) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Step faild %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    sqlite3_finalize(update_timestamp);
+
+    return RETVAL_SUCCESS;
+}
+
+static uint8_t md_sqlite_update_session_id_db(struct md_writer_sqlite *mws,
+        const char *sql_str)
+{
+    int32_t retval;
+    sqlite3_stmt *update_session_id;
+
+    if ((retval = sqlite3_prepare_v2(mws->db_handle, sql_str, -1,
+                    &update_session_id, NULL))) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Prepare failed %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    if ((retval = sqlite3_bind_int64(update_session_id, 1, mws->session_id))) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Bind failed %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    if ((retval = sqlite3_bind_int64(update_session_id, 2,
+                    mws->session_id_multip))) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Bind failed #2 %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    retval = sqlite3_step(update_session_id);
+
+    if (retval != SQLITE_DONE) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Step faild %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    sqlite3_finalize(update_session_id);
+
     return RETVAL_SUCCESS;
 }
 
@@ -146,9 +216,9 @@ static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char 
 
     if (retval != SQLITE_OK) {
         if (db_handle != NULL)
-            META_PRINT(mws->parent->logfile, "open failed with message: %s\n", sqlite3_errmsg(db_handle));
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "open failed with message: %s\n", sqlite3_errmsg(db_handle));
         else
-            META_PRINT(mws->parent->logfile, "not enough memory to create db_handle object\n");
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "not enough memory to create db_handle object\n");
 
         return NULL;
     }
@@ -157,25 +227,25 @@ static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char 
     //metadata_produce, since it will first export any message stored in
     //database
     if (sqlite3_exec(db_handle, CREATE_SQL, NULL, NULL, &db_errmsg)) {
-        META_PRINT(mws->parent->logfile, "db create failed with message: %s\n", db_errmsg);
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "db create failed with message: %s\n", db_errmsg);
         sqlite3_close_v2(db_handle);
         return NULL;
     }
 
     if (sqlite3_exec(db_handle, CREATE_UPDATE_SQL, NULL, NULL, &db_errmsg)) {
-        META_PRINT(mws->parent->logfile, "db create (update) failed with message: %s\n", db_errmsg);
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "db create (update) failed with message: %s\n", db_errmsg);
         sqlite3_close_v2(db_handle);
         return NULL;
     }
 
     if (sqlite3_exec(db_handle, CREATE_GPS_SQL, NULL, NULL, &db_errmsg)) {
-        META_PRINT(mws->parent->logfile, "db create (gps) failed with message: %s\n", db_errmsg);
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "db create (gps) failed with message: %s\n", db_errmsg);
         sqlite3_close_v2(db_handle);
         return NULL;
     }
 
     if (sqlite3_exec(db_handle, CREATE_MONITOR_SQL, NULL, NULL, &db_errmsg)) {
-        META_PRINT(mws->parent->logfile, "db create (monitor) failed with message: %s\n", db_errmsg);
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "db create (monitor) failed with message: %s\n", db_errmsg);
         sqlite3_close_v2(db_handle);
         return NULL;
     }
@@ -207,8 +277,8 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         return RETVAL_FAILURE;
     }
     
-    if(sqlite3_prepare_v2(mws->db_handle, INSERT_PROVIDER, -1,
-            &(mws->insert_provider), NULL) ||
+    if(sqlite3_prepare_v2(mws->db_handle, INSERT_EVENT, -1,
+            &(mws->insert_event), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DELETE_TABLE, -1,
             &(mws->delete_table), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, INSERT_UPDATE, -1,
@@ -233,7 +303,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
             &(mws->delete_monitor), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DUMP_MONITOR, -1,
             &(mws->dump_monitor), NULL)) {
-        META_PRINT(mws->parent->logfile, "Statement failed: %s\n", sqlite3_errmsg(mws->db_handle));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Statement failed: %s\n", sqlite3_errmsg(mws->db_handle));
         sqlite3_close_v2(db_handle);
         return RETVAL_FAILURE;
     }
@@ -267,7 +337,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
 
     if (mws->node_id && (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
         md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID))) {
-        META_PRINT(mws->parent->logfile, "Could not update old ements with id 0\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update old ements with id 0\n");
         return RETVAL_FAILURE;
     }
 
@@ -284,6 +354,7 @@ static void md_sqlite_usage()
     fprintf(stderr, "--sql_monitor_prefix: location + filename prefix for monitor data (max 116 characters)\n");
     fprintf(stderr, "--sql_interval: time (in ms) from event and until database is copied (default: 5 sec)\n");
     fprintf(stderr, "--sql_events: number of events before copying database\n (default: 10)\n");
+    fprintf(stderr, "--sql_session_id: path tosession id file\n");
 }
 
 int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
@@ -302,6 +373,7 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
         {"sql_monitor_prefix",   required_argument,  0,  0},
         {"sql_interval",         required_argument,  0,  0},
         {"sql_events",           required_argument,  0,  0},
+        {"sql_session_id",       required_argument,  0,  0},
         {0,                                      0,  0,  0}};
 
     while (1) {
@@ -327,29 +399,83 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
             interval = ((uint32_t) atoi(optarg)) * 1000;
         else if (!strcmp(sqlite_options[option_index].name, "sql_events"))
             num_events = (uint32_t) atoi(optarg);
+        else if (!strcmp(sqlite_options[option_index].name, "sql_session_id"))
+            mws->session_id_file = optarg;
+
     }
 
     if (!db_filename || (!gps_prefix && !meta_prefix && !monitor_prefix)) {
-        META_PRINT(mws->parent->logfile, "Required SQLite argument missing\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Required SQLite argument missing\n");
         return RETVAL_FAILURE;
     }
 
     if ((meta_prefix    && strlen(meta_prefix)    > 117) ||
         (gps_prefix     && strlen(gps_prefix)     > 117) ||
         (monitor_prefix && strlen(monitor_prefix) > 117)) {
-        META_PRINT(mws->parent->logfile, "SQLite temp file prefix too long\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "SQLite temp file prefix too long\n");
         return RETVAL_FAILURE;
     }
 
     if (!interval || !num_events) {
-        META_PRINT(mws->parent->logfile, "Invalid SQLite interval/number of events\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Invalid SQLite interval/number of events\n");
         return RETVAL_FAILURE;
     }
   
-    META_PRINT(mws->parent->logfile, "Done configuring SQLite handle\n");
+    META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Done configuring SQLite handle\n");
 
     return md_sqlite_configure(mws, db_filename, node_id, interval,
             num_events, meta_prefix, gps_prefix, monitor_prefix);
+}
+
+static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
+{
+    struct timeval tv;
+    uint64_t real_boot_time, uptime;
+    gettimeofday(&tv, NULL);
+
+    //We have yet to get proper timestamp, so do not export any events
+    if (tv.tv_sec < FIRST_VALID_TIMESTAMP)
+        return RETVAL_FAILURE;
+
+    //read uptime
+    if (system_helpers_read_uptime(&uptime))
+        return RETVAL_FAILURE;
+
+    real_boot_time = tv.tv_sec - uptime;
+
+    if (md_sqlite_update_timestamp_db(mws, UPDATE_EVENT_TSTAMP,
+                real_boot_time) ||
+        md_sqlite_update_timestamp_db(mws, UPDATE_UPDATES_TSTAMP,
+            real_boot_time)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update tstamp in database\n");
+        return RETVAL_FAILURE;
+    }
+
+    mws->valid_timestamp = 1;
+    return RETVAL_SUCCESS;
+}
+
+static uint8_t md_sqlite_check_session_id(struct md_writer_sqlite *mws)
+{
+    if (system_helpers_read_session_id(mws->session_id_file,
+        &(mws->session_id), &(mws->session_id_multip))) {
+        mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
+        return RETVAL_FAILURE;
+    }
+
+    if (md_sqlite_update_session_id_db(mws, UPDATE_EVENT_SESSION_ID) ||
+        md_sqlite_update_session_id_db(mws, UPDATE_UPDATES_SESSION_ID)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update session id in database\n");
+        mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
+        mws->session_id = 0;
+        mws->session_id_multip = 0;
+        return RETVAL_FAILURE;
+    }
+
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Session ID values: %llu %llu\n",
+            mws->session_id, mws->session_id_multip);
+
+    return RETVAL_SUCCESS;
 }
 
 static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
@@ -383,20 +509,35 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
             mws->num_munin_events++;
         break;
     default:
-        META_PRINT(mws->parent->logfile, "SQLite writer does not support event %u\n",
+        META_PRINT_SYSLOG(mws->parent, LOG_INFO, "SQLite writer does not support event %u\n",
                 event->md_type);
         return;
     }
 
     if (retval == RETVAL_FAILURE) {
-        META_PRINT(mws->parent->logfile, "Failed/ignored to insert JSON in DB\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed/ignored to insert JSON in DB\n");
         return;
     }
 
     //Something failed when dumping database, we have already rearmed timer for
-    //checking again
+    //checking again. So wait with trying new export etc. This also means that
+    //we have a good timestamp
     if (mws->file_failed)
         return;
+
+    //We have received an indication that a valid timestamp is present, so
+    //check and update
+    if (!mws->valid_timestamp && event->tstamp > FIRST_VALID_TIMESTAMP) {
+        if (md_sqlite_check_valid_tstamp(mws))
+            return;
+
+        META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Tstamp update from event\n");
+    }
+
+    if (mws->session_id_file && !mws->session_id) {
+        if (md_sqlite_check_session_id(mws))
+            return;
+    }
 
     //These two are exclusive. There is no point adding timeout if event_limit
     //is hit. This can happen if event_limit is 1. The reason we do not use
@@ -413,32 +554,48 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
 static void md_sqlite_handle_timeout(void *ptr)
 {
     struct md_writer_sqlite *mws = ptr;
+    uint64_t session_id = 0, session_id_multip = 0;
 
     if (mws->file_failed)
-        META_PRINT(mws->parent->logfile, "DB export retry\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_INFO, "DB export retry\n");
     else
-        META_PRINT(mws->parent->logfile, "Will export DB after timeout\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Will export DB after timeout\n");
 
     if(!mws->node_id) {
         mws->node_id = system_helpers_get_nodeid();
 
         if(mws->node_id)
-            META_PRINT(mws->parent->logfile, "Got nodeid %d\n", mws->node_id);
+            META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Got nodeid %d\n", mws->node_id);
        
         if (!mws->node_id) {
-            META_PRINT(mws->parent->logfile, "No node id found\n");
+            META_PRINT_SYSLOG(mws->parent, LOG_INFO, "No node id found\n");
             mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
             return;
         }
 
         if (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
             md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID)) {
-            META_PRINT(mws->parent->logfile, "Could not update node id in database\n");
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update node id in database\n");
 
             mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
             //TODO: Work-around for making sure we check the node id on next
             //timeout, we should do something nicer
             mws->node_id = 0;
+            return;
+        }
+    }
+
+    if (!mws->valid_timestamp) {
+        if (md_sqlite_check_valid_tstamp(mws)) {
+            mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
+            return;
+        }
+    }
+
+    //Try to read session id
+    if (mws->session_id_file && !mws->session_id) {
+        if (md_sqlite_check_session_id(mws)) {
+            mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
             return;
         }
     }

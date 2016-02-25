@@ -44,12 +44,12 @@ static void md_input_gpsd_handle_connect_timeout(void *ptr)
 {
     struct md_input_gpsd *mig = ptr;
 
-    META_PRINT(mig->parent->logfile, "Will attempt GPSD reconnect\n");
+    META_PRINT_SYSLOG(mig->parent, LOG_INFO, "Will attempt GPSD reconnect\n");
 
     if (md_input_gpsd_connect(mig))
         return;
 
-    META_PRINT(mig->parent->logfile, "GPSD reconnect succesful\n");
+    META_PRINT_SYSLOG(mig->parent, LOG_INFO, "GPSD reconnect succesful\n");
 
     //Stop timer if connect is successful
     //TODO: Currently, the event loop removes timers and the adds the timer back
@@ -65,7 +65,7 @@ static void md_input_gpsd_handle_event(void *ptr, int32_t fd, uint32_t events)
     struct md_gps_event gps_event;
 
     if (gps_read(&(mig->gps_data)) <= 0) {
-        META_PRINT(mig->parent->logfile, "Failed to read data from GPS\n");
+        META_PRINT_SYSLOG(mig->parent, LOG_ERR, "Failed to read data from GPS\n");
         gps_close(&(mig->gps_data));
 
         //Use a timer to try to reconnect to gpsd, since it might take some time
@@ -105,12 +105,12 @@ static uint8_t md_input_gpsd_connect(struct md_input_gpsd *mig)
     memset(&(mig->gps_data), 0, sizeof(struct gps_data_t));
 
     if (gps_open(mig->gpsd_addr, mig->gpsd_port, &(mig->gps_data))) {
-        META_PRINT(mig->parent->logfile, "GPS error: %s\n", gps_errstr(errno));
+        META_PRINT_SYSLOG(mig->parent, LOG_ERR, "GPS error: %s\n", gps_errstr(errno));
         return RETVAL_FAILURE;
     }
 
     if (gps_stream(&(mig->gps_data), WATCH_ENABLE | WATCH_JSON, NULL)) {
-        META_PRINT(mig->parent->logfile, "GPS error: %s\n", gps_errstr(errno));
+        META_PRINT_SYSLOG(mig->parent, LOG_ERR, "GPS error: %s\n", gps_errstr(errno));
         return RETVAL_FAILURE;
     }
 
@@ -166,7 +166,7 @@ static uint8_t md_input_gpsd_init(void *ptr, int argc, char *argv[])
     }
 
     if (address == NULL || port == NULL) {
-        META_PRINT(mig->parent->logfile, "Missing required GPSD argument\n");
+        META_PRINT_SYSLOG(mig->parent, LOG_ERR, "Missing required GPSD argument\n");
         return RETVAL_FAILURE;
     }
 

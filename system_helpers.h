@@ -35,5 +35,8 @@
 
 uint32_t system_helpers_get_nodeid();
 uint8_t system_helpers_check_address(const char *addr);
+uint8_t system_helpers_read_uptime(uint64_t *uptime);
+uint8_t system_helpers_read_session_id(const char *path, uint64_t *session_id,
+        uint64_t *session_id_multip);
 
 #endif

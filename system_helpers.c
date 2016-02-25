@@ -125,3 +125,42 @@ uint8_t system_helpers_check_address(const char *addr)
     freeaddrinfo(res);
     return RETVAL_SUCCESS;
 }
+
+//Reads uptime and stores value in uptime.
+uint8_t system_helpers_read_uptime(uint64_t *uptime)
+{
+    FILE *uptime_file = fopen("/proc/uptime", "r");
+    int retval;
+
+    if (!uptime_file)
+        return RETVAL_FAILURE;
+
+    retval = fscanf(uptime_file, "%llu", uptime);
+    fclose(uptime_file);
+
+    if (retval != 1 || retval == EOF)
+        return RETVAL_FAILURE;
+
+    return RETVAL_SUCCESS;
+}
+
+uint8_t system_helpers_read_session_id(const char *path, uint64_t *session_id,
+        uint64_t *session_id_multip)
+{
+    int32_t retval = 0;
+    FILE *session_id_file = fopen(path, "r");
+
+    if (!session_id_file)
+        return RETVAL_FAILURE;
+
+    retval = fscanf(session_id_file, "%llu %llu", session_id,
+            session_id_multip);
+    fclose(session_id_file);
+
+    if (retval != 2) {
+        printf("Missin values\n");
+        return RETVAL_FAILURE;
+    } else
+        return RETVAL_SUCCESS;
+}
+

@@ -47,21 +47,23 @@ static int32_t md_sqlite_execute_insert_update(struct md_writer_sqlite *mws,
     sqlite3_reset(stmt);
 
     if (sqlite3_bind_int(stmt, 1, mws->node_id) ||
-        sqlite3_bind_int(stmt, 2, mce->tstamp) ||
-        sqlite3_bind_int(stmt, 3, mce->sequence) ||
-        sqlite3_bind_int(stmt, 4, mce->l3_session_id) ||
-        sqlite3_bind_int(stmt, 5, mce->l4_session_id) ||
-        sqlite3_bind_text(stmt, 6, mce->event_value_str, strlen(mce->event_value_str), SQLITE_STATIC) ||
-        sqlite3_bind_int(stmt, 7, mce->interface_type) ||
-        sqlite3_bind_text(stmt, 8, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC) ||
-        sqlite3_bind_text(stmt, 9, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)){
-        META_PRINT(mws->parent->logfile, "Failed to bind values to INSERT query\n");
+        sqlite3_bind_int64(stmt, 2, mws->session_id) ||
+        sqlite3_bind_int64(stmt, 3, mws->session_id_multip) ||
+        sqlite3_bind_int64(stmt, 4, mce->tstamp) ||
+        sqlite3_bind_int(stmt, 5, mce->sequence) ||
+        sqlite3_bind_int(stmt, 6, mce->l3_session_id) ||
+        sqlite3_bind_int(stmt, 7, mce->l4_session_id) ||
+        sqlite3_bind_text(stmt, 8, mce->event_value_str, strlen(mce->event_value_str), SQLITE_STATIC) ||
+        sqlite3_bind_int(stmt, 9, mce->interface_type) ||
+        sqlite3_bind_text(stmt, 10, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC) ||
+        sqlite3_bind_text(stmt, 11, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)){
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
     }
 
     if (mce->network_provider &&
-        sqlite3_bind_int(stmt, 10, mce->network_provider)) {
-        META_PRINT(mws->parent->logfile, "Failed to bind network provider\n");
+        sqlite3_bind_int(stmt, 12, mce->network_provider)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind network provider\n");
         return SQLITE_ERROR;
     }
 
@@ -73,43 +75,45 @@ static int32_t md_sqlite_execute_insert(struct md_writer_sqlite *mws,
 {
     int32_t retval;
    
-    sqlite3_stmt *stmt = mws->insert_provider;
+    sqlite3_stmt *stmt = mws->insert_event;
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
 
     if (sqlite3_bind_int(stmt, 1, mws->node_id) ||
-        sqlite3_bind_int(stmt, 2, mce->tstamp) ||
-        sqlite3_bind_int(stmt, 3, mce->sequence) ||
-        sqlite3_bind_int(stmt, 4, mce->l3_session_id) ||
-        sqlite3_bind_int(stmt, 5, mce->l4_session_id) ||
-        sqlite3_bind_int(stmt, 6, mce->event_type) ||
-        sqlite3_bind_int(stmt, 7, mce->event_param) ||
-        sqlite3_bind_int(stmt, 10, mce->interface_type) ||
-        sqlite3_bind_int(stmt, 11, mce->interface_id_type) ||
-        sqlite3_bind_text(stmt, 12, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC) ||
-        sqlite3_bind_int(stmt, 14, mce->network_address_family) ||
-        sqlite3_bind_text(stmt, 15, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
-        META_PRINT(mws->parent->logfile, "Failed to bind values to INSERT query\n");
+        sqlite3_bind_int64(stmt, 2, mws->session_id) ||
+        sqlite3_bind_int64(stmt, 3, mws->session_id_multip) ||
+        sqlite3_bind_int64(stmt, 4, mce->tstamp) ||
+        sqlite3_bind_int(stmt, 5, mce->sequence) ||
+        sqlite3_bind_int(stmt, 6, mce->l3_session_id) ||
+        sqlite3_bind_int(stmt, 7, mce->l4_session_id) ||
+        sqlite3_bind_int(stmt, 8, mce->event_type) ||
+        sqlite3_bind_int(stmt, 9, mce->event_param) ||
+        sqlite3_bind_int(stmt, 12, mce->interface_type) ||
+        sqlite3_bind_int(stmt, 13, mce->interface_id_type) ||
+        sqlite3_bind_text(stmt, 14, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC) ||
+        sqlite3_bind_int(stmt, 16, mce->network_address_family) ||
+        sqlite3_bind_text(stmt, 17, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
     }
 
     if (mce->event_value != UINT8_MAX &&
-        sqlite3_bind_int(stmt, 8, mce->event_value)) {
-        META_PRINT(mws->parent->logfile, "Failed bind event value (int)\n");
+        sqlite3_bind_int(stmt, 10, mce->event_value)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed bind event value (int)\n");
         return SQLITE_ERROR;
     }
 
     if (mce->event_value_str != NULL &&
-        sqlite3_bind_text(stmt, 9, mce->event_value_str, strlen(mce->event_value_str), SQLITE_STATIC)) {
-        META_PRINT(mws->parent->logfile, "Failed to bind event value (string)\n");
+        sqlite3_bind_text(stmt, 11, mce->event_value_str, strlen(mce->event_value_str), SQLITE_STATIC)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind event value (string)\n");
         return SQLITE_ERROR;
     }
 
     if (mce->network_provider) {
-        retval = sqlite3_bind_int(stmt, 13, mce->network_provider);
+        retval = sqlite3_bind_int(stmt, 15, mce->network_provider);
 
         if (retval) {
-            META_PRINT(mws->parent->logfile, "Failed to bind provider to INSERT query\n");
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind provider to INSERT query\n");
             return SQLITE_ERROR;
         }
     }
@@ -125,13 +129,13 @@ static int32_t md_sqlite_update_event(struct md_writer_sqlite *mws,
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
 
-    if (sqlite3_bind_int(stmt, 1, mce->tstamp) ||
+    if (sqlite3_bind_int64(stmt, 1, mce->tstamp) ||
         sqlite3_bind_text(stmt, 2, mce->event_value_str, strlen(mce->event_value_str), SQLITE_STATIC) ||
         sqlite3_bind_int(stmt, 3, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 4, mce->l4_session_id) ||
         sqlite3_bind_text(stmt, 5, mce->network_address, strlen(mce->network_address), SQLITE_STATIC) ||
         sqlite3_bind_text(stmt, 6, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
-        META_PRINT(mws->parent->logfile, "Failed to bind values to UPDATE query\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE query\n");
         return SQLITE_ERROR;
     }
 
@@ -144,7 +148,7 @@ static uint8_t md_sqlite_handle_insert_conn_event(struct md_writer_sqlite *mws,
     int32_t retval = md_sqlite_execute_insert(mws, mce);
 
     if (retval != SQLITE_DONE) {
-        META_PRINT(mws->parent->logfile, "INSERT failed: %s\n", sqlite3_errstr(retval));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "INSERT failed: %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
 
@@ -170,7 +174,7 @@ static int16_t md_sqlite_get_last_update(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 2, mce->l4_session_id) ||
         sqlite3_bind_text(stmt, 3, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC) ||
         sqlite3_bind_text(stmt, 4, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
-        META_PRINT(mws->parent->logfile, "Failed to bind values to SELECT query\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to SELECT query\n");
         return retval;
     }
 
@@ -179,7 +183,7 @@ static int16_t md_sqlite_get_last_update(struct md_writer_sqlite *mws,
         numbytes = sqlite3_column_bytes(stmt, 0);
 
         if (numbytes >= EVENT_STR_LEN) {
-            META_PRINT(mws->parent->logfile, "Event value string will not fit in buffer\n");
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Event value string will not fit in buffer\n");
             return SQLITE_ERROR;
         }
 
@@ -210,9 +214,9 @@ static void md_sqlite_insert_fake_mode(struct md_writer_sqlite *mws,
     retval = md_sqlite_execute_insert(mws, mce);
 
     if (retval == SQLITE_DONE)
-        META_PRINT(mws->parent->logfile, "Inserted fake mode update\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Inserted fake mode update\n");
     else
-        META_PRINT(mws->parent->logfile, "Failed to insert fake mode update\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to insert fake mode update\n");
 
     //Restore/update query after mode insert
     mce->event_param = CONN_EVENT_META_UPDATE;
@@ -235,9 +239,9 @@ static void md_sqlite_insert_fake_quality(struct md_writer_sqlite *mws,
     retval = md_sqlite_execute_insert(mws, mce);
 
     if (retval == SQLITE_DONE)
-        META_PRINT(mws->parent->logfile, "Inserted fake quality update\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Inserted fake quality update\n");
     else
-        META_PRINT(mws->parent->logfile, "Failed to insert fake quality update\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to insert fake quality update\n");
 
     //Restore/update query after quality insert
     mce->event_param = CONN_EVENT_META_UPDATE;
@@ -271,7 +275,7 @@ static void md_sqlite_insert_fake_events(struct md_writer_sqlite *mws,
     event_str_len = strlen(mce->event_value_str);
 
     if (event_str_len >= EVENT_STR_LEN) {
-        META_PRINT(mws->parent->logfile, "Event string too long\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Event string too long\n");
         return;
     }
 
@@ -323,7 +327,7 @@ static uint8_t md_sqlite_handle_update_event(struct md_writer_sqlite *mws,
     retval = md_sqlite_update_event(mws, mce);
 
     if (retval != SQLITE_DONE) {
-        META_PRINT(mws->parent->logfile, "UPDATE failed: %s\n", sqlite3_errstr(retval));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "UPDATE failed: %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
     
@@ -351,8 +355,8 @@ static uint8_t md_sqlite_conn_dump_db(struct md_writer_sqlite *mws, FILE *output
     sqlite3_reset(mws->dump_table);
     sqlite3_reset(mws->dump_update);
 
-    sqlite3_bind_int(mws->dump_table, 1, mws->dump_tstamp);
-    sqlite3_bind_int(mws->dump_update, 1, mws->dump_tstamp);
+    sqlite3_bind_int64(mws->dump_table, 1, mws->dump_tstamp);
+    sqlite3_bind_int64(mws->dump_update, 1, mws->dump_tstamp);
     
     if (md_sqlite_helpers_dump_write(mws->dump_table, output) ||
         md_sqlite_helpers_dump_write(mws->dump_update, output))

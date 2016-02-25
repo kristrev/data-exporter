@@ -61,6 +61,42 @@ static void md_zeromq_add_default_fields(json_object* obj, int seq, int64_t tsta
 #endif
 }
 
+static json_object *md_zeromq_create_json_string(json_object *obj,
+        const char *key, const char *value)
+{
+    struct json_object *obj_add = json_object_new_string(value);
+
+    if (!obj_add)
+        return NULL;
+    
+    json_object_object_add(obj, key, obj_add);
+    return obj;
+}
+
+static json_object *md_zeromq_create_json_int(json_object *obj, const char *key,
+        int value)
+{
+    struct json_object *obj_add = json_object_new_int(value);
+
+    if (!obj_add)
+        return NULL;
+    
+    json_object_object_add(obj, key, obj_add);
+    return obj;
+}
+
+static json_object *md_zeromq_create_json_int64(json_object *obj,
+        const char *key, int64_t value)
+{
+    struct json_object *obj_add = json_object_new_int64(value);
+
+    if (!obj_add)
+        return NULL;
+    
+    json_object_object_add(obj, key, obj_add);
+    return obj;
+}
+
 static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
                                               struct md_gps_event *mge)
 {
@@ -132,7 +168,7 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
     int retval;
 
     if (gps_obj == NULL) {
-        META_PRINT(mwz->parent->logfile, "Failed to create GPS ZMQ JSON\n");
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to create GPS ZMQ JSON\n");
         return;
     }
 
@@ -227,7 +263,7 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
         event_str_len = strlen(mce->event_value_str);
 
         if (event_str_len >= EVENT_STR_LEN) {
-            META_PRINT(mwz->parent->logfile, "Event string too long\n");
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Event string too long\n");
             return;
         }
 
@@ -256,18 +292,230 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
         }
     }
 
-    if (mce->event_param == CONN_EVENT_META_UPDATE)
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.UPDATE %s",
-                mce->interface_id,
-                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
-    else
-        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.MODE_CHANGE %s",
-                mce->interface_id,
-                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+    if (mce->event_param != CONN_EVENT_META_UPDATE)
+        return;
 
-    if (retval < sizeof(topic)) {
+    retval = snprintf(topic, sizeof(topic), "MONROE.META.CONN.MODEM.%s.UPDATE %s",
+            mce->interface_name,
+            json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+
+    if (retval < sizeof(topic))
         zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+
+    json_object_put(json_obj);
+}
+
+static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
+{
+    struct json_object *obj = NULL;
+
+    if (!(obj = json_object_new_object()))
+        return NULL;
+
+    if (!md_zeromq_create_json_int(obj, "seq", mie->sequence) ||
+        !md_zeromq_create_json_int64(obj, "tstamp", mie->tstamp) ||
+        !md_zeromq_create_json_string(obj, "iccid", mie->iccid) ||
+        !md_zeromq_create_json_string(obj, "imsi", mie->imsi) ||
+        !md_zeromq_create_json_string(obj, "imei", mie->imei)) {
+        json_object_put(obj);
+        return NULL;
     }
+
+    if (mie->isp_name && !md_zeromq_create_json_string(obj, "isp_name",
+                mie->isp_name)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->ip_addr && !md_zeromq_create_json_string(obj, "ip_addr",
+                mie->ip_addr)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->internal_ip_addr && !md_zeromq_create_json_string(obj,
+                "internal_ip_addr", mie->internal_ip_addr)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->ifname && !md_zeromq_create_json_string(obj, "ifname",
+                mie->ifname)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->imsi_mccmnc &&
+            !md_zeromq_create_json_int64(obj, "imsi_mccmnc", mie->imsi_mccmnc)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->nw_mccmnc &&
+            !md_zeromq_create_json_int64(obj, "nw_mccmnc", mie->nw_mccmnc)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if ((mie->cid > -1 && mie->lac > -1) &&
+            (!md_zeromq_create_json_int(obj, "lac", mie->lac) ||
+             !md_zeromq_create_json_int(obj, "cid", mie->cid))) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->rscp != (int16_t) META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "rscp", mie->rscp)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->lte_rsrp != (int16_t) META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "lte_rsrp", mie->lte_rsrp)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->lte_freq &&
+            !md_zeromq_create_json_int(obj, "lte_freq", mie->lte_freq)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->rssi != (int8_t) META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "rssi", mie->rssi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->ecio != (int8_t) META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "ecio", mie->ecio)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->lte_rssi != (int8_t) META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "lte_rssi", mie->lte_rssi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->lte_rsrq != (int8_t) META_IFACE_INVALID &&
+            !md_zeromq_create_json_int(obj, "lte_rsrq", mie->lte_rsrq)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->device_mode && !md_zeromq_create_json_int(obj, "device_mode",
+                mie->device_mode)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->device_submode && !md_zeromq_create_json_int(obj, "device_submode",
+                mie->device_submode)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->lte_band && !md_zeromq_create_json_int(obj, "lte_band",
+                mie->lte_band)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->device_state && !md_zeromq_create_json_int(obj, "device_state",
+                mie->device_state)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->lte_pci != 0xFFFF &&
+            !md_zeromq_create_json_int(obj, "lte_pci", mie->lte_pci)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->enodeb_id >= 0 &&
+            !md_zeromq_create_json_int(obj, "enodeb_id", mie->enodeb_id)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    return obj;
+}
+
+static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
+                                   struct md_iface_event *mie)
+{
+    struct json_object *json_obj =  md_zeromq_create_iface_json(mie);
+    char topic[8192] = {0};
+    int retval = 0;
+
+    if (json_obj == NULL)
+        return;
+
+    printf("%u\n", mie->event_param);
+
+    //Switch on topic
+    switch (mie->event_param) {
+    case IFACE_EVENT_DEV_STATE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.STATE %s",
+                mie->iccid,
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
+    case IFACE_EVENT_MODE_CHANGE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.MODE %s",
+                mie->iccid,
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
+    case IFACE_EVENT_SIGNAL_CHANGE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.SIGNAL %s",
+                mie->iccid,
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
+    case IFACE_EVENT_LTE_BAND_CHANGE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.LTE_BAND %s",
+                mie->iccid,
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
+    case IFACE_EVENT_ISP_NAME_CHANGE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.ISP_NAME %s",
+                mie->iccid,
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
+    case IFACE_EVENT_UPDATE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.UPDATE %s",
+                mie->iccid,
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
+    case IFACE_EVENT_IP_ADDR_CHANGE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.IP_ADDR %s",
+                mie->iccid,
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
+    case IFACE_EVENT_LOC_CHANGE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.LOC_CHANGE %s",
+                mie->iccid,
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
+    case IFACE_EVENT_NW_MCCMNC_CHANGE:
+        retval = snprintf(topic, sizeof(topic), "MONROE.META.DEVICE.MODEM.%s.NW_MCCMNC_CHANGE %s",
+                mie->iccid,
+                json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
+        break;
+
+    default:
+        json_object_put(json_obj);
+        return;
+    }
+
+    if (retval >= sizeof(topic)) {
+        json_object_put(json_obj);
+        return;
+    }
+
+    retval = zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
     json_object_put(json_obj);
 }
 
@@ -287,6 +535,9 @@ static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
         break;
     case META_TYPE_SYSEVENT:
         md_zeromq_handle_sysevent(mwz, (struct md_sysevent*) event);
+        break;
+    case META_TYPE_INTERFACE:
+        md_zeromq_handle_iface(mwz, (struct md_iface_event*) event);
         break;
     default:
         break;
@@ -311,12 +562,12 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
         return RETVAL_FAILURE;
 
     if ((retval = zmq_bind(mwz->zmq_publisher, zmq_addr)) != 0) {
-        META_PRINT(mwz->parent->logfile, "zmq_bind failed (%d): %s\n", errno,
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "zmq_bind failed (%d): %s\n", errno,
                 zmq_strerror(errno));
         return RETVAL_FAILURE;
     }
 
-    META_PRINT(mwz->parent->logfile, "ZeroMQ init done\n");
+    META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "ZeroMQ init done\n");
 
     return RETVAL_SUCCESS;
 }
@@ -325,7 +576,7 @@ static int32_t md_zeromq_init(void *ptr, int argc, char *argv[])
 {
     struct md_writer_zeromq *mwz = ptr;
     const char *address = NULL;
-    uint16_t port = NULL;
+    uint16_t port = 0;
     int c, option_index = 0;
 
     static struct option zmq_options[] = {
@@ -350,12 +601,12 @@ static int32_t md_zeromq_init(void *ptr, int argc, char *argv[])
     }
 
     if (address == NULL || port == 0) {
-        META_PRINT(mwz->parent->logfile, "Missing required ZeroMQ argument\n");
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Missing required ZeroMQ argument\n");
         return RETVAL_FAILURE;
     }
 
     if (system_helpers_check_address(address)) {
-        META_PRINT(mwz->parent->logfile, "Error in ZeroMQ address\n");
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Error in ZeroMQ address\n");
         return RETVAL_FAILURE;
     }
 

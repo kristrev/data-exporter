@@ -29,6 +29,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "metadata_exporter.h"
 #include "metadata_writer_sqlite.h"
@@ -80,31 +81,31 @@ uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
     snprintf(dst_filename, 128, "%s.sql", prefix);
 
     if (output_fd == -1) {
-        META_PRINT(mws->parent->logfile, "Could not create temporary filename. Error: %s\n", strerror(errno));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not create temporary filename. Error: %s\n", strerror(errno));
         return RETVAL_FAILURE;
     }
 
     output = fdopen(output_fd, "w");
 
     if (!output) {
-        META_PRINT(mws->parent->logfile, "Could not open random file as FILE*. Error: %s\n", strerror(errno));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not open random file as FILE*. Error: %s\n", strerror(errno));
         remove(prefix);
         return RETVAL_FAILURE;
     }
 
     if (dump_db(mws, output)) {
-        META_PRINT(mws->parent->logfile, "Failured to dump DB\n");
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failured to dump DB\n");
         remove(prefix);
         fclose(output);
         return RETVAL_FAILURE;
     }
 
     fclose(output);
-    META_PRINT(mws->parent->logfile, "Done with tmpfile\n");
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Done with tmpfile\n");
 
     if (link(prefix, dst_filename) ||
         unlink(prefix)) {
-        META_PRINT(mws->parent->logfile, "Could not link/unlink dump-file: %s\n", strerror(errno));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not link/unlink dump-file: %s\n", strerror(errno));
         remove(prefix);
         remove(dst_filename);
         return RETVAL_FAILURE;
@@ -117,7 +118,7 @@ uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
         //TODO: Decide what to do here! It is not really critical (content is
         //dumped to file and we handle multiple inserts), but we transfer
         //redundant data
-        META_PRINT(mws->parent->logfile, "DELETE failed %s\n", sqlite3_errstr(retval));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "DELETE failed %s\n", sqlite3_errstr(retval));
         remove(dst_filename);
         return RETVAL_FAILURE;
     }

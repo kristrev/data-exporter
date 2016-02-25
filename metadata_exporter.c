@@ -34,6 +34,7 @@
 #include <string.h>
 #include <errno.h>
 #include <pthread.h>
+#include <syslog.h>
 
 #include <libmnl/libmnl.h>
 #include JSON_LOC
@@ -53,6 +54,7 @@
     #include "metadata_input_gps_nsb.h"
 #endif
 #include "metadata_input_netlink.h"
+#include "metadata_input_iface_test.h"
 #ifdef SQLITE_SUPPORT
     #include "metadata_writer_sqlite.h"
 #endif
@@ -217,7 +219,7 @@ static struct json_object *create_fake_gps_rmc_obj()
 }
 
 static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
-        uint8_t event_param, char *event_value_str)
+        uint8_t event_param, char *event_value_str, uint64_t tstamp)
 {
 	struct timeval tv;
 	struct json_object *obj = NULL, *obj_add = NULL;
@@ -227,9 +229,8 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
 	if (!(obj = json_object_new_object()))
 		return NULL;
 
-
-	gettimeofday(&tv, NULL);
-	if (!(obj_add = json_object_new_int64(tv.tv_sec))) {
+	//gettimeofday(&tv, NULL);
+	if (!(obj_add = json_object_new_int64((int64_t) tstamp))) {
         json_object_put(obj);
         return NULL;
     }
@@ -343,6 +344,141 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
 	return obj;	
 }
 
+static ssize_t send_netlink_json(uint8_t *snd_buf,
+        struct json_object *parsed_obj, int32_t sock_fd,
+        struct sockaddr *netlink_addr)
+{
+    struct nlmsghdr *netlink_hdr = (struct nlmsghdr*) snd_buf;
+    const char *json_str = json_object_to_json_string_ext(parsed_obj,
+            JSON_C_TO_STRING_PLAIN);
+    socklen_t netlink_addrlen = sizeof(netlink_addr);
+
+    memcpy(netlink_hdr + 1, json_str, strlen(json_str) + 1);
+    netlink_hdr->nlmsg_len = mnl_nlmsg_size(MNL_ALIGN(strlen(json_str)));
+
+    return sendto(sock_fd, snd_buf, netlink_hdr->nlmsg_len, 0, netlink_addr,
+            netlink_addrlen);
+}
+
+static void test_modem_metadata(uint8_t *snd_buf, int32_t sock_fd,
+        struct sockaddr *netlink_addr)
+{
+    struct json_object *parsed_obj = NULL;
+
+    parsed_obj = json_tokener_parse(IFACE_REGISTER_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface register object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_UNREGISTER_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface unregister object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_CONNECT_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface connect object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_DISCONNECT_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface connect object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_MODE_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface mode changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_SUBMODE_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface submode changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_RSSI_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface rssi changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_LTE_RSSI_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface lte rssi changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_LTE_BAND_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface lte rssi changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_ISP_NAME_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface isp name changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_EXTERNAL_ADDR_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface addr changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_LOCATION_CHANGED_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface location changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_UPDATE_TEST);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface lte rssi changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+    parsed_obj = json_tokener_parse(IFACE_NETWORK_MCC_CHANGED);
+    if (parsed_obj == NULL) {
+        fprintf(stderr, "Failed to create iface lte rssi changed object\n");
+    } else {
+        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
+        json_object_put(parsed_obj);
+    }
+
+}
+
 //Test function which just generates some netlink messages that are sent to our
 //group
 static void test_netlink(uint32_t packets)
@@ -350,13 +486,10 @@ static void test_netlink(uint32_t packets)
     struct mnl_socket *mnl_sock = NULL;
     struct sockaddr_nl netlink_addr;
 	uint8_t snd_buf[MNL_SOCKET_BUFFER_SIZE];
-    socklen_t netlink_addrlen = sizeof(netlink_addr);
     struct nlmsghdr *netlink_hdr;
     uint16_t cnt = 0;
     uint32_t i = 0;
-    ssize_t retval;
 	struct json_object *obj_to_send = NULL;
-    const char *json_str;
     struct timeval tv;
 
     gettimeofday(&tv, NULL);
@@ -386,57 +519,39 @@ static void test_netlink(uint32_t packets)
 
     //TODO: Specify number of packets from command line
     while(1) {
-        if (cnt == 0)
-            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,");
+#if 0
+        if (i == 0)
+            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,", i+1);
         else
-            obj_to_send = create_fake_conn_obj(2, 2, CONN_EVENT_META_UPDATE, "1,2,1,4");
+            obj_to_send = create_fake_conn_obj(2, 3, CONN_EVENT_META_UPDATE, "1,2,1,4", i+1);
+#endif
+
+        if (i < 4)
+            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, "1,2,1", i+1);
+        else
+            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,4", tv.tv_sec);
 
         if (!obj_to_send)
             continue;
 
-        //Every applcation will export json
-        //TODO: Refactor/split all of this code into two functions
-        json_str = json_object_to_json_string_ext(obj_to_send, JSON_C_TO_STRING_PLAIN);
-        memcpy(netlink_hdr + 1, json_str, strlen(json_str) + 1);
-        netlink_hdr->nlmsg_len = mnl_nlmsg_size(MNL_ALIGN(strlen(json_str)));
+        send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
+                (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
 
-        retval = sendto(mnl_socket_get_fd(mnl_sock),
-                        snd_buf,
-                        netlink_hdr->nlmsg_len,
-                        0,
-                        (struct sockaddr*) &netlink_addr,
-                        netlink_addrlen);
-
+#if 0
         obj_to_send = create_fake_gps_gga_obj();
-        json_str = json_object_to_json_string_ext(obj_to_send, JSON_C_TO_STRING_PLAIN);
-        memcpy(netlink_hdr + 1, json_str, strlen(json_str) + 1);
-        netlink_hdr->nlmsg_len = mnl_nlmsg_size(MNL_ALIGN(strlen(json_str)));
+        send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
+                (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
-
-        retval = sendto(mnl_socket_get_fd(mnl_sock),
-                        snd_buf,
-                        netlink_hdr->nlmsg_len,
-                        0,
-                        (struct sockaddr*) &netlink_addr,
-                        netlink_addrlen);
 
         obj_to_send = create_fake_gps_rmc_obj();
-        json_str = json_object_to_json_string_ext(obj_to_send, JSON_C_TO_STRING_PLAIN);
-        memcpy(netlink_hdr + 1, json_str, strlen(json_str) + 1);
-        netlink_hdr->nlmsg_len = mnl_nlmsg_size(MNL_ALIGN(strlen(json_str)));
+        send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
+                (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
 
-        retval = sendto(mnl_socket_get_fd(mnl_sock),
-                        snd_buf,
-                        netlink_hdr->nlmsg_len,
-                        0,
-                        (struct sockaddr*) &netlink_addr,
-                        netlink_addrlen);
-
-        if (retval > 0)
-            printf("Sent %u packets\n", ++cnt);
-
+#endif
+        test_modem_metadata(snd_buf, mnl_socket_get_fd(mnl_sock),
+                (struct sockaddr*) &netlink_addr);
         if (packets && (++i >= packets))
             break;
 
@@ -465,7 +580,7 @@ static void run_test_mode(struct md_exporter *mde, uint32_t packets)
 
     pthread_join(thread, NULL);
 
-    META_PRINT(mde->logfile, "Threads should NEVER exit\n");
+    META_PRINT_SYSLOG(mde, LOG_ERR, "Threads should NEVER exit\n");
 }
 
 static void default_usage()
@@ -565,7 +680,7 @@ int main(int argc, char *argv[])
     opterr = 0;
     while (1) {
         //Use glic extension to avoid getopt permuting array while processing
-        i = getopt_long(argc, argv, "--szhmgtnp:l:", core_options, &option_index);
+        i = getopt_long(argc, argv, "--szhmgtnkp:l:", core_options, &option_index);
 
         if (i == -1)
             break;
@@ -576,7 +691,7 @@ int main(int argc, char *argv[])
                 mde->md_inputs[MD_INPUT_GPS_NSB] = calloc(sizeof(struct md_input_gps_nsb), 1);
 
                 if (mde->md_inputs[MD_INPUT_GPS_NSB] == NULL) {
-                    META_PRINT(mde->logfile, "Could not allocate Netlink input\n");
+                    META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate NSB GPS input\n");
                     exit(EXIT_FAILURE);
                 }
 
@@ -589,7 +704,7 @@ int main(int argc, char *argv[])
                 mde->md_writers[MD_WRITER_NNE] = calloc(sizeof(struct md_writer_nne), 1);
 
                 if (mde->md_writers[MD_WRITER_NNE] == NULL) {
-                    META_PRINT(mde->logfile, "Could not allocate NNE  writer\n");
+                    META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate NNE  writer\n");
                     exit(EXIT_FAILURE);
                 }
 
@@ -605,7 +720,7 @@ int main(int argc, char *argv[])
             mde->md_inputs[MD_INPUT_NETLINK] = calloc(sizeof(struct md_input_netlink),1);
 
             if (mde->md_inputs[MD_INPUT_NETLINK] == NULL) {
-                META_PRINT(mde->logfile, "Could not allocate Netlink input\n");
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate Netlink input\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -617,7 +732,7 @@ int main(int argc, char *argv[])
             mde->md_inputs[MD_INPUT_GPSD] = calloc(sizeof(struct md_input_gpsd), 1);
 
             if (mde->md_inputs[MD_INPUT_GPSD] == NULL) {
-                META_PRINT(mde->logfile, "Could not allocate GPSD input\n");
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate GPSD input\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -630,7 +745,7 @@ int main(int argc, char *argv[])
             mde->md_inputs[MD_INPUT_MUNIN] = calloc(sizeof(struct md_input_munin), 1);
 
             if (mde->md_inputs[MD_INPUT_MUNIN] == NULL) {
-                META_PRINT(mde->logfile, "Could not allocate Munin input\n");
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate Munin input\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -656,7 +771,7 @@ int main(int argc, char *argv[])
             mde->md_writers[MD_WRITER_SQLITE] = calloc(sizeof(struct md_writer_sqlite), 1);
 
             if (mde->md_writers[MD_WRITER_SQLITE] == NULL) {
-                META_PRINT(mde->logfile, "Could not allocate SQLite writer\n");
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate SQLite writer\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -669,7 +784,7 @@ int main(int argc, char *argv[])
             mde->md_writers[MD_WRITER_ZEROMQ] = calloc(sizeof(struct md_writer_zeromq), 1);
 
             if (mde->md_writers[MD_WRITER_ZEROMQ] == NULL) {
-                META_PRINT(mde->logfile, "Could not allocate SQLite writer\n");
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate SQLite writer\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -685,6 +800,9 @@ int main(int argc, char *argv[])
             break;
         case 'l':
             logfile_path = optarg;
+            break;
+        case 'k':
+            mde->use_syslog = 1;
             break;
         case 'h':
             show_help = 1;
@@ -713,7 +831,7 @@ int main(int argc, char *argv[])
 
     for (i=0; i<=MD_INPUT_MAX; i++) {
         if (mde->md_inputs[i] != NULL) {
-            META_PRINT(mde->logfile, "Will configure input %d\n", i);
+            META_PRINT_SYSLOG(mde, LOG_INFO, "Will configure input %d\n", i);
             //glic requires optind to be 0 for internal state to be reset when
             //using extensions
             optind = 0;
@@ -724,7 +842,7 @@ int main(int argc, char *argv[])
 
     for (i=0; i<=MD_WRITER_MAX; i++) {
         if (mde->md_writers[i] != NULL) {
-            META_PRINT(mde->logfile, "Will configure writer %d\n", i);
+            META_PRINT_SYSLOG(mde, LOG_INFO, "Will configure writer %d\n", i);
             //glic requires optind to be 0 for internal state to be reset when
             //using extensions
             optind = 0;
@@ -738,6 +856,6 @@ int main(int argc, char *argv[])
     else
         backend_event_loop_run(mde->event_loop);
 
-    META_PRINT(mde->logfile, "Threads should NEVER exit\n");
+    META_PRINT_SYSLOG(mde, LOG_ERR, "Threads should NEVER exit\n");
     exit(EXIT_FAILURE);
 }

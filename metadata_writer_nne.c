@@ -53,24 +53,24 @@ static uint8_t md_nne_handle_gps_event(struct md_writer_nne *mwn,
                           mwn->directory, mwn->prefix,
                           mwn->instance_id, mwn->extension);
         if (retval >= sizeof(name_buf)) {
-            META_PRINT(mwn->parent->logfile, "NNE writer: Failed to format export file name\n");
+            META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Failed to format export file name\n");
             return RETVAL_FAILURE;
         }
 
         if ((mwn->dat_file = fopen(name_buf, "a")) == NULL) {
-            META_PRINT(mwn->parent->logfile, "NNE writer: Failed to open export file %s\n",
+            META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Failed to open export file %s\n",
                     name_buf);
             return RETVAL_FAILURE;
         }
     }
 
     if ((gtm = gmtime((time_t *)&mge->tstamp_tv.tv_sec)) == NULL) {
-        META_PRINT(mwn->parent->logfile, "NNE writer: Invalid GPS timestamp\n");
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Invalid GPS timestamp\n");
         return RETVAL_FAILURE;
     }    
 
     if (!strftime(tm_buf, sizeof(tm_buf), "%Y-%m-%d %H:%M:%S", gtm)) {
-        META_PRINT(mwn->parent->logfile, "NNE writer: Failed to format timestamp\n");
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Failed to format timestamp\n");
         return RETVAL_FAILURE;
     }    
 
@@ -78,7 +78,7 @@ static uint8_t md_nne_handle_gps_event(struct md_writer_nne *mwn,
                       "<d e=\"0\"><lat>%f</lat><lon>%f</lon><speed>%f</speed></d>",
                       mge->latitude, mge->longitude, mge->speed);
     if (retval >= sizeof(xml_buf)) {
-        META_PRINT(mwn->parent->logfile, "NNE writer: Failed to format XML data\n");
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Failed to format XML data\n");
         return RETVAL_FAILURE;
     }
 
@@ -86,7 +86,7 @@ static uint8_t md_nne_handle_gps_event(struct md_writer_nne *mwn,
 
     if (fprintf(mwn->dat_file, "%s.%06ld\t%i\t%i\t%s\n", tm_buf, mge->tstamp_tv.tv_usec,
                 mwn->instance_id, mwn->sequence, xml_buf) < 0) {
-        META_PRINT(mwn->parent->logfile, "NNE writer: Failed to write to export file%s\n",
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Failed to write to export file%s\n",
                 name_buf);
         return RETVAL_FAILURE;
     }
@@ -108,17 +108,17 @@ static void md_nne_handle_timeout(void *ptr) {
         mwn->dat_file = NULL;
 
         if (gettimeofday(&tv, NULL)) {
-            META_PRINT(mwn->parent->logfile, "NNE writer: Failed to obtain current time\n");
+            META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Failed to obtain current time\n");
             return;
         }
 
         if ((gtm = gmtime((time_t *)&tv.tv_sec)) == NULL) {
-            META_PRINT(mwn->parent->logfile, "NNE writer: Invalid current timestamp\n");
+            META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Invalid current timestamp\n");
             return;
         }
 
         if (!strftime(tm_buf, sizeof(tm_buf), "%Y-%m-%d_%H-%M-%S", gtm)) {
-            META_PRINT(mwn->parent->logfile, "md_nne_handle_timeout: ERROR strftime\n");
+            META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "md_nne_handle_timeout: ERROR strftime\n");
             return;
         }
 
@@ -126,24 +126,24 @@ static void md_nne_handle_timeout(void *ptr) {
                           mwn->directory, mwn->prefix,
                           mwn->instance_id, mwn->extension);
         if (retval >= sizeof(src_buf)) {
-            META_PRINT(mwn->parent->logfile, "NNE writer: Failed to format export file name\n");
+            META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Failed to format export file name\n");
             return;
         }
 
         retval = snprintf(dst_buf, sizeof(dst_buf), "%s.%s",
                           src_buf, tm_buf);
         if (retval >= sizeof(dst_buf)) {
-            META_PRINT(mwn->parent->logfile, "NNE writer: Failed to format rotated export file name\n");
+            META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Failed to format rotated export file name\n");
             return;
         }
 
         if (rename(src_buf, dst_buf)) {
-            META_PRINT(mwn->parent->logfile, "NNE writer: Failed to rename file %s to %s\n",
+            META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Failed to rename file %s to %s\n",
                     src_buf, dst_buf);
             return;
         }
 
-        META_PRINT(mwn->parent->logfile, "NNE writer: Rotated file %s to %s\n",
+        META_PRINT_SYSLOG(mwn->parent, LOG_INFO, "NNE writer: Rotated file %s to %s\n",
                 src_buf, dst_buf);
     }
 }
@@ -184,7 +184,7 @@ static int32_t md_nne_init(void *ptr, int argc, char *argv[]) {
             mwn->instance_id = (uint32_t) atoi(optarg);
         else if (!strcmp(nne_options[option_index].name, "nne_gps_prefix")) {
             if (strlen(optarg) > sizeof(mwn->prefix) - 1) {
-                META_PRINT(mwn->parent->logfile, "NNE writer: gps prefix too long (>%d)\n",
+                META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: gps prefix too long (>%d)\n",
                         sizeof(mwn->prefix) - 1);
                 return RETVAL_FAILURE;
             }
@@ -194,13 +194,13 @@ static int32_t md_nne_init(void *ptr, int argc, char *argv[]) {
     }
 
     if (mwn->instance_id == 0) {
-        META_PRINT(mwn->parent->logfile, "NNE writer: Missing required argument --nne_instance\n");
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Missing required argument --nne_instance\n");
         return RETVAL_FAILURE;
     }
 
     if(!(mwn->timeout_handle = backend_event_loop_create_timeout(0,                                                                                                                                                                      
              md_nne_handle_timeout, mwn, mwn->interval))) {
-        META_PRINT(mwn->parent->logfile, "NNE writer: Failed to create file rotation/export timeout\n");
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Failed to create file rotation/export timeout\n");
         return RETVAL_FAILURE;  
     }  
 
