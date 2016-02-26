@@ -1,0 +1,26 @@
+{
+  "gpsd": {
+    "address": "127.0.0.1",
+    "port": 2947
+  },
+  "sysevent": {},
+  "zmq": {
+    "address": "127.0.0.1",
+    "port": 5556 
+  },
+  "munin": {
+    "address": "127.0.0.1",
+    "port": 4949,
+    "modules": "temp,rest-services,session,cpu,memory" 
+  },
+  "netlink": {
+    "conn" : true,
+    "pos"  : true,
+    "iface": true
+  },
+  "sqlite": {
+    "database": "/tmp/metadata.db",
+    "meta_prefix": "/tmp/metatemp",
+    "nodeid": 7
+  }
+}  
