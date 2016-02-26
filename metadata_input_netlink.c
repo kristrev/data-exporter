@@ -443,34 +443,21 @@ static uint8_t md_input_netlink_config(struct md_input_netlink *min)
     return RETVAL_SUCCESS;
 }
 
-static uint8_t md_input_netlink_init(void *ptr, int argc, char *argv[])
+static uint8_t md_input_netlink_init(void *ptr, json_object* config)
 {
     struct md_input_netlink *min = ptr;
     uint32_t md_nl_mask = 0;
 
-    int c, option_index = 0;
-
-    static struct option gpsd_options[] = {
-        {"nl_conn", no_argument,  0,  0},
-        {"nl_pos",  no_argument,  0,  0},
-        {"nl_iface",  no_argument,  0,  0},
-        {0,                   0,  0,  0}};
-    
-    while (1) {
-        //No permuting of array here as well
-        c = getopt_long_only(argc, argv, "--", gpsd_options, &option_index);
-
-        if (c == -1)
-            break;
-        else if (c)
-            continue;
-
-        if (!strcmp(gpsd_options[option_index].name, "nl_conn"))
-            md_nl_mask |= META_TYPE_CONNECTION;
-        else if (!strcmp(gpsd_options[option_index].name, "nl_pos"))
-            md_nl_mask |= META_TYPE_POS;
-        else if (!strcmp(gpsd_options[option_index].name, "nl_iface"))
-            md_nl_mask |= META_TYPE_INTERFACE;
+    json_object* subconfig;
+    if (json_object_object_get_ex(config, "netlink", &subconfig)) {
+        json_object_object_foreach(subconfig, key, val) {
+            if (!strcmp(key, "conn")) 
+                md_nl_mask |= META_TYPE_CONNECTION;
+            if (!strcmp(key, "pos")) 
+                md_nl_mask |= META_TYPE_POS;
+            if (!strcmp(key, "iface")) 
+                md_nl_mask |= META_TYPE_INTERFACE;
+        }
     }
 
     if (!md_nl_mask) {
@@ -486,10 +473,10 @@ static uint8_t md_input_netlink_init(void *ptr, int argc, char *argv[])
 
 static void md_netlink_usage()
 {
-    fprintf(stderr, "Netlink input (at least one event type must be present):\n");
-    fprintf(stderr, "--nl_conn: Receive netlink connection events\n");
-    fprintf(stderr, "--nl_pos: Receive netlink position events\n");
-    fprintf(stderr, "--nl_iface: Receive netlink interface events\n");
+    fprintf(stderr, "netlink: Netlink input (at least one event type must be present):\n");
+    fprintf(stderr, "  conn: Receive netlink connection events\n");
+    fprintf(stderr, "  pos: Receive netlink position events\n");
+    fprintf(stderr, "  iface: Receive netlink interface events\n");
 }
 
 void md_netlink_setup(struct md_exporter *mde, struct md_input_netlink *min)

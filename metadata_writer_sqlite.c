@@ -346,62 +346,56 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
 
 static void md_sqlite_usage()
 {
-    fprintf(stderr, "SQLite writer. At least one prefix is required:\n");
-    fprintf(stderr, "--sql_database: path to database (local files only) (r)\n");
-    fprintf(stderr, "--sql_nodeid: node id. If not specified, will be read from system (compile option)\n");
-    fprintf(stderr, "--sql_meta_prefix: location + filename prefix for connection metadata ( max 116 characters)\n");
-    fprintf(stderr, "--sql_gps_prefix: location + filename prefix for GPS data (max 116 characters)\n");
-    fprintf(stderr, "--sql_monitor_prefix: location + filename prefix for monitor data (max 116 characters)\n");
-    fprintf(stderr, "--sql_interval: time (in ms) from event and until database is copied (default: 5 sec)\n");
-    fprintf(stderr, "--sql_events: number of events before copying database\n (default: 10)\n");
-    fprintf(stderr, "--sql_session_id: path tosession id file\n");
+    fprintf(stderr, "sqlite: SQLite writer. At least one prefix is required:\n");
+    fprintf(stderr, "  database: path to database (local files only) (r)\n");
+    fprintf(stderr, "  nodeid: node id. If not specified, will be read from system (compile option)\n");
+    fprintf(stderr, "  meta_prefix: location + filename prefix for connection metadata ( max 116 characters)\n");
+    fprintf(stderr, "  gps_prefix: location + filename prefix for GPS data (max 116 characters)\n");
+    fprintf(stderr, "  monitor_prefix: location + filename prefix for monitor data (max 116 characters)\n");
+    fprintf(stderr, "  interval: time (in ms) from event and until database is copied (default: 5 sec)\n");
+    fprintf(stderr, "  events: number of events before copying database\n (default: 10)\n");
+    fprintf(stderr, "  session_id: path tosession id file\n");
 }
 
-int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
+int32_t md_sqlite_init(void *ptr, json_object* config)
 {
     struct md_writer_sqlite *mws = ptr;
     uint32_t node_id = 0, interval = DEFAULT_TIMEOUT, num_events = EVENT_LIMIT;
-    int c, option_index = 0;
     const char *db_filename = NULL, *meta_prefix = NULL, *gps_prefix = NULL,
                *monitor_prefix = NULL;
 
-    static struct option sqlite_options[] = {
-        {"sql_database",         required_argument,  0,  0},
-        {"sql_nodeid",           required_argument,  0,  0},
-        {"sql_meta_prefix",      required_argument,  0,  0},
-        {"sql_gps_prefix",       required_argument,  0,  0},
-        {"sql_monitor_prefix",   required_argument,  0,  0},
-        {"sql_interval",         required_argument,  0,  0},
-        {"sql_events",           required_argument,  0,  0},
-        {"sql_session_id",       required_argument,  0,  0},
-        {0,                                      0,  0,  0}};
+    json_object* subconfig;
+    if (json_object_object_get_ex(config, "sqlite", &subconfig)) {
+        json_object_object_foreach(subconfig, key, val) {
+            if (!strcmp(key, "database"))
+                db_filename = json_object_get_string(val);
+            else if (!strcmp(key, "nodeid"))
+                node_id = (uint32_t) json_object_get_int(val);
+            else if (!strcmp(key, "meta_prefix"))
+                meta_prefix = json_object_get_string(val);
+            else if (!strcmp(key, "gps_prefix"))
+                gps_prefix = json_object_get_string(val);
+            else if (!strcmp(key, "monitor_prefix"))
+                monitor_prefix = json_object_get_string(val);
+            else if (!strcmp(key, "interval"))
+                interval = ((uint32_t) json_object_get_int(val)) * 1000;
+            else if (!strcmp(key, "events"))
+                num_events = (uint32_t) json_object_get_int(val);
+            else if (!strcmp(key, "session_id"))
+                mws->session_id_file = json_object_get_string(val);
+        }
+    }
 
-    while (1) {
-        //No permuting of array here as well
-        c = getopt_long_only(argc, argv, "--", sqlite_options, &option_index);
+    if (!db_filename || (!gps_prefix && !meta_prefix && !monitor_prefix)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Required SQLite argument missing\n");
+        return RETVAL_FAILURE;
+    }
 
-        if (c == -1)
-            break;
-        else if (c)
-            continue;
-
-        if (!strcmp(sqlite_options[option_index].name, "sql_database"))
-            db_filename = optarg;
-        else if (!strcmp(sqlite_options[option_index].name, "sql_nodeid"))
-            node_id = (uint32_t) atoi(optarg);
-        else if (!strcmp(sqlite_options[option_index].name, "sql_meta_prefix"))
-            meta_prefix = optarg;
-        else if (!strcmp(sqlite_options[option_index].name, "sql_gps_prefix"))
-            gps_prefix = optarg;
-        else if (!strcmp(sqlite_options[option_index].name, "sql_monitor_prefix"))
-            monitor_prefix = optarg;
-        else if (!strcmp(sqlite_options[option_index].name, "sql_interval"))
-            interval = ((uint32_t) atoi(optarg)) * 1000;
-        else if (!strcmp(sqlite_options[option_index].name, "sql_events"))
-            num_events = (uint32_t) atoi(optarg);
-        else if (!strcmp(sqlite_options[option_index].name, "sql_session_id"))
-            mws->session_id_file = optarg;
-
+    if ((meta_prefix    && strlen(meta_prefix)    > 117) ||
+        (gps_prefix     && strlen(gps_prefix)     > 117) ||
+        (monitor_prefix && strlen(monitor_prefix) > 117)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "SQLite temp file prefix too long\n");
+        return RETVAL_FAILURE;
     }
 
     if (!db_filename || (!gps_prefix && !meta_prefix && !monitor_prefix)) {

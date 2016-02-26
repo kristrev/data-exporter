@@ -139,30 +139,19 @@ static uint8_t md_gpsd_config(struct md_input_gpsd *mig,
     return md_input_gpsd_connect(mig);
 }
 
-static uint8_t md_input_gpsd_init(void *ptr, int argc, char *argv[])
+static uint8_t md_input_gpsd_init(void *ptr, json_object* config)
 {
     struct md_input_gpsd *mig = ptr;
     const char *address = NULL, *port = NULL;
-    int c, option_index = 0;
 
-    static struct option gpsd_options[] = {
-        {"gpsd_address",         required_argument,  0,  0},
-        {"gpsd_port",            required_argument,  0,  0},
-        {0,                                      0,  0,  0}};
-
-    while (1) {
-        //No permuting of array here as well
-        c = getopt_long_only(argc, argv, "--", gpsd_options, &option_index);
-
-        if (c == -1)
-            break;
-        else if (c)
-            continue;
-
-        if (!strcmp(gpsd_options[option_index].name, "gpsd_address"))
-            address = optarg;
-        else if (!strcmp(gpsd_options[option_index].name, "gpsd_port"))
-            port = optarg;
+    json_object* subconfig;
+    if (json_object_object_get_ex(config, "gpsd", &subconfig)) {
+        json_object_object_foreach(subconfig, key, val) {
+            if (!strcmp(key, "address"))
+                address = json_object_get_string(val);
+            else if (!strcmp(key, "port"))
+                port = json_object_get_string(val);
+        }
     }
 
     if (address == NULL || port == NULL) {
@@ -175,9 +164,9 @@ static uint8_t md_input_gpsd_init(void *ptr, int argc, char *argv[])
 
 static void md_gpsd_usage()
 {
-    fprintf(stderr, "GPSD input:\n");
-    fprintf(stderr, "--gpsd_address: gpsd address (r)\n");
-    fprintf(stderr, "--gpsd_port: gpsd port (r)\n");
+    fprintf(stderr, "gpsd: GPSD input\n");
+    fprintf(stderr, "  address: gpsd address (r)\n");
+    fprintf(stderr, "  port: gpsd port (r)\n");
 }
 
 void md_gpsd_setup(struct md_exporter *mde, struct md_input_gpsd *mig)

@@ -594,32 +594,20 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
     return RETVAL_SUCCESS;
 }
 
-static int32_t md_zeromq_init(void *ptr, int argc, char *argv[])
+static int32_t md_zeromq_init(void *ptr, json_object* config)
 {
     struct md_writer_zeromq *mwz = ptr;
     const char *address = NULL;
     uint16_t port = 0;
-    int c, option_index = 0;
 
-    static struct option zmq_options[] = {
-        {"zmq_address",         required_argument,  0,  0},
-        {"zmq_port",            required_argument,  0,  0},
-        {0,                                     0,  0,  0}};
-
-    while (1) {
-        //No permuting of array here as well
-        c = getopt_long_only(argc, argv, "--", zmq_options, &option_index);
-
-
-        if (c == -1)
-            break;
-        else if (c)
-            continue;
-        
-        if (!strcmp(zmq_options[option_index].name, "zmq_address"))
-            address = optarg;
-        else if (!strcmp(zmq_options[option_index].name, "zmq_port"))
-            port = (uint16_t) atoi(optarg);
+    json_object* subconfig;
+    if (json_object_object_get_ex(config, "zmq", &subconfig)) {
+        json_object_object_foreach(subconfig, key, val) {
+            if (!strcmp(key, "address"))
+                address = json_object_get_string(val);
+            if (!strcmp(key, "port"))
+                port = (uint16_t) json_object_get_int(val);
+        }
     }
 
     if (address == NULL || port == 0) {
@@ -637,9 +625,9 @@ static int32_t md_zeromq_init(void *ptr, int argc, char *argv[])
 
 static void md_zeromq_usage()
 {
-    fprintf(stderr, "ZeroMQ writer:\n");
-    fprintf(stderr, "--zmq_address: address used by publisher (r)\n");
-    fprintf(stderr, "--zmq_port: port used by publisher (r)\n");
+    fprintf(stderr, "zmq: ZeroMQ writer:\n");
+    fprintf(stderr, "  address: address used by publisher (r)\n");
+    fprintf(stderr, "  port: port used by publisher (r)\n");
 }
 
 void md_zeromq_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz) {

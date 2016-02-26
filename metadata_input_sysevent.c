@@ -96,7 +96,7 @@ static uint8_t md_sysevent_config(struct md_input_sysevent *mis)
     return RETVAL_FAILURE;
 }
 
-static uint8_t md_input_sysevent_init(void *ptr, int argc, char *argv[])
+static uint8_t md_input_sysevent_init(void *ptr, json_object* config)
 {
     struct md_input_sysevent *mis = ptr;
     return md_sysevent_config(mis);
