@@ -64,6 +64,8 @@ static void md_zeromq_add_default_fields(json_object* obj, int seq, int64_t tsta
 static json_object *md_zeromq_create_json_string(json_object *obj,
         const char *key, const char *value)
 {
+    if (value == NULL) return NULL;
+
     struct json_object *obj_add = json_object_new_string(value);
 
     if (!obj_add)
