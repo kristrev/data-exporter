@@ -150,7 +150,6 @@ static void md_nne_handle_timeout(void *ptr) {
 
 static int32_t md_nne_init(void *ptr, json_object* config) {
     struct md_writer_nne *mwn = ptr;
-    int c, option_index;
 
     mwn->dat_file = NULL;
     mwn->sequence = 0;

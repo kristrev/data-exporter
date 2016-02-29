@@ -559,7 +559,6 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
 static void md_sqlite_handle_timeout(void *ptr)
 {
     struct md_writer_sqlite *mws = ptr;
-    uint64_t session_id = 0, session_id_multip = 0;
 
     if (mws->file_failed)
         META_PRINT_SYSLOG(mws->parent, LOG_INFO, "DB export retry\n");
