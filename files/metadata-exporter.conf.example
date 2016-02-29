@@ -21,6 +21,6 @@
   "sqlite": {
     "database": "/tmp/metadata.db",
     "meta_prefix": "/tmp/metatemp",
-    "nodeid": 7
+    "nodeid_file": "/etc/nodeid"
   }
 }  
