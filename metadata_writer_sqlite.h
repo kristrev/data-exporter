@@ -24,8 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef METADATA_WRITER_SQLITE_H
-#define METADATA_WRITER_SQLITE_H
+#pragma once
 
 #include <sys/time.h>
 #include <sqlite3.h>
@@ -276,6 +275,5 @@ struct md_writer_sqlite {
     size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len;
 };
 
+void md_sqlite_usage();
 void md_sqlite_setup(struct md_exporter *mde, struct md_writer_sqlite* mws);
-
-#endif

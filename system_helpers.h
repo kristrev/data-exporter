@@ -31,9 +31,12 @@
 
 #ifdef OPENWRT
     #define NODEIDPATH "backend.inventory.id"
-#endif
 
 uint32_t system_helpers_get_nodeid();
+#else
+uint32_t system_helpers_get_nodeid(char* nodeid_file);
+#endif
+
 uint8_t system_helpers_check_address(const char *addr);
 uint8_t system_helpers_read_uptime(uint64_t *uptime);
 uint8_t system_helpers_read_session_id(const char *path, uint64_t *session_id,

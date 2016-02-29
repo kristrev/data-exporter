@@ -471,17 +471,17 @@ static uint8_t md_input_netlink_init(void *ptr, json_object* config)
     return md_input_netlink_config(min);
 }
 
-static void md_netlink_usage()
+void md_netlink_usage()
 {
-    fprintf(stderr, "netlink: Netlink input (at least one event type must be present):\n");
-    fprintf(stderr, "  conn: Receive netlink connection events\n");
-    fprintf(stderr, "  pos: Receive netlink position events\n");
-    fprintf(stderr, "  iface: Receive netlink interface events\n");
+    fprintf(stderr, "\"netlink\": {\t\tNetlink input (at least one event type must be present)\n");
+    fprintf(stderr, "  \"conn\":\t\tReceive netlink connection events\n");
+    fprintf(stderr, "  \"pos\":\t\tReceive netlink position events\n");
+    fprintf(stderr, "  \"iface\":\t\tReceive netlink interface events\n");
+    fprintf(stderr, "},\n");
 }
 
 void md_netlink_setup(struct md_exporter *mde, struct md_input_netlink *min)
 {
     min->parent = mde;
     min->init = md_input_netlink_init;
-    min->usage = md_netlink_usage;
 }

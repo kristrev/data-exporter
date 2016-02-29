@@ -277,14 +277,15 @@ static uint8_t md_input_munin_init(void *ptr, json_object* config)
     return md_munin_config(mim, address, port, modules);
 }
 
-static void md_munin_usage()
+void md_munin_usage()
 {
-    fprintf(stderr, "munin: Munin input:\n");
+    fprintf(stderr, "\"munin\": {\t\tMunin input\n");
     // TODO: --munin-binary (no need to run systemd, nginx or inetd)
-    fprintf(stderr, "  address: munin address (r)\n");
-    fprintf(stderr, "  port:    munin port    (r)\n");
+    fprintf(stderr, "  \"address\":\t\tmunin address\n");
+    fprintf(stderr, "  \"port\":\t\tmunin port\n");
     // TODO: change comma separated modules into a JSON array
-    fprintf(stderr, "  modules: comma separated, modules to export   (o, default='memory,cpu')\n");
+    fprintf(stderr, "  \"modules\":\t\tcomma separated, modules to export\n");
+    fprintf(stderr, "},\n");
 }
 
 void md_munin_setup(struct md_exporter *mde, struct md_input_munin *mim)
@@ -292,5 +293,4 @@ void md_munin_setup(struct md_exporter *mde, struct md_input_munin *mim)
     mim->parent  = mde;
     mim->init    = md_input_munin_init;
     mim->destroy = md_input_munin_destroy;
-    mim->usage   = md_munin_usage;
 }

@@ -582,53 +582,41 @@ static void run_test_mode(struct md_exporter *mde, uint32_t packets)
 
 static void default_usage()
 {
-    fprintf(stderr, "Support parameters (r is required). At least one input and one writer must be specified.\n");
+    fprintf(stderr, "Parameters. At least one input and one writer must be specified in the configuration.\n");
     fprintf(stderr, "Default:\n");
-    fprintf(stderr, "--netlink/-n: netlink input\n");
-#ifdef NSB_GPS
-    fprintf(stderr, "--nsb_gps: NSB NMEA GPS input\n");
-#endif
-#ifdef GPSD_SUPPORT
-    fprintf(stderr, "--gpsd/-g: gpsd input\n");
-#endif
-#ifdef MUNIN_SUPPORT
-    fprintf(stderr, "--munin/-m: munin input\n");
-#endif
-#ifdef SYSEVENT_SUPPORT
-    fprintf(stderr, "--sysevent/-y: system ud socket input\n");
-#endif
-#ifdef SQLITE_SUPPORT
-    fprintf(stderr, "--sqlite/-s: sqlite writer\n");
-#endif
-#ifdef ZEROMQ_SUPPORT
-    fprintf(stderr, "--zeromq/-z: zeromq writer\n");
-#endif
-#ifdef NNE_SUPPORT
-    fprintf(stderr, "--nne: nornet edge measurement writer\n");
-#endif
-    fprintf(stderr, "--test/-t: test mode, application generates fake data that is handled by writers\n");
-    fprintf(stderr, "--packets/-p: number of packets that will be generated in debug mode (default: infinite)\n");
-    fprintf(stderr, "--logfile/-l: path to logfile (default: stderr)\n");
-    fprintf(stderr, "--help/-h: Display usage of exporter and specified writers\n");
+    fprintf(stderr, "-c: JSON configuration file for the metadata exporter\n");
+    fprintf(stderr, "-h: Display usage of exporter, inputs and writers\n\n");
 }
 
-static void print_usage(struct md_exporter *mde)
+static void print_usage()
 {
-    int32_t i;
-
     default_usage();
+    fprintf(stderr, "Configuration file syntax:\n");
+    fprintf(stderr, "INPUTS:\n");
+    md_netlink_usage();
+#ifdef GPSD_SUPPORT
+    md_gpsd_usage();
+#endif
+#ifdef MUNIN_SUPPORT
+    md_munin_usage();
+#endif
+#ifdef NSB_GPS_SUPPORT
+    md_nsp_gps_usage();
+#endif
+#ifdef SYSEVENT_SUPPORT
+    md_sysevent_usage();
+#endif
+    fprintf(stderr, "WRITERS:\n");
+#ifdef NNE_SUPPORT
+    md_nne_usage();
+#endif
+#ifdef SQLITE_SUPPORT
+    md_sqlite_usage();
+#endif
+#ifdef ZEROMQ_SUPPORT
+    md_zeromq_usage();
+#endif
 
-    for (i=0; i<=MD_WRITER_MAX; i++) {
-        if (mde->md_writers[i] != NULL &&
-            mde->md_writers[i]->usage)
-            mde->md_writers[i]->usage();
-    }
-
-    for (i=0; i<=MD_INPUT_MAX; i++) {
-        if (mde->md_inputs[i] != NULL &&
-            mde->md_inputs[i]->usage)
-            mde->md_inputs[i]->usage();
-    }
 }
 
 void read_config(char* config_file, json_object** config_obj)
@@ -674,7 +662,7 @@ int main(int argc, char *argv[])
     struct md_exporter *mde;
     int32_t i;
     uint32_t packets = 0;
-    uint8_t test_mode = 0, show_help = 0, num_writers = 0, num_inputs = 0;
+    uint8_t test_mode = 0, num_writers = 0, num_inputs = 0;
     const char *logfile_path = NULL;
     json_object *config = NULL;
 
@@ -685,22 +673,17 @@ int main(int argc, char *argv[])
     //Process core options, short options allowed. We do this here since we need
     //an allocated writers array
     opterr = 0;
-    while ((i = getopt(argc, argv, "c:")) != -1) {
+    while ((i = getopt(argc, argv, "c:h")) != -1) {
         if (i == -1) {
             break;
         } else if (i == 'c') {
             read_config(optarg, &config);
-        // FIXME: We have to see how to display help. Needs to initialize inputs and writers.
-        // } else if (i == 'h') { 
-        //     show_help = 1;
-        //     break;
+        } else if (i == 'h') { 
+            print_usage();
+            exit(EXIT_SUCCESS);
         }
     }
 
-    // if (show_help) {
-    //     print_usage(mde);
-    //     exit(EXIT_SUCCESS);
-    // }
     if (config == NULL) {
         META_PRINT_SYSLOG(mde, LOG_ERR, "Parameter -c is required to run.\n");
         exit(EXIT_FAILURE);

@@ -109,7 +109,6 @@ enum md_writers {
     struct md_exporter *parent; \
     uint8_t (*init)(void *ptr, json_object* config); \
     void (*destroy)(void *ptr); \
-    void (*usage)()
 
 #define MD_WRITER \
     struct md_exporter *parent; \

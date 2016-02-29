@@ -162,16 +162,16 @@ static uint8_t md_input_gpsd_init(void *ptr, json_object* config)
     return md_gpsd_config(mig, address, port);
 }
 
-static void md_gpsd_usage()
+void md_gpsd_usage()
 {
-    fprintf(stderr, "gpsd: GPSD input\n");
-    fprintf(stderr, "  address: gpsd address (r)\n");
-    fprintf(stderr, "  port: gpsd port (r)\n");
+    fprintf(stderr, "\"gpsd\": {\t\tGPSD input\n");
+    fprintf(stderr, "  \"address\":\t\tgpsd address\n");
+    fprintf(stderr, "  \"port\":\t\tgpsd port\n");
+    fprintf(stderr, "},\n");
 }
 
 void md_gpsd_setup(struct md_exporter *mde, struct md_input_gpsd *mig)
 {
     mig->parent = mde;
     mig->init = md_input_gpsd_init;
-    mig->usage = md_gpsd_usage;
 }

@@ -23,8 +23,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef METADATA_WRITER_NNE_H
-#define METADATA_WRITER_NNE_H
+#pragma once
 
 #include "metadata_exporter.h"
 
@@ -43,5 +42,4 @@ struct md_writer_nne {
 };
 
 void md_nne_setup(struct md_exporter *mde, struct md_writer_nne* mwn);
-
-#endif
+void md_nne_usage();

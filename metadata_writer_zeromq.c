@@ -623,16 +623,16 @@ static int32_t md_zeromq_init(void *ptr, json_object* config)
     return md_zeromq_config(mwz, address, port);
 }
 
-static void md_zeromq_usage()
+void md_zeromq_usage()
 {
-    fprintf(stderr, "zmq: ZeroMQ writer:\n");
-    fprintf(stderr, "  address: address used by publisher (r)\n");
-    fprintf(stderr, "  port: port used by publisher (r)\n");
+    fprintf(stderr, "\"zmq\": {\t\tZeroMQ writer\n");
+    fprintf(stderr, "  \"address\":\t\taddress used by publisher\n");
+    fprintf(stderr, "  \"port\":\t\tport used by publisher\n");
+    fprintf(stderr, "},\n");
 }
 
 void md_zeromq_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz) {
     mwz->parent = mde;
-    mwz->usage = md_zeromq_usage;
     mwz->init = md_zeromq_init;
     mwz->handle = md_zeromq_handle;
 }

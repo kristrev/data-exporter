@@ -212,17 +212,17 @@ static void md_nne_handle(struct md_writer *writer, struct md_event *event) {
         }
 }
 
-static void md_nne_usage() {
-    fprintf(stderr, "nne: Nornet Edge writer.\n");
-    fprintf(stderr, "  interval: File rotation/export interval (in seconds)\n");
-    fprintf(stderr, "  instance: NNE measurement instance id\n");
-    fprintf(stderr, "  gps_prefix: File prefix /nne/data/<PREFIX><INSTANCE>.sdat\n");
+void md_nne_usage() {
+    fprintf(stderr, "\"nne\": {\t\tNornet Edge writer.\n");
+    fprintf(stderr, "  \"interval\":\t\tFile rotation/export interval (in seconds)\n");
+    fprintf(stderr, "  \"instance\":\t\tNNE measurement instance id\n");
+    fprintf(stderr, "  \"gps_prefix\":\t\tFile prefix /nne/data/<PREFIX><INSTANCE>.sdat\n");
+    fprintf(stderr, "},\n");
 }
 
 void md_nne_setup(struct md_exporter *mde, struct md_writer_nne* mwn) {
     mwn->parent = mde;
     mwn->init = md_nne_init;
     mwn->handle = md_nne_handle;
-    mwn->usage = md_nne_usage;
 }
 
