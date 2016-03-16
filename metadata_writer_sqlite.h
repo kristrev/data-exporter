@@ -83,7 +83,7 @@
                             "L3SessionId,L4SessionId,InterfaceId,"\
                             "NetworkAddress))"
 
-#define CREATE_GPS_SQL      "CREATE TABLE IF NOT EXISTS GpsEvents(" \
+#define CREATE_GPS_SQL      "CREATE TABLE IF NOT EXISTS GpsUpdate(" \
                             "NodeId INTEGER NOT NULL," \
                             "Timestamp INTEGER NOT NULL," \
                             "Sequence INTEGER NOT NULL," \
@@ -92,7 +92,7 @@
                             "Altitude REAL," \
                             "GroundSpeed REAL," \
                             "NumOfSatelites INTEGER," \
-                            "PRIMARY KEY(NodeId,Timestamp,Sequence))"
+                            "PRIMARY KEY(NodeId) ON CONFLICT REPLACE)"
 
 #define CREATE_MONITOR_SQL  "CREATE TABLE IF NOT EXISTS MonitorEvents(" \
                             "NodeId      INTEGER NOT NULL," \
@@ -115,7 +115,7 @@
                             "InterfaceId,NetworkAddress,NetworkProvider) " \
                             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
 
-#define INSERT_GPS_EVENT    "INSERT INTO GpsEvents(NodeId,Timestamp" \
+#define INSERT_GPS_EVENT    "INSERT INTO GpsUpdate(NodeId,Timestamp" \
                             ",Sequence,Latitude,Longitude,Altitude" \
                             ",GroundSpeed,NumOfSatelites) " \
                             "VALUES (?,?,?,?,?,?,?,?)"
@@ -169,7 +169,7 @@
 
 #define DELETE_TABLE         "DELETE FROM NetworkEvent"
 
-#define DELETE_GPS_TABLE     "DELETE FROM GpsEvents"
+#define DELETE_GPS_TABLE     "DELETE FROM GpsUpdate"
 
 #define DELETE_MONITOR_TABLE "DELETE FROM MonitorEvents"
 
@@ -211,14 +211,14 @@
                             "quote(\"NetworkAddress\"),quote(\"NetworkProvider\") || \",Now())\""\
                             "FROM \"NetworkUpdates\" WHERE Timestamp>=? ORDER BY Timestamp;"
 
-#define DUMP_GPS            "SELECT \"REPLACE INTO GpsEvents" \
+#define DUMP_GPS            "SELECT \"REPLACE INTO GpsUpdates" \
                             "(NodeId,Timestamp,Sequence,Latitude,Longitude" \
-                            ",Altitude,GroundSpeed,NumOfSatelites) VALUES(\" "\
+                            ",Altitude,Speed,SatelliteCount) VALUES(\" "\
                             "|| quote(\"NodeId\"), quote(\"Timestamp\"), "\
                             "quote(\"Sequence\"), quote(\"Latitude\"), "\
                             "quote(\"Longitude\"), quote(\"Altitude\"), "\
                             "quote(\"GroundSpeed\"), quote(\"NumOfSatelites\") "\
-                            "|| \")\" FROM \"GpsEvents\" ORDER BY Timestamp;"
+                            "|| \")\" FROM \"GpsUpdate\" ORDER BY Timestamp;"
 
 #define DUMP_MONITOR        "SELECT \"REPLACE INTO MonitorEvents" \
                             "(NodeId,Timestamp,Sequence,Boottime) VALUES(\" "\
@@ -262,6 +262,7 @@ struct md_writer_sqlite {
 
     uint64_t dump_tstamp;
     uint64_t last_msg_tstamp;
+    uint64_t last_gps_insert;
 
     //TODO: Consider moving this to the generic writer struct if need be
     //These values keep track of the unique session id (and multiplier), which
