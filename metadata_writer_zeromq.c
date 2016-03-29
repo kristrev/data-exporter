@@ -186,10 +186,15 @@ static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
                                    struct md_munin_event *mge)
 {
     char topic[8192];
+    char dataid[256];
+
     int retval;
 
     json_object_object_foreach(mge->json_blob, key, val) {
-        md_zeromq_add_default_fields(val, mge->sequence, mge->tstamp, MONROE_ZMQ_DATA_ID_SENSOR);
+        retval = snprintf(dataid, sizeof(dataid), "%s.%s", MONROE_ZMQ_DATA_ID_SENSOR, key);
+        if (retval >= sizeof(dataid)) continue;
+
+        md_zeromq_add_default_fields(val, mge->sequence, mge->tstamp, dataid);
 
         retval = snprintf(topic, sizeof(topic), "%s.%s %s", MONROE_ZMQ_TOPIC_SENSOR, key, json_object_to_json_string_ext(val, JSON_C_TO_STRING_PLAIN));
         if (retval < sizeof(topic)) {
