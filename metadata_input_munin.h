@@ -16,5 +16,6 @@ struct md_input_munin {
 };
 
 void md_munin_setup(struct md_exporter *mde, struct md_input_munin *mim);
+void md_munin_usage();
 
 #endif

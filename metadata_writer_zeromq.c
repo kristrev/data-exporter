@@ -64,6 +64,8 @@ static void md_zeromq_add_default_fields(json_object* obj, int seq, int64_t tsta
 static json_object *md_zeromq_create_json_string(json_object *obj,
         const char *key, const char *value)
 {
+    if (value == NULL) return NULL;
+
     struct json_object *obj_add = json_object_new_string(value);
 
     if (!obj_add)
@@ -184,10 +186,15 @@ static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
                                    struct md_munin_event *mge)
 {
     char topic[8192];
+    char dataid[256];
+
     int retval;
 
     json_object_object_foreach(mge->json_blob, key, val) {
-        md_zeromq_add_default_fields(val, mge->sequence, mge->tstamp, MONROE_ZMQ_DATA_ID_SENSOR);
+        retval = snprintf(dataid, sizeof(dataid), "%s.%s", MONROE_ZMQ_DATA_ID_SENSOR, key);
+        if (retval >= sizeof(dataid)) continue;
+
+        md_zeromq_add_default_fields(val, mge->sequence, mge->tstamp, dataid);
 
         retval = snprintf(topic, sizeof(topic), "%s.%s %s", MONROE_ZMQ_TOPIC_SENSOR, key, json_object_to_json_string_ext(val, JSON_C_TO_STRING_PLAIN));
         if (retval < sizeof(topic)) {
@@ -592,32 +599,20 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
     return RETVAL_SUCCESS;
 }
 
-static int32_t md_zeromq_init(void *ptr, int argc, char *argv[])
+static int32_t md_zeromq_init(void *ptr, json_object* config)
 {
     struct md_writer_zeromq *mwz = ptr;
     const char *address = NULL;
     uint16_t port = 0;
-    int c, option_index = 0;
 
-    static struct option zmq_options[] = {
-        {"zmq_address",         required_argument,  0,  0},
-        {"zmq_port",            required_argument,  0,  0},
-        {0,                                     0,  0,  0}};
-
-    while (1) {
-        //No permuting of array here as well
-        c = getopt_long_only(argc, argv, "--", zmq_options, &option_index);
-
-
-        if (c == -1)
-            break;
-        else if (c)
-            continue;
-        
-        if (!strcmp(zmq_options[option_index].name, "zmq_address"))
-            address = optarg;
-        else if (!strcmp(zmq_options[option_index].name, "zmq_port"))
-            port = (uint16_t) atoi(optarg);
+    json_object* subconfig;
+    if (json_object_object_get_ex(config, "zmq", &subconfig)) {
+        json_object_object_foreach(subconfig, key, val) {
+            if (!strcmp(key, "address"))
+                address = json_object_get_string(val);
+            if (!strcmp(key, "port"))
+                port = (uint16_t) json_object_get_int(val);
+        }
     }
 
     if (address == NULL || port == 0) {
@@ -633,16 +628,16 @@ static int32_t md_zeromq_init(void *ptr, int argc, char *argv[])
     return md_zeromq_config(mwz, address, port);
 }
 
-static void md_zeromq_usage()
+void md_zeromq_usage()
 {
-    fprintf(stderr, "ZeroMQ writer:\n");
-    fprintf(stderr, "--zmq_address: address used by publisher (r)\n");
-    fprintf(stderr, "--zmq_port: port used by publisher (r)\n");
+    fprintf(stderr, "\"zmq\": {\t\tZeroMQ writer\n");
+    fprintf(stderr, "  \"address\":\t\taddress used by publisher\n");
+    fprintf(stderr, "  \"port\":\t\tport used by publisher\n");
+    fprintf(stderr, "},\n");
 }
 
 void md_zeromq_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz) {
     mwz->parent = mde;
-    mwz->usage = md_zeromq_usage;
     mwz->init = md_zeromq_init;
     mwz->handle = md_zeromq_handle;
 }

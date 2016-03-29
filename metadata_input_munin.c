@@ -251,34 +251,22 @@ void md_input_munin_destroy(void *ptr)
     }
 }
 
-static uint8_t md_input_munin_init(void *ptr, int argc, char *argv[])
+static uint8_t md_input_munin_init(void *ptr, json_object* config)
 {
     struct md_input_munin *mim = ptr;
     const char *address = NULL, *port = NULL;
     const char *modules = "memory,cpu";
-    int c, option_index = 0;
 
-    static struct option munin_options[] = {
-        {"munin_address",         required_argument,  0,  0},
-        {"munin_port",            required_argument,  0,  0},
-        {"munin_modules",         required_argument,  0,  0},
-        {0,                                      0,  0,  0}};
-
-    while (1) {
-        //No permuting of array here as well
-        c = getopt_long_only(argc, argv, "--", munin_options, &option_index);
-
-        if (c == -1)
-            break;
-        else if (c)
-            continue;
-
-        if (!strcmp(munin_options[option_index].name, "munin_address"))
-            address = optarg;
-        else if (!strcmp(munin_options[option_index].name, "munin_port"))
-            port = optarg;
-        else if (!strcmp(munin_options[option_index].name, "munin_modules"))
-            modules = optarg;
+    json_object* subconfig;
+    if (json_object_object_get_ex(config, "munin", &subconfig)) {
+        json_object_object_foreach(subconfig, key, val) {
+            if (!strcmp(key, "address"))
+                address = json_object_get_string(val);
+            else if (!strcmp(key, "port"))
+                port = json_object_get_string(val);
+            else if (!strcmp(key, "modules"))
+                modules = json_object_get_string(val);
+        }
     }
 
     if (address == NULL || port == NULL) {
@@ -289,13 +277,15 @@ static uint8_t md_input_munin_init(void *ptr, int argc, char *argv[])
     return md_munin_config(mim, address, port, modules);
 }
 
-static void md_munin_usage()
+void md_munin_usage()
 {
-    fprintf(stderr, "Munin input:\n");
+    fprintf(stderr, "\"munin\": {\t\tMunin input\n");
     // TODO: --munin-binary (no need to run systemd, nginx or inetd)
-    fprintf(stderr, "--munin_address: munin address (r)\n");
-    fprintf(stderr, "--munin_port:    munin port    (r)\n");
-    fprintf(stderr, "--munin_modules: comma separated, modules to export   (o, default='memory,cpu')\n");
+    fprintf(stderr, "  \"address\":\t\tmunin address\n");
+    fprintf(stderr, "  \"port\":\t\tmunin port\n");
+    // TODO: change comma separated modules into a JSON array
+    fprintf(stderr, "  \"modules\":\t\tcomma separated, modules to export\n");
+    fprintf(stderr, "},\n");
 }
 
 void md_munin_setup(struct md_exporter *mde, struct md_input_munin *mim)
@@ -303,5 +293,4 @@ void md_munin_setup(struct md_exporter *mde, struct md_input_munin *mim)
     mim->parent  = mde;
     mim->init    = md_input_munin_init;
     mim->destroy = md_input_munin_destroy;
-    mim->usage   = md_munin_usage;
 }

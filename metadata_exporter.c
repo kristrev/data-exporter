@@ -522,7 +522,6 @@ static void test_netlink(uint32_t packets)
         else
             obj_to_send = create_fake_conn_obj(2, 3, CONN_EVENT_META_UPDATE, "1,2,1,4", i+1);
 #endif
-
         if (i < 4)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, "1,2,1", i+1);
         else
@@ -535,7 +534,6 @@ static void test_netlink(uint32_t packets)
                 (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
 
-#if 0
         obj_to_send = create_fake_gps_gga_obj();
         send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
@@ -546,7 +544,6 @@ static void test_netlink(uint32_t packets)
                 (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
 
-#endif
         test_modem_metadata(snd_buf, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
         if (packets && (++i >= packets))
@@ -582,91 +579,89 @@ static void run_test_mode(struct md_exporter *mde, uint32_t packets)
 
 static void default_usage()
 {
-    fprintf(stderr, "Support parameters (r is required). At least one input and one writer must be specified.\n");
+    fprintf(stderr, "Parameters. At least one input and one writer must be specified in the configuration.\n");
     fprintf(stderr, "Default:\n");
-    fprintf(stderr, "--netlink/-n: netlink input\n");
-#ifdef NSB_GPS
-    fprintf(stderr, "--nsb_gps: NSB NMEA GPS input\n");
-#endif
+    fprintf(stderr, "-c: JSON configuration file for the metadata exporter\n");
+    fprintf(stderr, "-h: Display usage of exporter, inputs and writers\n\n");
+}
+
+static void print_usage()
+{
+    default_usage();
+    fprintf(stderr, "Configuration file syntax:\n");
+    fprintf(stderr, "INPUTS:\n");
+    md_netlink_usage();
 #ifdef GPSD_SUPPORT
-    fprintf(stderr, "--gpsd/-g: gpsd input\n");
+    md_gpsd_usage();
 #endif
 #ifdef MUNIN_SUPPORT
-    fprintf(stderr, "--munin/-m: munin input\n");
+    md_munin_usage();
+#endif
+#ifdef NSB_GPS_SUPPORT
+    md_nsp_gps_usage();
 #endif
 #ifdef SYSEVENT_SUPPORT
-    fprintf(stderr, "--sysevent/-y: system ud socket input\n");
+    md_sysevent_usage();
+#endif
+    fprintf(stderr, "WRITERS:\n");
+#ifdef NNE_SUPPORT
+    md_nne_usage();
 #endif
 #ifdef SQLITE_SUPPORT
-    fprintf(stderr, "--sqlite/-s: sqlite writer\n");
+    md_sqlite_usage();
 #endif
 #ifdef ZEROMQ_SUPPORT
-    fprintf(stderr, "--zeromq/-z: zeromq writer\n");
+    md_zeromq_usage();
 #endif
-#ifdef NNE_SUPPORT
-    fprintf(stderr, "--nne: nornet edge measurement writer\n");
-#endif
-    fprintf(stderr, "--test/-t: test mode, application generates fake data that is handled by writers\n");
-    fprintf(stderr, "--packets/-p: number of packets that will be generated in debug mode (default: infinite)\n");
-    fprintf(stderr, "--logfile/-l: path to logfile (default: stderr)\n");
-    fprintf(stderr, "--help/-h: Display usage of exporter and specified writers\n");
+
 }
 
-static void print_usage(struct md_exporter *mde)
+void read_config(char* config_file, json_object** config_obj)
 {
-    int32_t i;
+    json_tokener *tok;
+    json_object *parsed;
+    char buffer[CONFIG_MAX_SIZE];
 
-    default_usage();
+    FILE* config = fopen(config_file, "r");
 
-    for (i=0; i<=MD_WRITER_MAX; i++) {
-        if (mde->md_writers[i] != NULL &&
-            mde->md_writers[i]->usage)
-            mde->md_writers[i]->usage();
+    if (config == NULL) {     
+        fprintf(stderr, "Could not open configuration file.\n");
+        exit(EXIT_FAILURE);
+    }
+    size_t len = fread(buffer, sizeof(char), CONFIG_MAX_SIZE, config);
+    if (len==0) {
+        fprintf(stderr, "Could not read configuration file.\n");
+        exit(EXIT_FAILURE);
+    } else {
+        buffer[len] = '\0';
+    }
+    fclose(config);
+
+    tok = json_tokener_new();
+
+    if (tok == NULL) {
+        fprintf(stderr, "Could not create JSON tokener.\n");
+        exit(EXIT_FAILURE);
     }
 
-    for (i=0; i<=MD_INPUT_MAX; i++) {
-        if (mde->md_inputs[i] != NULL &&
-            mde->md_inputs[i]->usage)
-            mde->md_inputs[i]->usage();
+    parsed = json_tokener_parse_ex(tok, buffer, len);
+    if (parsed == NULL) {
+        fprintf(stderr, "Could not parse configuration file.\n");
+        exit(EXIT_FAILURE);
     }
-}
+    json_tokener_free(tok);
+
+    *config_obj = parsed;
+}          
 
 int main(int argc, char *argv[])
 {
     struct md_exporter *mde;
-    int32_t i, option_index = 0;
+    int32_t i;
     uint32_t packets = 0;
-    uint8_t test_mode = 0, show_help = 0, num_writers = 0, num_inputs = 0;
+    uint8_t test_mode = 0, num_writers = 0, num_inputs = 0;
     const char *logfile_path = NULL;
-
-    static struct option core_options[] = {
-        {"netlink",      no_argument,        0,  'n'},
-#ifdef SQLITE_SUPPORT
-        {"sqlite",       no_argument,        0,  's'},
-#endif
-#ifdef NSB_GPS
-        {"nsb_gps",      no_argument,        0,  0  },
-#endif
-#ifdef ZEROMQ_SUPPORT
-        {"zeromq",       no_argument,        0,  'z'},
-#endif
-#ifdef NNE_SUPPORT
-        {"nne",          no_argument,        0,  0  },
-#endif
-#ifdef GPSD_SUPPORT
-        {"gpsd",         no_argument,        0,  'g'},
-#endif
-#ifdef MUNIN_SUPPORT
-        {"munin",        no_argument,        0,  'm'},
-#endif
-#ifdef SYSEVENT_SUPPORT
-        {"sysevent",     no_argument,        0,  'y'},
-#endif
-        {"packets",      required_argument,  0,  'p'},
-        {"test",         no_argument,        0,  't'},
-        {"logfile",      required_argument,  0,  'l'},
-        {"help",         no_argument,        0,  'h'},
-        {0,              0,                  0,   0 }};
+    json_object *config = NULL;
 
     //Try to configure core before we set up the outputters
     if (configure_core(&mde))
@@ -675,45 +670,24 @@ int main(int argc, char *argv[])
     //Process core options, short options allowed. We do this here since we need
     //an allocated writers array
     opterr = 0;
-    while (1) {
-        //Use glic extension to avoid getopt permuting array while processing
-        i = getopt_long(argc, argv, "--szhmgtnkp:l:", core_options, &option_index);
-
-        if (i == -1)
+    while ((i = getopt(argc, argv, "c:h")) != -1) {
+        if (i == -1) {
             break;
-
-        if (i == 0) {
-#ifdef NSB_GPS
-            if (strcmp(core_options[option_index].name, "nsb_gps") == 0) {
-                mde->md_inputs[MD_INPUT_GPS_NSB] = calloc(sizeof(struct md_input_gps_nsb), 1);
-
-                if (mde->md_inputs[MD_INPUT_GPS_NSB] == NULL) {
-                    META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate NSB GPS input\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                md_gps_nsb_setup(mde, (struct md_input_gps_nsb*) mde->md_inputs[MD_INPUT_GPS_NSB]);
-                num_inputs++;
-            }
-#endif
-#ifdef NNE_SUPPORT
-            if (strcmp(core_options[option_index].name, "nne") == 0) {
-                mde->md_writers[MD_WRITER_NNE] = calloc(sizeof(struct md_writer_nne), 1);
-
-                if (mde->md_writers[MD_WRITER_NNE] == NULL) {
-                    META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate NNE  writer\n");
-                    exit(EXIT_FAILURE);
-                }
-
-                md_nne_setup(mde, (struct md_writer_nne*) mde->md_writers[MD_WRITER_NNE]);
-                num_writers++;
-            }
-#endif
-            continue;
+        } else if (i == 'c') {
+            read_config(optarg, &config);
+        } else if (i == 'h') { 
+            print_usage();
+            exit(EXIT_SUCCESS);
         }
+    }
 
-        switch (i) {
-        case 'n':
+    if (config == NULL) {
+        META_PRINT_SYSLOG(mde, LOG_ERR, "Parameter -c is required to run.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    json_object_object_foreach(config, key, val) { 
+        if (!strcmp(key, "netlink")) {
             mde->md_inputs[MD_INPUT_NETLINK] = calloc(sizeof(struct md_input_netlink),1);
 
             if (mde->md_inputs[MD_INPUT_NETLINK] == NULL) {
@@ -723,9 +697,35 @@ int main(int argc, char *argv[])
 
             md_netlink_setup(mde, (struct md_input_netlink*) mde->md_inputs[MD_INPUT_NETLINK]);
             num_inputs++;
-            break;
+        }
+#ifdef NSB_GPS
+        else if (!strcmp(key, "nsb_gps")) {
+            mde->md_inputs[MD_INPUT_GPS_NSB] = calloc(sizeof(struct md_input_gps_nsb), 1);
+
+            if (mde->md_inputs[MD_INPUT_GPS_NSB] == NULL) {
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate NSB GPS input\n");
+                exit(EXIT_FAILURE);
+            }
+
+            md_gps_nsb_setup(mde, (struct md_input_gps_nsb*) mde->md_inputs[MD_INPUT_GPS_NSB]);
+            num_inputs++;
+        }
+#endif
+#ifdef NNE_SUPPORT
+        else if (!strcmp(key, "nne")) {
+            mde->md_writers[MD_WRITER_NNE] = calloc(sizeof(struct md_writer_nne), 1);
+
+            if (mde->md_writers[MD_WRITER_NNE] == NULL) {
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate NNE  writer\n");
+                exit(EXIT_FAILURE);
+            }
+
+            md_nne_setup(mde, (struct md_writer_nne*) mde->md_writers[MD_WRITER_NNE]);
+            num_writers++;
+        }
+#endif
 #ifdef GPSD_SUPPORT
-        case 'g':
+        else if (!strcmp(key, "gpsd")) {
             mde->md_inputs[MD_INPUT_GPSD] = calloc(sizeof(struct md_input_gpsd), 1);
 
             if (mde->md_inputs[MD_INPUT_GPSD] == NULL) {
@@ -735,10 +735,10 @@ int main(int argc, char *argv[])
 
             md_gpsd_setup(mde, (struct md_input_gpsd*) mde->md_inputs[MD_INPUT_GPSD]);
             num_inputs++;
-            break;
+        }
 #endif
 #ifdef MUNIN_SUPPORT
-        case 'm':
+        else if (!strcmp(key, "munin")) {
             mde->md_inputs[MD_INPUT_MUNIN] = calloc(sizeof(struct md_input_munin), 1);
 
             if (mde->md_inputs[MD_INPUT_MUNIN] == NULL) {
@@ -748,10 +748,10 @@ int main(int argc, char *argv[])
 
             md_munin_setup(mde, (struct md_input_munin*) mde->md_inputs[MD_INPUT_MUNIN]);
             num_inputs++;
-            break;
+        }
 #endif
 #ifdef SYSEVENT_SUPPORT
-        case 'y':
+        else if (!strcmp(key, "sysevent")) {
             mde->md_inputs[MD_INPUT_SYSEVENT] = calloc(sizeof(struct md_input_sysevent), 1);
 
             if (mde->md_inputs[MD_INPUT_SYSEVENT] == NULL) {
@@ -761,10 +761,10 @@ int main(int argc, char *argv[])
 
             md_sysevent_setup(mde, (struct md_input_sysevent*) mde->md_inputs[MD_INPUT_SYSEVENT]);
             num_inputs++;
-            break;
+        } 
 #endif 
 #ifdef SQLITE_SUPPORT
-        case 's':
+        else if (!strcmp(key, "sqlite")) {
             mde->md_writers[MD_WRITER_SQLITE] = calloc(sizeof(struct md_writer_sqlite), 1);
 
             if (mde->md_writers[MD_WRITER_SQLITE] == NULL) {
@@ -774,10 +774,10 @@ int main(int argc, char *argv[])
 
             md_sqlite_setup(mde, (struct md_writer_sqlite*) mde->md_writers[MD_WRITER_SQLITE]);
             num_writers++;
-            break;
+        }
 #endif
 #ifdef ZEROMQ_SUPPORT
-        case 'z':
+        else if (!strcmp(key, "zmq")) {
             mde->md_writers[MD_WRITER_ZEROMQ] = calloc(sizeof(struct md_writer_zeromq), 1);
 
             if (mde->md_writers[MD_WRITER_ZEROMQ] == NULL) {
@@ -787,29 +787,20 @@ int main(int argc, char *argv[])
 
             md_zeromq_setup(mde, (struct md_writer_zeromq*) mde->md_writers[MD_WRITER_ZEROMQ]);
             num_writers++;
-            break;
-#endif
-        case 't':
-            test_mode = 1;
-            break;
-        case 'p':
-            packets = (uint32_t) atoi(optarg);
-            break;
-        case 'l':
-            logfile_path = optarg;
-            break;
-        case 'k':
-            mde->use_syslog = 1;
-            break;
-        case 'h':
-            show_help = 1;
-            break;
         }
-    }
-
-    if (show_help) {
-        print_usage(mde);
-        exit(EXIT_SUCCESS);
+#endif
+        else if (!strcmp(key, "test")) {
+            test_mode = 1;
+        } 
+        else if (!strcmp(key, "packets")) {
+            packets = (uint32_t) json_object_get_int(val);
+        } 
+        else if (!strcmp(key, "logfile")) {
+            logfile_path = json_object_get_string(val); 
+        } 
+        else if (!strcmp(key, "syslog")) {
+            mde->use_syslog = json_object_get_int(val);
+        }
     }
 
     if (num_writers == 0 || num_inputs == 0) {
@@ -832,7 +823,7 @@ int main(int argc, char *argv[])
             //glic requires optind to be 0 for internal state to be reset when
             //using extensions
             optind = 0;
-            if (mde->md_inputs[i]->init(mde->md_inputs[i], argc, argv))
+            if (mde->md_inputs[i]->init(mde->md_inputs[i], config))
                 exit(EXIT_FAILURE);
         }
     }
@@ -843,7 +834,7 @@ int main(int argc, char *argv[])
             //glic requires optind to be 0 for internal state to be reset when
             //using extensions
             optind = 0;
-            if (mde->md_writers[i]->init(mde->md_writers[i], argc, argv))
+            if (mde->md_writers[i]->init(mde->md_writers[i], config))
                 exit(EXIT_FAILURE);
         }
     }

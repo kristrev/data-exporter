@@ -254,7 +254,7 @@ static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char 
 }
 
 static int md_sqlite_configure(struct md_writer_sqlite *mws,
-        const char *db_filename, uint32_t node_id, uint32_t db_interval,
+        const char *db_filename, uint32_t node_id, char* nodeid_file, uint32_t db_interval,
         uint32_t db_events, const char *meta_prefix, const char *gps_prefix,
         const char *monitor_prefix)
 {
@@ -263,9 +263,16 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
     if (db_handle == NULL)
         return RETVAL_FAILURE;
 
+    if (node_id > 0) {
+        mws->node_id = node_id;
+    } else {
+#ifdef MONROE
+        mws->node_id = system_helpers_get_nodeid(nodeid_file);
+#endif
+    }
+
     //Only set variables that are not 0
     mws->db_handle = db_handle;
-    mws->node_id = node_id;
     mws->db_interval = db_interval;
     mws->db_events = db_events;
     mws->do_fake_updates = 1;
@@ -344,64 +351,62 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
     return RETVAL_SUCCESS;
 }
 
-static void md_sqlite_usage()
+void md_sqlite_usage()
 {
-    fprintf(stderr, "SQLite writer. At least one prefix is required:\n");
-    fprintf(stderr, "--sql_database: path to database (local files only) (r)\n");
-    fprintf(stderr, "--sql_nodeid: node id. If not specified, will be read from system (compile option)\n");
-    fprintf(stderr, "--sql_meta_prefix: location + filename prefix for connection metadata ( max 116 characters)\n");
-    fprintf(stderr, "--sql_gps_prefix: location + filename prefix for GPS data (max 116 characters)\n");
-    fprintf(stderr, "--sql_monitor_prefix: location + filename prefix for monitor data (max 116 characters)\n");
-    fprintf(stderr, "--sql_interval: time (in ms) from event and until database is copied (default: 5 sec)\n");
-    fprintf(stderr, "--sql_events: number of events before copying database\n (default: 10)\n");
-    fprintf(stderr, "--sql_session_id: path tosession id file\n");
+    fprintf(stderr, "\"sqlite\": {\t\tSQLite writer. At least one prefix is required.\n");
+    fprintf(stderr, "  \"database\":\t\tpath to database (local files only)\n");
+    fprintf(stderr, "  \"nodeid\":\t\tnode id.\n");
+    fprintf(stderr, "  \"nodeid_file\":\tpath to node id file.\n");
+    fprintf(stderr, "  \"meta_prefix\":\tlocation + filename prefix for connection metadata (max 116 characters)\n");
+    fprintf(stderr, "  \"gps_prefix\":\t\tlocation + filename prefix for GPS data (max 116 characters)\n");
+    fprintf(stderr, "  \"monitor_prefix\":\tlocation + filename prefix for monitor data (max 116 characters)\n");
+    fprintf(stderr, "  \"interval\":\t\ttime (in ms) from event and until database is copied (default: 5 sec)\n");
+    fprintf(stderr, "  \"events\":\t\tnumber of events before copying database (default: 10)\n");
+    fprintf(stderr, "  \"session_id\":\t\tpath to session id file\n");
+    fprintf(stderr, "},\n");
 }
 
-int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
+int32_t md_sqlite_init(void *ptr, json_object* config)
 {
     struct md_writer_sqlite *mws = ptr;
     uint32_t node_id = 0, interval = DEFAULT_TIMEOUT, num_events = EVENT_LIMIT;
-    int c, option_index = 0;
     const char *db_filename = NULL, *meta_prefix = NULL, *gps_prefix = NULL,
-               *monitor_prefix = NULL;
+               *monitor_prefix = NULL, *nodeid_file = NULL;
 
-    static struct option sqlite_options[] = {
-        {"sql_database",         required_argument,  0,  0},
-        {"sql_nodeid",           required_argument,  0,  0},
-        {"sql_meta_prefix",      required_argument,  0,  0},
-        {"sql_gps_prefix",       required_argument,  0,  0},
-        {"sql_monitor_prefix",   required_argument,  0,  0},
-        {"sql_interval",         required_argument,  0,  0},
-        {"sql_events",           required_argument,  0,  0},
-        {"sql_session_id",       required_argument,  0,  0},
-        {0,                                      0,  0,  0}};
+    json_object* subconfig;
+    if (json_object_object_get_ex(config, "sqlite", &subconfig)) {
+        json_object_object_foreach(subconfig, key, val) {
+            if (!strcmp(key, "database"))
+                db_filename = json_object_get_string(val);
+            else if (!strcmp(key, "nodeid"))
+                node_id = (uint32_t) json_object_get_int(val);
+            if (!strcmp(key, "nodeid_file"))
+                nodeid_file = json_object_get_string(val);
+            else if (!strcmp(key, "meta_prefix"))
+                meta_prefix = json_object_get_string(val);
+            else if (!strcmp(key, "gps_prefix"))
+                gps_prefix = json_object_get_string(val);
+            else if (!strcmp(key, "monitor_prefix"))
+                monitor_prefix = json_object_get_string(val);
+            else if (!strcmp(key, "interval"))
+                interval = ((uint32_t) json_object_get_int(val)) * 1000;
+            else if (!strcmp(key, "events"))
+                num_events = (uint32_t) json_object_get_int(val);
+            else if (!strcmp(key, "session_id"))
+                mws->session_id_file = json_object_get_string(val);
+        }
+    }
 
-    while (1) {
-        //No permuting of array here as well
-        c = getopt_long_only(argc, argv, "--", sqlite_options, &option_index);
+    if (!db_filename || (!gps_prefix && !meta_prefix && !monitor_prefix)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Required SQLite argument missing\n");
+        return RETVAL_FAILURE;
+    }
 
-        if (c == -1)
-            break;
-        else if (c)
-            continue;
-
-        if (!strcmp(sqlite_options[option_index].name, "sql_database"))
-            db_filename = optarg;
-        else if (!strcmp(sqlite_options[option_index].name, "sql_nodeid"))
-            node_id = (uint32_t) atoi(optarg);
-        else if (!strcmp(sqlite_options[option_index].name, "sql_meta_prefix"))
-            meta_prefix = optarg;
-        else if (!strcmp(sqlite_options[option_index].name, "sql_gps_prefix"))
-            gps_prefix = optarg;
-        else if (!strcmp(sqlite_options[option_index].name, "sql_monitor_prefix"))
-            monitor_prefix = optarg;
-        else if (!strcmp(sqlite_options[option_index].name, "sql_interval"))
-            interval = ((uint32_t) atoi(optarg)) * 1000;
-        else if (!strcmp(sqlite_options[option_index].name, "sql_events"))
-            num_events = (uint32_t) atoi(optarg);
-        else if (!strcmp(sqlite_options[option_index].name, "sql_session_id"))
-            mws->session_id_file = optarg;
-
+    if ((meta_prefix    && strlen(meta_prefix)    > 117) ||
+        (gps_prefix     && strlen(gps_prefix)     > 117) ||
+        (monitor_prefix && strlen(monitor_prefix) > 117)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "SQLite temp file prefix too long\n");
+        return RETVAL_FAILURE;
     }
 
     if (!db_filename || (!gps_prefix && !meta_prefix && !monitor_prefix)) {
@@ -423,7 +428,7 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
   
     META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Done configuring SQLite handle\n");
 
-    return md_sqlite_configure(mws, db_filename, node_id, interval,
+    return md_sqlite_configure(mws, db_filename, node_id, nodeid_file, interval,
             num_events, meta_prefix, gps_prefix, monitor_prefix);
 }
 
@@ -554,7 +559,6 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
 static void md_sqlite_handle_timeout(void *ptr)
 {
     struct md_writer_sqlite *mws = ptr;
-    uint64_t session_id = 0, session_id_multip = 0;
 
     if (mws->file_failed)
         META_PRINT_SYSLOG(mws->parent, LOG_INFO, "DB export retry\n");
@@ -562,10 +566,12 @@ static void md_sqlite_handle_timeout(void *ptr)
         META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Will export DB after timeout\n");
 
     if(!mws->node_id) {
+#ifdef OPENWRT
         mws->node_id = system_helpers_get_nodeid();
 
         if(mws->node_id)
             META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Got nodeid %d\n", mws->node_id);
+#endif
        
         if (!mws->node_id) {
             META_PRINT_SYSLOG(mws->parent, LOG_INFO, "No node id found\n");
@@ -616,6 +622,5 @@ void md_sqlite_setup(struct md_exporter *mde, struct md_writer_sqlite* mws) {
     mws->init = md_sqlite_init;
     mws->handle = md_sqlite_handle;
     mws->itr_cb = md_sqlite_itr_cb;
-    mws->usage = md_sqlite_usage;
 }
 
