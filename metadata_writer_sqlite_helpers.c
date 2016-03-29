@@ -111,6 +111,9 @@ uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
         return RETVAL_FAILURE;
     }
 
+    if (!delete_stmt)
+        return RETVAL_SUCCESS;
+
     sqlite3_reset(delete_stmt);
     retval = sqlite3_step(delete_stmt);
 

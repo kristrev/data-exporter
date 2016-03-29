@@ -47,7 +47,7 @@ uint8_t md_sqlite_gps_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = md_writer_helpers_copy_db(mws->gps_prefix,
             mws->gps_prefix_len, md_sqlite_gps_dump_db, mws,
-            mws->delete_gps);
+            NULL);
 
     if (retval == RETVAL_SUCCESS)
         mws->num_gps_events = 0;
@@ -62,6 +62,12 @@ uint8_t md_sqlite_handle_gps_event(struct md_writer_sqlite *mws,
         mws->gps_speed = mge->speed;
 
     if (mge->minmea_id == MINMEA_SENTENCE_RMC)
+        return RETVAL_IGNORE;
+
+    //We dont need EVERY gps event, some devices send updates very frequently
+    //Some of the devices we work with have timers that are ... strange
+    if (mws->last_gps_insert > mge->tstamp_tv.tv_sec ||
+        mge->tstamp_tv.tv_sec - mws->last_gps_insert < GPS_EVENT_INTVL)
         return RETVAL_IGNORE;
 
     sqlite3_stmt *stmt = mws->insert_gps;
@@ -95,9 +101,11 @@ uint8_t md_sqlite_handle_gps_event(struct md_writer_sqlite *mws,
         return RETVAL_FAILURE;
     }
 
-    if (sqlite3_step(stmt) != SQLITE_DONE)
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
         return RETVAL_FAILURE;
-    else
+    } else {
+        mws->last_gps_insert = mge->tstamp_tv.tv_sec;
         return RETVAL_SUCCESS;
+    }
 }
 

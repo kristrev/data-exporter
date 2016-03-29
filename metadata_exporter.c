@@ -522,7 +522,6 @@ static void test_netlink(uint32_t packets)
         else
             obj_to_send = create_fake_conn_obj(2, 3, CONN_EVENT_META_UPDATE, "1,2,1,4", i+1);
 #endif
-
         if (i < 4)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, "1,2,1", i+1);
         else
@@ -535,7 +534,6 @@ static void test_netlink(uint32_t packets)
                 (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
 
-#if 0
         obj_to_send = create_fake_gps_gga_obj();
         send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
@@ -546,7 +544,6 @@ static void test_netlink(uint32_t packets)
                 (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
 
-#endif
         test_modem_metadata(snd_buf, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
         if (packets && (++i >= packets))
