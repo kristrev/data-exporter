@@ -285,10 +285,6 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
             &(mws->insert_update), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, UPDATE_UPDATE, -1,
             &(mws->update_update), NULL) ||
-       sqlite3_prepare_v2(mws->db_handle, DUMP_EVENTS, -1,
-            &(mws->dump_table), NULL) ||
-       sqlite3_prepare_v2(mws->db_handle, DUMP_UPDATES, -1,
-            &(mws->dump_update), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, SELECT_LAST_UPDATE, -1,
             &(mws->last_update), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, INSERT_GPS_EVENT, -1,
@@ -303,9 +299,32 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
             &(mws->delete_monitor), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DUMP_MONITOR, -1,
             &(mws->dump_monitor), NULL)) {
-        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Statement failed: %s\n", sqlite3_errmsg(mws->db_handle));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Statement failed: %s\n",
+                sqlite3_errmsg(mws->db_handle));
         sqlite3_close_v2(db_handle);
         return RETVAL_FAILURE;
+    }
+
+    if (mws->api_version == 2) {
+        if (sqlite3_prepare_v2(mws->db_handle, DUMP_EVENTS_V2, -1,
+                    &(mws->dump_table), NULL) ||
+            sqlite3_prepare_v2(mws->db_handle, DUMP_UPDATES_V2, -1,
+                &(mws->dump_update), NULL)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Dump prepare failed: %s\n",
+                    sqlite3_errmsg(mws->db_handle));
+            sqlite3_close_v2(db_handle);
+            return RETVAL_FAILURE;
+        }
+    } else {
+         if (sqlite3_prepare_v2(mws->db_handle, DUMP_EVENTS, -1,
+                    &(mws->dump_table), NULL) ||
+            sqlite3_prepare_v2(mws->db_handle, DUMP_UPDATES, -1,
+                &(mws->dump_update), NULL)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Dump prepare failed: %s\n",
+                    sqlite3_errmsg(mws->db_handle));
+            sqlite3_close_v2(db_handle);
+            return RETVAL_FAILURE;
+        }
     }
 
     if (meta_prefix) {

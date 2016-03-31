@@ -528,9 +528,9 @@ static void test_netlink(uint32_t packets)
         else
             obj_to_send = create_fake_conn_obj(2, 3, CONN_EVENT_META_UPDATE, "1,2,1,4", i+1);
 #endif
-        if (i < 4)
+        /*if (i < 4)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, "1,2,1", i+1);
-        else
+        else*/
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,4", tv.tv_sec);
 
         if (!obj_to_send)
