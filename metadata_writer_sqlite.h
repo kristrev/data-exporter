@@ -275,6 +275,8 @@ struct md_writer_sqlite {
     struct backend_timeout_handle *timeout_handle;
     char   meta_prefix[128], gps_prefix[128], monitor_prefix[128];
     size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len;
+
+    uint8_t api_version;
 };
 
 void md_sqlite_setup(struct md_exporter *mde, struct md_writer_sqlite* mws);

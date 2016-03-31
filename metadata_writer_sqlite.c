@@ -355,6 +355,7 @@ static void md_sqlite_usage()
     fprintf(stderr, "--sql_interval: time (in ms) from event and until database is copied (default: 5 sec)\n");
     fprintf(stderr, "--sql_events: number of events before copying database\n (default: 10)\n");
     fprintf(stderr, "--sql_session_id: path tosession id file\n");
+    fprintf(stderr, "--sql_api_version: backend API version (default: 1)\n");
 }
 
 int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
@@ -374,6 +375,7 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
         {"sql_interval",         required_argument,  0,  0},
         {"sql_events",           required_argument,  0,  0},
         {"sql_session_id",       required_argument,  0,  0},
+        {"sql_api_version",      required_argument,  0,  0},
         {0,                                      0,  0,  0}};
 
     while (1) {
@@ -401,7 +403,8 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
             num_events = (uint32_t) atoi(optarg);
         else if (!strcmp(sqlite_options[option_index].name, "sql_session_id"))
             mws->session_id_file = optarg;
-
+        else if (!strcmp(sqlite_options[option_index].name, "sql_api_version"))
+            mws->api_version = atoi(optarg);
     }
 
     if (!db_filename || (!gps_prefix && !meta_prefix && !monitor_prefix)) {
@@ -420,7 +423,12 @@ int32_t md_sqlite_init(void *ptr, int argc, char *argv[])
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Invalid SQLite interval/number of events\n");
         return RETVAL_FAILURE;
     }
-  
+ 
+    if (!mws->api_version || mws->api_version > 2) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Unknown backend API version\n");
+        return RETVAL_FAILURE;
+    }
+
     META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Done configuring SQLite handle\n");
 
     return md_sqlite_configure(mws, db_filename, node_id, interval,
@@ -554,7 +562,6 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
 static void md_sqlite_handle_timeout(void *ptr)
 {
     struct md_writer_sqlite *mws = ptr;
-    uint64_t session_id = 0, session_id_multip = 0;
 
     if (mws->file_failed)
         META_PRINT_SYSLOG(mws->parent, LOG_INFO, "DB export retry\n");
@@ -617,5 +624,7 @@ void md_sqlite_setup(struct md_exporter *mde, struct md_writer_sqlite* mws) {
     mws->handle = md_sqlite_handle;
     mws->itr_cb = md_sqlite_itr_cb;
     mws->usage = md_sqlite_usage;
+
+    mws->api_version = 1;
 }
 
