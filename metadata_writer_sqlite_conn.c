@@ -55,11 +55,23 @@ static int32_t md_sqlite_execute_insert_update(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 7, mce->l4_session_id) ||
         sqlite3_bind_text(stmt, 8, mce->event_value_str, strlen(mce->event_value_str), SQLITE_STATIC) ||
         sqlite3_bind_int(stmt, 9, mce->interface_type) ||
-        sqlite3_bind_text(stmt, 10, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC) ||
         sqlite3_bind_text(stmt, 11, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)){
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
     }
+
+    if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
+        if (sqlite3_bind_text(stmt, 10, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
+            return SQLITE_ERROR;
+        }
+    } else {
+        if (sqlite3_bind_text(stmt, 10, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
+            return SQLITE_ERROR;
+        }
+    }
+
 
     if (mce->network_provider &&
         sqlite3_bind_int(stmt, 12, mce->network_provider)) {
@@ -90,11 +102,22 @@ static int32_t md_sqlite_execute_insert(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 9, mce->event_param) ||
         sqlite3_bind_int(stmt, 12, mce->interface_type) ||
         sqlite3_bind_int(stmt, 13, mce->interface_id_type) ||
-        sqlite3_bind_text(stmt, 14, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC) ||
         sqlite3_bind_int(stmt, 16, mce->network_address_family) ||
         sqlite3_bind_text(stmt, 17, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
+    }
+
+    if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
+        if (sqlite3_bind_text(stmt, 14, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
+            return SQLITE_ERROR;
+        }
+    } else {
+        if (sqlite3_bind_text(stmt, 14, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
+            return SQLITE_ERROR;
+        }
     }
 
     if (mce->event_value != UINT8_MAX &&
@@ -133,10 +156,21 @@ static int32_t md_sqlite_update_event(struct md_writer_sqlite *mws,
         sqlite3_bind_text(stmt, 2, mce->event_value_str, strlen(mce->event_value_str), SQLITE_STATIC) ||
         sqlite3_bind_int(stmt, 3, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 4, mce->l4_session_id) ||
-        sqlite3_bind_text(stmt, 5, mce->network_address, strlen(mce->network_address), SQLITE_STATIC) ||
-        sqlite3_bind_text(stmt, 6, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+        sqlite3_bind_text(stmt, 5, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE query\n");
         return SQLITE_ERROR;
+    }
+
+    if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
+        if (sqlite3_bind_text(stmt, 6, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
+            return SQLITE_ERROR;
+        }
+    } else {
+        if (sqlite3_bind_text(stmt, 6, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
+            return SQLITE_ERROR;
+        }
     }
 
     return sqlite3_step(stmt);
@@ -172,10 +206,21 @@ static int16_t md_sqlite_get_last_update(struct md_writer_sqlite *mws,
 
     if (sqlite3_bind_int(stmt, 1, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 2, mce->l4_session_id) ||
-        sqlite3_bind_text(stmt, 3, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC) ||
         sqlite3_bind_text(stmt, 4, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to SELECT query\n");
         return retval;
+    }
+
+    if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
+        if (sqlite3_bind_text(stmt, 3, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
+            return SQLITE_ERROR;
+        }
+    } else {
+        if (sqlite3_bind_text(stmt, 3, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
+            return SQLITE_ERROR;
+        }
     }
 
     while (sqlite3_step(stmt) == SQLITE_ROW) {

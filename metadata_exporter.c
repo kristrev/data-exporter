@@ -315,6 +315,12 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
     }
     json_object_object_add(obj, "interface_id", obj_add);
 
+    if (!(obj_add = json_object_new_string("1234567"))) {
+        json_object_put(obj);
+        return NULL;
+    }
+    json_object_object_add(obj, "imei", obj_add);
+
     if (!(obj_add = json_object_new_string("192.168.0.153/24"))) {
         json_object_put(obj);
         return NULL;
