@@ -400,7 +400,7 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
                 db_filename = json_object_get_string(val);
             else if (!strcmp(key, "nodeid"))
                 node_id = (uint32_t) json_object_get_int(val);
-            if (!strcmp(key, "nodeid_file"))
+            else if (!strcmp(key, "nodeid_file"))
                 nodeid_file = json_object_get_string(val);
             else if (!strcmp(key, "meta_prefix"))
                 meta_prefix = json_object_get_string(val);
@@ -413,7 +413,7 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
             else if (!strcmp(key, "events"))
                 num_events = (uint32_t) json_object_get_int(val);
             else if (!strcmp(key, "session_id"))
-                mws->session_id_file = json_object_get_string(val);
+                mws->session_id_file = strdup(json_object_get_string(val));
             else if (!strcmp(key, "api_version"))
                 mws->api_version = (uint32_t) json_object_get_int(val);
         }
@@ -504,6 +504,8 @@ static uint8_t md_sqlite_check_session_id(struct md_writer_sqlite *mws)
         return RETVAL_FAILURE;
     }
 
+    free(mws->session_id_file);
+
     META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Session ID values: %llu %llu\n",
             mws->session_id, mws->session_id_multip);
 
@@ -560,15 +562,19 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
     //We have received an indication that a valid timestamp is present, so
     //check and update
     if (!mws->valid_timestamp && event->tstamp > FIRST_VALID_TIMESTAMP) {
-        if (md_sqlite_check_valid_tstamp(mws))
+        if (md_sqlite_check_valid_tstamp(mws)) {
+            printf("Invalid timestamp\n");
             return;
+        }
 
         META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Tstamp update from event\n");
     }
 
     if (mws->session_id_file && !mws->session_id) {
-        if (md_sqlite_check_session_id(mws))
+        if (md_sqlite_check_session_id(mws)) {
+            printf("No session ID\n");
             return;
+        }
     }
 
     //These two are exclusive. There is no point adding timeout if event_limit

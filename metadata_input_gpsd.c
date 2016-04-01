@@ -133,8 +133,8 @@ static uint8_t md_gpsd_config(struct md_input_gpsd *mig,
         return RETVAL_FAILURE;
     
     //Cache address/port in cache gpsd fails while running
-    mig->gpsd_addr = address;
-    mig->gpsd_port = port;
+    mig->gpsd_addr = strdup(address);
+    mig->gpsd_port = strdup(port);
 
     return md_input_gpsd_connect(mig);
 }
