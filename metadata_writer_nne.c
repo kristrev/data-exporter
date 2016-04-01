@@ -148,9 +148,8 @@ static void md_nne_handle_timeout(void *ptr) {
     }
 }
 
-static int32_t md_nne_init(void *ptr, int argc, char *argv[]) {
+static int32_t md_nne_init(void *ptr, json_object* config) {
     struct md_writer_nne *mwn = ptr;
-    int c, option_index;
 
     mwn->dat_file = NULL;
     mwn->sequence = 0;
@@ -164,32 +163,22 @@ static int32_t md_nne_init(void *ptr, int argc, char *argv[]) {
     strcpy(mwn->prefix, NNE_DEFAULT_PREFIX);
     strcpy(mwn->extension, NNE_DEFAULT_EXTENSION);
 
-    static struct option nne_options[] = {
-        {"nne_interval",   required_argument, 0, 0},
-        {"nne_instance",    required_argument, 0, 0},
-        {"nne_gps_prefix", required_argument, 0, 0},
-        {0,                0,                 0, 0}
-    };
-
-    while (1) {
-        c = getopt_long_only(argc, argv, "--", nne_options, &option_index);
-        if (c == -1)
-            break;
-        else if (c)
-            continue;
-
-        if (!strcmp(nne_options[option_index].name, "nne_interval"))
-            mwn->interval = ((uint32_t) atoi(optarg)) * 1000;
-        else if (!strcmp(nne_options[option_index].name, "nne_instance"))
-            mwn->instance_id = (uint32_t) atoi(optarg);
-        else if (!strcmp(nne_options[option_index].name, "nne_gps_prefix")) {
-            if (strlen(optarg) > sizeof(mwn->prefix) - 1) {
-                META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: gps prefix too long (>%d)\n",
+    json_object* subconfig;
+    if (json_object_object_get_ex(config, "nne", &subconfig)) {
+        json_object_object_foreach(subconfig, key, val) {
+            if (!strcmp(key, "interval"))
+                mwn->interval = ((uint32_t) json_object_get_int(val)) * 1000;
+            else if (!strcmp(key, "instance"))
+                mwn->instance_id = ((uint32_t) json_object_get_int(val)) * 1000;
+            else if (!strcmp(key, "gps_prefix")) {
+                char* prefix = json_object_get_string(val);
+                if (strlen(prefix) > sizeof(mwn->prefix) - 1) {
+                    META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: gps prefix too long (>%d)\n",
                         sizeof(mwn->prefix) - 1);
-                return RETVAL_FAILURE;
+                    return RETVAL_FAILURE;
+                } else 
+                    strcpy(mwn->prefix, prefix);
             }
-            else
-                strcpy(mwn->prefix, optarg);
         }
     }
 
@@ -222,18 +211,17 @@ static void md_nne_handle(struct md_writer *writer, struct md_event *event) {
         }
 }
 
-static void md_nne_usage() {
-    fprintf(stderr, "md_nne_usage\n");
-    fprintf(stderr, "Nornet Edge writer.\n");
-    fprintf(stderr, "--nne_interval: File rotation/export interval (in seconds)\n");
-    fprintf(stderr, "--nne_instance: NNE measurement instance id\n");
-    fprintf(stderr, "--nne_gps_prefix: File prefix /nne/data/<PREFIX><INSTANCE>.sdat\n");
+void md_nne_usage() {
+    fprintf(stderr, "\"nne\": {\t\tNornet Edge writer.\n");
+    fprintf(stderr, "  \"interval\":\t\tFile rotation/export interval (in seconds)\n");
+    fprintf(stderr, "  \"instance\":\t\tNNE measurement instance id\n");
+    fprintf(stderr, "  \"gps_prefix\":\t\tFile prefix /nne/data/<PREFIX><INSTANCE>.sdat\n");
+    fprintf(stderr, "},\n");
 }
 
 void md_nne_setup(struct md_exporter *mde, struct md_writer_nne* mwn) {
     mwn->parent = mde;
     mwn->init = md_nne_init;
     mwn->handle = md_nne_handle;
-    mwn->usage = md_nne_usage;
 }
 

@@ -15,3 +15,4 @@ struct md_input_sysevent {
 };
 
 void md_sysevent_setup(struct md_exporter *mde, struct md_input_sysevent *mis);
+void md_sysevent_usage();

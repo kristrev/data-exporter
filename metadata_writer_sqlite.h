@@ -24,8 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef METADATA_WRITER_SQLITE_H
-#define METADATA_WRITER_SQLITE_H
+#pragma once
 
 #include <sys/time.h>
 #include <sqlite3.h>
@@ -308,6 +307,5 @@ struct md_writer_sqlite {
     uint8_t api_version;
 };
 
+void md_sqlite_usage();
 void md_sqlite_setup(struct md_exporter *mde, struct md_writer_sqlite* mws);
-
-#endif

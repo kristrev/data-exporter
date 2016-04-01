@@ -96,14 +96,15 @@ static uint8_t md_sysevent_config(struct md_input_sysevent *mis)
     return RETVAL_FAILURE;
 }
 
-static uint8_t md_input_sysevent_init(void *ptr, int argc, char *argv[])
+static uint8_t md_input_sysevent_init(void *ptr, json_object* config)
 {
     struct md_input_sysevent *mis = ptr;
     return md_sysevent_config(mis);
 }
 
-static void md_input_sysevent_usage()
+void md_sysevent_usage()
 {
+    fprintf(stderr, "\"sysevent\": {},\t\tSysevent input (no parameters)\n"); 
 }
 
 static void md_input_sysevent_destroy()
@@ -115,5 +116,4 @@ void md_sysevent_setup(struct md_exporter *mde, struct md_input_sysevent *mis)
     mis->parent  = mde;
     mis->init    = md_input_sysevent_init;
     mis->destroy = md_input_sysevent_destroy;
-    mis->usage   = md_input_sysevent_usage;
 }

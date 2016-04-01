@@ -75,13 +75,13 @@ uint32_t system_helpers_get_nodeid()
     return (uint32_t) node_id;
 }
 #elif MONROE
-uint32_t system_helpers_get_nodeid()
+uint32_t system_helpers_get_nodeid(char* nodeid_file)
 {
     char num_buf[255];
     long node_id;
     size_t retval;
     //Check if file exists
-    FILE *node_file = fopen("/etc/config/nodeid", "r");
+    FILE *node_file = fopen(nodeid_file, "r");
 
     if (node_file == NULL)
         return 0;

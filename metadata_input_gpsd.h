@@ -43,5 +43,6 @@ struct md_input_gpsd {
 };
 
 void md_gpsd_setup(struct md_exporter *mde, struct md_input_gpsd *mig);
+void md_gpsd_usage();
 
 #endif

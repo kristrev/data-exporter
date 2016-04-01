@@ -34,6 +34,8 @@
 
 #include "lib/minmea.h"
 
+#define CONFIG_MAX_SIZE 8092
+
 #define MDE_VERSION 1
 #define METADATA_NL_GROUP 0x03
 
@@ -105,13 +107,12 @@ enum md_writers {
 
 #define MD_INPUT \
     struct md_exporter *parent; \
-    uint8_t (*init)(void *ptr, int argc, char *argv[]); \
+    uint8_t (*init)(void *ptr, json_object* config); \
     void (*destroy)(void *ptr); \
-    void (*usage)()
 
 #define MD_WRITER \
     struct md_exporter *parent; \
-    int32_t (*init)(void *ptr, int argc, char *argv[]); \
+    int32_t (*init)(void *ptr, json_object* config); \
     void (*handle)(struct md_writer *writer, struct md_event *event); \
     void (*itr_cb)(void *ptr); \
     void (*usage)()

@@ -130,30 +130,19 @@ static uint8_t md_input_gps_nsb_config(struct md_input_gps_nsb *mign,
     return RETVAL_SUCCESS;
 }
 
-static uint8_t md_input_gps_nsb_init(void *ptr, int argc, char *argv[])
+static uint8_t md_input_gps_nsb_init(void *ptr, json_object* config)
 {
     struct md_input_gps_nsb *mign = ptr;
     const char *address = NULL, *port = NULL;
-    int c, option_index = 0;
 
-    static struct option gpsd_options[] = {
-        {"nsb_gps_address",         required_argument,  0,  0},
-        {"nsb_gps_port",            required_argument,  0,  0},
-        {0,                                         0,  0,  0}};
-
-    while (1) {
-        //No permuting of array here as well
-        c = getopt_long_only(argc, argv, "--", gpsd_options, &option_index);
-
-        if (c == -1)
-            break;
-        else if (c)
-            continue;
-
-        if (!strcmp(gpsd_options[option_index].name, "nsb_gps_address"))
-            address = optarg;
-        else if (!strcmp(gpsd_options[option_index].name, "nsb_gps_port"))
-            port = optarg;
+    json_object* subconfig;
+    if (json_object_object_get_ex(config, "gps_nsb", &subconfig)) {
+        json_object_object_foreach(subconfig, key, val) {
+            if (!strcmp(key, "address"))
+                address = json_object_get_string(val);
+            else if (!strcmp(key, "port"))
+                port = json_object_get_string(val);
+        }
     }
 
     if (address == NULL || port == NULL) {
@@ -166,9 +155,10 @@ static uint8_t md_input_gps_nsb_init(void *ptr, int argc, char *argv[])
 
 static void md_gps_nsb_usage()
 {
-    fprintf(stderr, "NSB GPS input:\n");
-    fprintf(stderr, "--nsb_gps_address: IP NSB broadcasts GPS to (r)\n");
-    fprintf(stderr, "--nsb_gps_port: Port NSB broadcasts GPS to (r)\n");
+    fprintf(stderr, "\"nsp_gps\": {\t\tNSB GPS input\n");
+    fprintf(stderr, "  \"address\":\t\tIP NSB broadcasts GPS to\n");
+    fprintf(stderr, "  \"port\":\t\tPort NSB broadcasts GPS to\n");
+    fprintf(stderr, "},\n");
 }
 
 void md_gps_nsb_setup(struct md_exporter *mde, struct md_input_gps_nsb *mign)

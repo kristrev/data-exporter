@@ -24,9 +24,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef METADATA_INPUT_NETLINK_H
-#define METADATA_INPUT_NETLINK_H
-
+#pragma once
 #include "metadata_exporter.h"
 
 struct mnl_socket;
@@ -41,6 +39,5 @@ struct md_input_netlink {
     struct md_iface_event *mie;
 };
 
+void md_netlink_usage();
 void md_netlink_setup(struct md_exporter *mde, struct md_input_netlink *min);
-
-#endif
