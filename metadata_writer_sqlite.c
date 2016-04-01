@@ -383,6 +383,7 @@ void md_sqlite_usage()
     fprintf(stderr, "  \"events\":\t\tnumber of events before copying database (default: 10)\n");
     fprintf(stderr, "  \"session_id\":\t\tpath to session id file\n");
     fprintf(stderr, "  \"sql_api_version\":\tbackend API version (default: 1)\n");
+    fprintf(stderr, "}\n");
 }
 
 int32_t md_sqlite_init(void *ptr, json_object* config)
