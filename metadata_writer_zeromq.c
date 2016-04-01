@@ -226,7 +226,7 @@ static json_object* md_zeromq_create_json_modem_default(struct md_writer_zeromq 
     if (!(obj = json_object_new_object()))
         return NULL;
 
-    md_zeromq_add_default_fields(obj, mce->sequence, mce->tstamp, MONROE_ZMQ_DATA_ID_MODEM);
+    md_zeromq_add_default_fields(obj, mce->sequence, mce->tstamp, MONROE_ZMQ_DATA_ID_CONNECTIVITY);
 
     if (!(obj_add = json_object_new_string(mce->interface_id))) {
         json_object_put(obj);
@@ -302,10 +302,9 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
     if (mce->event_param != CONN_EVENT_META_UPDATE)
         return;
 
-    retval = snprintf(topic, sizeof(topic), "%s.%s.%s %s",
-            MONROE_ZMQ_TOPIC_MODEM,
+    retval = snprintf(topic, sizeof(topic), "%s.%s %s",
+            MONROE_ZMQ_TOPIC_CONNECTIVITY,
             mce->interface_id,
-            MONROE_ZMQ_TOPIC_MODEM_UPDATE,
             json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
 
     if (retval < sizeof(topic))

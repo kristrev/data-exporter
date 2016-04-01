@@ -71,6 +71,9 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_input_netlink *min,
         if (!strcmp(key, "interface_id"))
             mce->interface_id = json_object_get_string(val);
 
+        if (!strcmp(key, "imei"))
+            mce->imei = json_object_get_string(val);
+
         if (!strcmp(key, "interface_name"))
             mce->interface_name = json_object_get_string(val);
 
