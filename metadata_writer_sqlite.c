@@ -367,6 +367,10 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         return RETVAL_FAILURE;
     }
 
+    if (mws->session_id_file)
+        system_helpers_read_session_id(mws->session_id_file, &(mws->session_id),
+                &(mws->session_id_multip));
+
     return RETVAL_SUCCESS;
 }
 
