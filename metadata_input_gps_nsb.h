@@ -36,6 +36,7 @@ struct md_input_gps_nsb {
     struct backend_epoll_handle *event_handle;
 };
 
+void md_gps_nsb_usage();
 void md_gps_nsb_setup(struct md_exporter *mde, struct md_input_gps_nsb *mign);
 
 #endif

@@ -845,6 +845,8 @@ int main(int argc, char *argv[])
         }
     }
 
+    json_object_put(config);
+
     if (test_mode)
         run_test_mode(mde, packets);
     else

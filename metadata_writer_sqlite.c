@@ -382,7 +382,7 @@ void md_sqlite_usage()
     fprintf(stderr, "  \"interval\":\t\ttime (in ms) from event and until database is copied (default: 5 sec)\n");
     fprintf(stderr, "  \"events\":\t\tnumber of events before copying database (default: 10)\n");
     fprintf(stderr, "  \"session_id\":\t\tpath to session id file\n");
-    fprintf(stderr, "  \"sql_api_version\":\tbackend API version (default: 1)\n");
+    fprintf(stderr, "  \"api_version\":\tbackend API version (default: 1)\n");
     fprintf(stderr, "}\n");
 }
 
@@ -414,7 +414,7 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
                 num_events = (uint32_t) json_object_get_int(val);
             else if (!strcmp(key, "session_id"))
                 mws->session_id_file = json_object_get_string(val);
-            else if (!strcmp(key, "sql_api_version"))
+            else if (!strcmp(key, "api_version"))
                 mws->api_version = (uint32_t) json_object_get_int(val);
         }
     }
