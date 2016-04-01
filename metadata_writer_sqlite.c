@@ -292,10 +292,6 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
             &(mws->insert_update), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, UPDATE_UPDATE, -1,
             &(mws->update_update), NULL) ||
-       sqlite3_prepare_v2(mws->db_handle, DUMP_EVENTS, -1,
-            &(mws->dump_table), NULL) ||
-       sqlite3_prepare_v2(mws->db_handle, DUMP_UPDATES, -1,
-            &(mws->dump_update), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, SELECT_LAST_UPDATE, -1,
             &(mws->last_update), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, INSERT_GPS_EVENT, -1,
@@ -310,9 +306,32 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
             &(mws->delete_monitor), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DUMP_MONITOR, -1,
             &(mws->dump_monitor), NULL)) {
-        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Statement failed: %s\n", sqlite3_errmsg(mws->db_handle));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Statement failed: %s\n",
+                sqlite3_errmsg(mws->db_handle));
         sqlite3_close_v2(db_handle);
         return RETVAL_FAILURE;
+    }
+
+    if (mws->api_version == 2) {
+        if (sqlite3_prepare_v2(mws->db_handle, DUMP_EVENTS_V2, -1,
+                    &(mws->dump_table), NULL) ||
+            sqlite3_prepare_v2(mws->db_handle, DUMP_UPDATES_V2, -1,
+                &(mws->dump_update), NULL)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Dump prepare failed: %s\n",
+                    sqlite3_errmsg(mws->db_handle));
+            sqlite3_close_v2(db_handle);
+            return RETVAL_FAILURE;
+        }
+    } else {
+         if (sqlite3_prepare_v2(mws->db_handle, DUMP_EVENTS, -1,
+                    &(mws->dump_table), NULL) ||
+            sqlite3_prepare_v2(mws->db_handle, DUMP_UPDATES, -1,
+                &(mws->dump_update), NULL)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Dump prepare failed: %s\n",
+                    sqlite3_errmsg(mws->db_handle));
+            sqlite3_close_v2(db_handle);
+            return RETVAL_FAILURE;
+        }
     }
 
     if (meta_prefix) {
@@ -363,7 +382,7 @@ void md_sqlite_usage()
     fprintf(stderr, "  \"interval\":\t\ttime (in ms) from event and until database is copied (default: 5 sec)\n");
     fprintf(stderr, "  \"events\":\t\tnumber of events before copying database (default: 10)\n");
     fprintf(stderr, "  \"session_id\":\t\tpath to session id file\n");
-    fprintf(stderr, "},\n");
+    fprintf(stderr, "  \"sql_api_version\":\tbackend API version (default: 1)\n");
 }
 
 int32_t md_sqlite_init(void *ptr, json_object* config)
@@ -394,6 +413,8 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
                 num_events = (uint32_t) json_object_get_int(val);
             else if (!strcmp(key, "session_id"))
                 mws->session_id_file = json_object_get_string(val);
+            else if (!strcmp(key, "sql_api_version"))
+                mws->api_version = (uint32_t) json_object_get_int(val);
         }
     }
 
@@ -425,7 +446,12 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Invalid SQLite interval/number of events\n");
         return RETVAL_FAILURE;
     }
-  
+ 
+    if (!mws->api_version || mws->api_version > 2) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Unknown backend API version\n");
+        return RETVAL_FAILURE;
+    }
+
     META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Done configuring SQLite handle\n");
 
     return md_sqlite_configure(mws, db_filename, node_id, nodeid_file, interval,
@@ -622,5 +648,7 @@ void md_sqlite_setup(struct md_exporter *mde, struct md_writer_sqlite* mws) {
     mws->init = md_sqlite_init;
     mws->handle = md_sqlite_handle;
     mws->itr_cb = md_sqlite_itr_cb;
+    mws->usage = md_sqlite_usage;
+    mws->api_version = 1;
 }
 
