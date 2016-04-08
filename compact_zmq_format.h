@@ -25,7 +25,7 @@
 #define ZMQ_KEY_TSTAMP         "tstamp"
 
 ## these are disabled if -DMONROE is not set
-#define ZMQ_KEY_DATAID         "" 
+#define ZMQ_KEY_DATAID         ""
 #define ZMQ_KEY_DATAVERSION    ""
 
 #define ZMQ_KEY_CID            "cid"
