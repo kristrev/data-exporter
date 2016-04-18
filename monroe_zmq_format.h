@@ -53,7 +53,6 @@
 #define ZMQ_KEY_NW_MCCMNC      "NWMCCMNC"
 #define ZMQ_KEY_RSCP           "RSCP"
 #define ZMQ_KEY_RSSI           "RSSI"
-#define ZMQ_KEY_SIGNAL         "SignalStrength"
 
 #define ZMQ_KEY_INTERFACEID    "ICCID"
 #define ZMQ_KEY_INTERFACENAME  "InterfaceName"
