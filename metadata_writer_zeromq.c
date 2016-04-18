@@ -122,13 +122,17 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
     json_object_object_add(obj, ZMQ_KEY_LONGITUDE, obj_add);
 
     if (mge->speed) {
-        obj_add = json_object_new_double(mge->speed);
+        if (isnan(mge->speed)) {
+            json_object_object_add(obj, ZMQ_KEY_SPEED, NULL);
+        } else {
+            obj_add = json_object_new_double(mge->speed);
 
-        if (obj_add == NULL) {
-            json_object_put(obj);
-            return NULL;
+            if (obj_add == NULL) {
+                json_object_put(obj);
+                return NULL;
+            }
+            json_object_object_add(obj, ZMQ_KEY_SPEED, obj_add);
         }
-        json_object_object_add(obj, ZMQ_KEY_SPEED, obj_add);
     }
 
     if (mge->altitude) {
