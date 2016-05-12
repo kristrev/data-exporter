@@ -345,6 +345,18 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
     }
     json_object_object_add(obj, "signal_strength", obj_add);
 
+    if (!(obj_add = json_object_new_int(100))) {
+        json_object_put(obj);
+        return NULL;
+    }
+    json_object_object_add(obj, "rx_bytes", obj_add);
+
+    if (!(obj_add = json_object_new_int(100))) {
+        json_object_put(obj);
+        return NULL;
+    }
+    json_object_object_add(obj, "tx_bytes", obj_add);
+
 	return obj;	
 }
 
@@ -540,6 +552,7 @@ static void test_netlink(uint32_t packets)
                 (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
 
+#if 0
         obj_to_send = create_fake_gps_gga_obj();
         send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
@@ -552,6 +565,7 @@ static void test_netlink(uint32_t packets)
 
         test_modem_metadata(snd_buf, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
+#endif
         if (packets && (++i >= packets))
             break;
 

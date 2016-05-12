@@ -30,6 +30,7 @@
 #include <string.h>
 #include <sqlite3.h>
 #include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "metadata_utils.h"
@@ -372,10 +373,42 @@ static uint8_t md_sqlite_handle_update_event(struct md_writer_sqlite *mws,
     retval = md_sqlite_update_event(mws, mce);
 
     if (retval != SQLITE_DONE) {
-        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "UPDATE failed: %s\n", sqlite3_errstr(retval));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "UPDATE failed: %s\n",
+                sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
     
+    return RETVAL_SUCCESS;
+}
+
+static uint8_t md_sqlite_handle_usage_update(struct md_writer_sqlite *mws,
+                                             struct md_conn_event *mce)
+{
+    uint64_t date_start = 0, date_end = 0;
+    struct tm tm_tmp = {0};
+    struct timeval t_now;
+    int32_t retval;
+
+    //Create correct date_start and date_end (always to the hour) and keep at 0
+    //if not, so that we can more easily update
+    //TODO: This will be a helper function since it will be needed two places!
+    if (mws->valid_timestamp) {
+        gettimeofday(&t_now, NULL);
+        
+        gmtime_r(&(t_now.tv_sec), &tm_tmp);
+
+        //Only keep hour for date_start, date_end
+        tm_tmp.tm_sec = 0;
+        tm_tmp.tm_min = 0;
+
+        date_start = (uint64_t) timegm(&tm_tmp);
+        date_end = date_start + 3600;
+
+        printf("Start: %lu End: %lu\n", date_start, date_end);
+    }
+
+    //First try to update, then do an insert if that fails
+
     return RETVAL_SUCCESS;
 }
 
@@ -383,14 +416,17 @@ uint8_t md_sqlite_handle_conn_event(struct md_writer_sqlite *mws,
                                            struct md_conn_event *mce)
 {
     uint8_t retval = RETVAL_SUCCESS;
+
     //Not quite sure how to handle timestamps that would go back in time
     if (mce->tstamp > mws->last_msg_tstamp)
         mws->last_msg_tstamp = mce->tstamp;
 
-    if (mce->event_param == CONN_EVENT_META_UPDATE)
+    if (mce->event_param == CONN_EVENT_META_UPDATE) {
+        md_sqlite_handle_usage_update(mws, mce);
         retval = md_sqlite_handle_update_event(mws, mce);
-    else
+    } else {
         retval = md_sqlite_handle_insert_conn_event(mws, mce);
+    }
 
     return retval;
 }

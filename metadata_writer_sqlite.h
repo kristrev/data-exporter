@@ -104,8 +104,8 @@
                             "NodeId INTEGER NOT NULL," \
                             "DeviceId TEXT NOT NULL," \
                             "Iccid TEXT DEFAULT '0'," \
-                            "DateStart TEXT NOT NULL," \
-                            "DateEnd TEXT NOT NULL,"\
+                            "DateStart INTEGER DEFAULT 0," \
+                            "DateEnd INTEGER DEFAULT 0,"\
                             "Rx INTEGER NOT NULL,"\
                             "Tx INTEGER NOT NULL," \
                             "PRIMARY KEY(NodeId,DeviceId,Iccid,DateStart))"
@@ -132,6 +132,10 @@
 #define INSERT_MONITOR_EVENT "INSERT INTO MonitorEvents(NodeId,Timestamp" \
                              ",Sequence,Boottime) " \
                              "VALUES (?,?,?,?)"
+
+#define INSERT_USAGE        "INSERT INTO DataUsage(NodeId,DeviceId,Iccid" \
+                            ",DateStart,DateEnd,Rx,Tx) " \
+                            "VALUES (?,?,?,?,?,?,?)"
 
 #define SELECT_LAST_UPDATE  "SELECT EventValueStr FROM NetworkUpdates WHERE "\
                             "L3SessionId=? AND "\
@@ -282,6 +286,8 @@ struct md_writer_sqlite {
 
     sqlite3_stmt *insert_gps, *delete_gps, *dump_gps;
     sqlite3_stmt *insert_monitor, *delete_monitor, *dump_monitor;
+
+    sqlite3_stmt *insert_usage, *update_usage;
 
     const char *session_id_file;
 

@@ -311,7 +311,9 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
        sqlite3_prepare_v2(mws->db_handle, DELETE_MONITOR_TABLE, -1,
             &(mws->delete_monitor), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DUMP_MONITOR, -1,
-            &(mws->dump_monitor), NULL)) {
+            &(mws->dump_monitor), NULL) ||
+       sqlite3_prepare_v2(mws->db_handle, INSERT_USAGE, -1,
+            &(mws->insert_usage), NULL)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Statement failed: %s\n",
                 sqlite3_errmsg(mws->db_handle));
         sqlite3_close_v2(db_handle);
@@ -492,6 +494,8 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update tstamp in database\n");
         return RETVAL_FAILURE;
     }
+
+    //Update data usage too
 
     mws->valid_timestamp = 1;
     return RETVAL_SUCCESS;
