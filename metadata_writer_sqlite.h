@@ -74,7 +74,7 @@
                             "L3SessionId INTEGER NOT NULL," \
                             "L4SessionId INTEGER NOT NULL DEFAULT 0," \
                             "EventValueStr TEXT NOT NULL," \
-                            "InterfaceType INTEGERNOT NULL," \
+                            "InterfaceType INTEGER NOT NULL," \
                             "InterfaceId TEXT NOT NULL," \
                             "NetworkAddress TEXT NOT NULL," \
                             "NetworkProvider INT," \
@@ -99,6 +99,16 @@
                             "Sequence    INTEGER NOT NULL," \
                             "Boottime    INTEGER NOT NULL," \
                             "PRIMARY KEY(NodeId,Timestamp,Sequence))"
+
+#define CREATE_USAGE_SQL    "CREATE TABLE IF NOT EXISTS DataUsage(" \
+                            "NodeId INTEGER NOT NULL," \
+                            "DeviceId TEXT NOT NULL," \
+                            "Iccid TEXT DEFAULT '0'," \
+                            "DateStart TEXT NOT NULL," \
+                            "DateEnd TEXT NOT NULL,"\
+                            "Rx INTEGER NOT NULL,"\
+                            "Tx INTEGER NOT NULL," \
+                            "PRIMARY KEY(NodeId,DeviceId,Iccid,DateStart))"
 
 #define INSERT_EVENT        "INSERT INTO NetworkEvent(NodeId,SessionId,"\
                             "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\

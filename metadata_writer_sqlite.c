@@ -250,6 +250,12 @@ static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char 
         return NULL;
     }
 
+    if (sqlite3_exec(db_handle, CREATE_USAGE_SQL, NULL, NULL, &db_errmsg)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "db create (usage) failed with message: %s\n", db_errmsg);
+        sqlite3_close_v2(db_handle);
+        return NULL;
+    }
+
     return db_handle;
 }
 

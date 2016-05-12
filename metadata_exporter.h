@@ -174,6 +174,8 @@ struct md_conn_event {
     int8_t signal_strength;
     uint64_t l3_session_id;
     uint64_t l4_session_id;
+    uint64_t rx_bytes;
+    uint64_t tx_bytes;
     const char *interface_id;
     const char *imei;
     const char *interface_name;

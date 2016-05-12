@@ -100,6 +100,12 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_input_netlink *min,
 
         if (!strcmp(key, "signal_strength"))
             mce->signal_strength = (int8_t) json_object_get_int(val);
+
+        if (!strcmp(key, "rx_bytes"))
+            mce->rx_bytes = (uint64_t) json_object_get_int64(val);
+
+        if (!strcmp(key, "tx_bytes"))
+            mce->tx_bytes = (uint64_t) json_object_get_int64(val);
     }
 
     if (!mce->tstamp || !mce->sequence ||
