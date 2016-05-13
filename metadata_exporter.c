@@ -507,7 +507,6 @@ static void test_netlink(uint32_t packets)
 	struct json_object *obj_to_send = NULL;
     struct timeval tv;
 
-    gettimeofday(&tv, NULL);
 
     mnl_sock = nlhelper_create_socket(NETLINK_USERSOCK, 0);
 
@@ -534,6 +533,7 @@ static void test_netlink(uint32_t packets)
 
     //TODO: Specify number of packets from command line
     while(1) {
+        gettimeofday(&tv, NULL);
 #if 0
         if (i == 0)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,", i+1);
@@ -562,7 +562,6 @@ static void test_netlink(uint32_t packets)
         send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
-
         test_modem_metadata(snd_buf, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
 #endif

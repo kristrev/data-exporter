@@ -461,29 +461,26 @@ static uint8_t md_sqlite_handle_usage_update(struct md_writer_sqlite *mws,
 {
     uint64_t date_start = 0, date_end = 0;
     struct tm tm_tmp = {0};
-    struct timeval t_now;
+    time_t tstamp = (time_t) mce->tstamp;
     int32_t retval;
 
     //Create correct date_start and date_end (always to the hour) and keep at 0
     //if not, so that we can more easily update
-    //TODO: This will be a helper function since it will be needed two places!
-    if (mws->valid_timestamp) {
-        gettimeofday(&t_now, NULL);
-        
-        gmtime_r(&(t_now.tv_sec), &tm_tmp);
+    gmtime_r(&tstamp, &tm_tmp);
 
-        //Only keep hour for date_start, date_end
-        tm_tmp.tm_sec = 0;
-        tm_tmp.tm_min = 0;
+    //Only keep hour for date_start, date_end
+    tm_tmp.tm_sec = 0;
+    tm_tmp.tm_min = 0;
 
-        date_start = (uint64_t) timegm(&tm_tmp);
-        date_end = date_start + 3600;
-    }
+    date_start = (uint64_t) timegm(&tm_tmp);
+    date_end = date_start + 3600;
 
     retval = md_sqlite_execute_update_usage(mws, mce, date_start, date_end);
 
-    if (retval == SQLITE_DONE)
+    if (retval == SQLITE_DONE && sqlite3_changes(mws->db_handle)) {
+        printf("Update\n");
         return RETVAL_SUCCESS;
+    }
 
     retval = md_sqlite_execute_insert_usage(mws, mce, date_start, date_end);
 
@@ -492,6 +489,7 @@ static uint8_t md_sqlite_handle_usage_update(struct md_writer_sqlite *mws,
         return RETVAL_FAILURE;
     }
 
+    printf("Insert\n");
     return RETVAL_SUCCESS;
 }
 
@@ -505,7 +503,13 @@ uint8_t md_sqlite_handle_conn_event(struct md_writer_sqlite *mws,
         mws->last_msg_tstamp = mce->tstamp;
 
     if (mce->event_param == CONN_EVENT_META_UPDATE) {
-        md_sqlite_handle_usage_update(mws, mce);
+        //Without node id and valid timestamp, we can't place data usage in time
+        //or location so just ignore. Assume that the tool which exports
+        //connection events wait until this information is in place before
+        //including rx/tx
+        if (mce->rx_bytes || mce->tx_bytes)
+            md_sqlite_handle_usage_update(mws, mce);
+        
         retval = md_sqlite_handle_update_event(mws, mce);
     } else {
         retval = md_sqlite_handle_insert_conn_event(mws, mce);
