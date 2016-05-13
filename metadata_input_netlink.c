@@ -392,8 +392,10 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
 
     event_type = (uint8_t) json_object_get_int(json_event);
 
-    if (!(event_type & min->md_nl_mask))
+    if (!(event_type & min->md_nl_mask)) {
+        json_object_put(nlh_obj);
         return;
+    }
 
     META_PRINT(min->parent->logfile, "Got JSON %s\n", json_object_to_json_string(nlh_obj));
 
