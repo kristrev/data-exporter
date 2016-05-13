@@ -313,7 +313,9 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
        sqlite3_prepare_v2(mws->db_handle, DUMP_MONITOR, -1,
             &(mws->dump_monitor), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, INSERT_USAGE, -1,
-            &(mws->insert_usage), NULL)) {
+            &(mws->insert_usage), NULL) ||
+        sqlite3_prepare_v2(mws->db_handle, UPDATE_USAGE, -1,
+            &(mws->update_usage), NULL)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Statement failed: %s\n",
                 sqlite3_errmsg(mws->db_handle));
         sqlite3_close_v2(db_handle);

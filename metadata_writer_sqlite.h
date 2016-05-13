@@ -156,6 +156,11 @@
                             "L3SessionId=? AND L4SessionId=? " \
                             "AND NetworkAddress=? AND InterfaceId=?"
 
+#define UPDATE_USAGE        "UPDATE DataUsage SET " \
+                            "Rx = Rx + ?, Tx = Tx + ? " \
+                            "WHERE " \
+                            "DeviceId=? AND Iccid=? AND DateStart=?"
+
 #define UPDATE_EVENT_ID     "UPDATE NetworkEvent SET " \
                             "NodeId=? "\
                             "WHERE NodeId=0"

@@ -388,6 +388,10 @@ static uint8_t md_sqlite_handle_usage_update(struct md_writer_sqlite *mws,
     struct tm tm_tmp = {0};
     struct timeval t_now;
     int32_t retval;
+    uint8_t interface_id_idx_insert = 2;
+    const char *no_iccid_str = "0";
+
+    sqlite3_stmt *stmt = mws->insert_usage;
 
     //Create correct date_start and date_end (always to the hour) and keep at 0
     //if not, so that we can more easily update
@@ -408,6 +412,69 @@ static uint8_t md_sqlite_handle_usage_update(struct md_writer_sqlite *mws,
     }
 
     //First try to update, then do an insert if that fails
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    //For modems we need both IMEI and ICCID. ICCID is currently stored in the
+    //interface_id variable, so some special handling is needed for now
+    if (mce->imei) {
+        if (sqlite3_bind_text(stmt, 2, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
+            return SQLITE_ERROR;
+        }
+
+        interface_id_idx_insert = 3;
+    }
+
+    if (sqlite3_bind_int64(stmt, 1, mws->node_id) ||
+        sqlite3_bind_text(stmt, interface_id_idx_insert, mce->interface_id,
+            strlen(mce->interface_id), SQLITE_STATIC) ||
+        sqlite3_bind_int64(stmt, 4, date_start) ||
+        sqlite3_bind_int64(stmt, 5, date_end) ||
+        sqlite3_bind_int64(stmt, 6, mce->rx_bytes) ||
+        sqlite3_bind_int64(stmt, 7, mce->tx_bytes)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT usage query\n");
+        return SQLITE_ERROR;
+    }
+
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Inserted usage\n");
+        return RETVAL_SUCCESS;
+    }
+
+    stmt = mws->update_usage;
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    if (sqlite3_bind_int64(stmt, 1, mce->rx_bytes) ||
+        sqlite3_bind_int64(stmt, 2, mce->tx_bytes) ||
+        sqlite3_bind_int64(stmt, 5, date_start)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query\n");
+        return SQLITE_ERROR;
+    }
+        
+    if (mce->imei) {
+        if (sqlite3_bind_text(stmt, 3, mce->imei, strlen(mce->imei),
+                SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 4, mce->interface_id,
+                strlen(mce->interface_id), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query #2\n");
+            return SQLITE_ERROR;
+        }
+    } else {
+        if (sqlite3_bind_text(stmt, 3, mce->interface_id,
+                strlen(mce->interface_id), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 4, no_iccid_str,
+                strlen(no_iccid_str), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query #2\n");
+            return SQLITE_ERROR;
+        }
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to update usage\n");
+        return RETVAL_FAILURE;
+    }
 
     return RETVAL_SUCCESS;
 }
