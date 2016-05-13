@@ -33,5 +33,6 @@
 uint8_t md_sqlite_handle_conn_event(struct md_writer_sqlite *mws,
                                     struct md_conn_event *mce);
 uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws);
+uint8_t md_sqlite_conn_usage_copy_db(struct md_writer_sqlite *mws);
 
 #endif

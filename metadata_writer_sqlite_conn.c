@@ -179,8 +179,7 @@ static int32_t md_sqlite_update_event(struct md_writer_sqlite *mws,
 
 static int32_t md_sqlite_execute_insert_usage(struct md_writer_sqlite *mws,
                                               struct md_conn_event *mce,
-                                              uint64_t date_start,
-                                              uint64_t date_end)
+                                              uint64_t date_start)
 {
     uint8_t interface_id_idx = 2;
     sqlite3_stmt *stmt = mws->insert_usage;
@@ -203,9 +202,8 @@ static int32_t md_sqlite_execute_insert_usage(struct md_writer_sqlite *mws,
         sqlite3_bind_text(stmt, interface_id_idx, mce->interface_id,
             strlen(mce->interface_id), SQLITE_STATIC) ||
         sqlite3_bind_int64(stmt, 4, date_start) ||
-        sqlite3_bind_int64(stmt, 5, date_end) ||
-        sqlite3_bind_int64(stmt, 6, mce->rx_bytes) ||
-        sqlite3_bind_int64(stmt, 7, mce->tx_bytes)) {
+        sqlite3_bind_int64(stmt, 5, mce->rx_bytes) ||
+        sqlite3_bind_int64(stmt, 6, mce->tx_bytes)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT usage query\n");
         return SQLITE_ERROR;
     }
@@ -215,8 +213,7 @@ static int32_t md_sqlite_execute_insert_usage(struct md_writer_sqlite *mws,
 
 static int32_t md_sqlite_execute_update_usage(struct md_writer_sqlite *mws,
                                               struct md_conn_event *mce,
-                                              uint64_t date_start,
-                                              uint64_t date_end)
+                                              uint64_t date_start)
 {
     const char *no_iccid_str = "0";
     sqlite3_stmt *stmt = mws->update_usage;
@@ -459,7 +456,7 @@ static uint8_t md_sqlite_handle_update_event(struct md_writer_sqlite *mws,
 static uint8_t md_sqlite_handle_usage_update(struct md_writer_sqlite *mws,
                                              struct md_conn_event *mce)
 {
-    uint64_t date_start = 0, date_end = 0;
+    uint64_t date_start = 0;
     struct tm tm_tmp = {0};
     time_t tstamp = (time_t) mce->tstamp;
     int32_t retval;
@@ -473,23 +470,22 @@ static uint8_t md_sqlite_handle_usage_update(struct md_writer_sqlite *mws,
     tm_tmp.tm_min = 0;
 
     date_start = (uint64_t) timegm(&tm_tmp);
-    date_end = date_start + 3600;
 
-    retval = md_sqlite_execute_update_usage(mws, mce, date_start, date_end);
+    retval = md_sqlite_execute_update_usage(mws, mce, date_start);
 
     if (retval == SQLITE_DONE && sqlite3_changes(mws->db_handle)) {
-        printf("Update\n");
+        mws->num_usage_events++;
         return RETVAL_SUCCESS;
     }
 
-    retval = md_sqlite_execute_insert_usage(mws, mce, date_start, date_end);
+    retval = md_sqlite_execute_insert_usage(mws, mce, date_start);
 
     if (retval != SQLITE_DONE) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to update usage\n");
         return RETVAL_FAILURE;
     }
 
-    printf("Insert\n");
+    mws->num_usage_events++;
     return RETVAL_SUCCESS;
 }
 
@@ -507,7 +503,7 @@ uint8_t md_sqlite_handle_conn_event(struct md_writer_sqlite *mws,
         //or location so just ignore. Assume that the tool which exports
         //connection events wait until this information is in place before
         //including rx/tx
-        if (mce->rx_bytes || mce->tx_bytes)
+        if (mws->usage_prefix_len && (mce->rx_bytes || mce->tx_bytes))
             md_sqlite_handle_usage_update(mws, mce);
         
         retval = md_sqlite_handle_update_event(mws, mce);
@@ -533,6 +529,16 @@ static uint8_t md_sqlite_conn_dump_db(struct md_writer_sqlite *mws, FILE *output
         return RETVAL_SUCCESS;
 }
 
+static uint8_t md_sqlite_usage_dump_db(struct md_writer_sqlite *mws, FILE *output)
+{
+    sqlite3_reset(mws->dump_usage);
+    
+    if (md_sqlite_helpers_dump_write(mws->dump_usage, output))
+        return RETVAL_FAILURE;
+    else
+        return RETVAL_SUCCESS;
+}
+
 uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = md_writer_helpers_copy_db(mws->meta_prefix,
@@ -546,4 +552,18 @@ uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws)
 
     return retval;
 
+}
+
+uint8_t md_sqlite_conn_usage_copy_db(struct md_writer_sqlite *mws)
+{
+    uint8_t retval = md_writer_helpers_copy_db(mws->usage_prefix,
+            mws->usage_prefix_len, md_sqlite_usage_dump_db, mws,
+            mws->delete_usage);
+   
+    if (retval == RETVAL_SUCCESS) {
+        mws->dump_tstamp = mws->last_msg_tstamp;
+        mws->num_usage_events = 0;
+    }
+
+    return retval;
 }
