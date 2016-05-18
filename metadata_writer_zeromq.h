@@ -39,6 +39,9 @@ struct md_writer_zeromq {
 
     void *zmq_context;
     void *zmq_publisher;
+    char *zmq_addr;      // to retry connection if zmq_send failed
+    int  connected;
 };
 
 void md_zeromq_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz);
+void md_zeromq_usage();

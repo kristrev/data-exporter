@@ -166,6 +166,18 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
     return obj;
 }
 
+static void md_zeromq_send(struct md_writer_zeromq* mwz, const void *buf, size_t len, int flags) {
+    if (mwz->connected != 1) {
+        if ((zmq_bind(mwz->zmq_publisher, mwz->zmq_addr)) != 0) {
+            mwz->connected = 0;
+        } else {
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "zmq_bind retry SUCCEEDED.\n" );
+            mwz->connected = 1;
+        }
+    }
+    zmq_send(mwz->zmq_publisher, buf, len, flags);
+}
+
 static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
                                  struct md_gps_event *mge)
 {
@@ -181,7 +193,7 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
     retval = snprintf(topic, sizeof(topic), "%s %s", MONROE_ZMQ_TOPIC_GPS, json_object_to_json_string_ext(gps_obj, JSON_C_TO_STRING_PLAIN));
 
     if (retval < sizeof(topic)) {
-        zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+        md_zeromq_send(mwz, topic, strlen(topic), 0);
     }
     json_object_put(gps_obj);
 }
@@ -198,7 +210,7 @@ static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
 
         retval = snprintf(topic, sizeof(topic), "%s.%s %s", MONROE_ZMQ_TOPIC_SENSOR, key, json_object_to_json_string_ext(val, JSON_C_TO_STRING_PLAIN));
         if (retval < sizeof(topic)) {
-            zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+            md_zeromq_send(mwz, topic, strlen(topic), 0);
         }
     }
 }
@@ -213,7 +225,7 @@ static void md_zeromq_handle_sysevent(struct md_writer_zeromq *mwz,
     md_zeromq_add_default_fields(mge->json_blob, mge->sequence, mge->tstamp, MONROE_ZMQ_DATA_ID_SYSEVENT);
     retval = snprintf(topic, sizeof(topic), "%s %s", MONROE_ZMQ_TOPIC_SYSEVENT, json_object_to_json_string_ext(mge->json_blob, JSON_C_TO_STRING_PLAIN));
     if (retval < sizeof(topic)) {
-        zmq_send(mwz->zmq_publisher , topic, strlen(topic), 0);
+        md_zeromq_send(mwz, topic, strlen(topic), 0);
     }
 }
 
@@ -308,7 +320,7 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
             json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
 
     if (retval < sizeof(topic))
-        zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+        md_zeromq_send(mwz, topic, strlen(topic), 0);
 
     json_object_put(json_obj);
 }
@@ -541,7 +553,7 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
         return;
     }
 
-    retval = zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+    md_zeromq_send(mwz, topic, strlen(topic), 0);
     json_object_put(json_obj);
 }
 
@@ -576,10 +588,14 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
 {
     //INET6_ADDRSTRLEN is 46 (max length of ipv6 + trailing 0), 5 is port, 6 is
     //protocol (we right now only support TCP)
-    char zmq_addr[INET6_ADDRSTRLEN + 5 + 6];
+    int32_t addrlen = INET6_ADDRSTRLEN + 5 + 6;
     int32_t retval;
 
-    snprintf(zmq_addr, sizeof(zmq_addr), "tcp://%s:%d", address, port);
+    mwz->zmq_addr = calloc(addrlen, 1);
+    if (mwz->zmq_addr == NULL) 
+        return RETVAL_FAILURE;
+
+    snprintf(mwz->zmq_addr, addrlen, "tcp://%s:%d", address, port);
 
     if ((mwz->zmq_context = zmq_ctx_new()) == NULL)
         return RETVAL_FAILURE;
@@ -587,10 +603,12 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
     if ((mwz->zmq_publisher = zmq_socket(mwz->zmq_context, ZMQ_PUB)) == NULL)
         return RETVAL_FAILURE;
 
-    if ((retval = zmq_bind(mwz->zmq_publisher, zmq_addr)) != 0) {
-        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "zmq_bind failed (%d): %s\n", errno,
+    if ((retval = zmq_bind(mwz->zmq_publisher, mwz->zmq_addr)) != 0) {
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "zmq_bind failed (%d): %s - will try again.\n", errno,
                 zmq_strerror(errno));
-        return RETVAL_FAILURE;
+        mwz->connected = 0;
+    } else {
+        mwz->connected = 1;
     }
 
     META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "ZeroMQ init done\n");
