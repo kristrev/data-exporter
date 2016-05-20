@@ -112,7 +112,8 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_input_netlink *min,
     }
 
     if (mce->event_param == CONN_EVENT_DATA_USAGE_UPDATE) {
-        if (!mce->tstamp || !mce->event_param || !mce->interface_id) {
+        if (!mce->tstamp || !mce->event_param || !mce->interface_id || (mce->imei && !mce->imsi) ||
+            (mce->imsi && !mce->imei)) {
             META_PRINT_SYSLOG(min->parent, LOG_ERR, "Missing required argument in usage JSON\n");
             return RETVAL_FAILURE;
         } else {
