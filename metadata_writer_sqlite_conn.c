@@ -183,6 +183,7 @@ static int32_t md_sqlite_execute_insert_usage(struct md_writer_sqlite *mws,
 {
     uint8_t interface_id_idx = 1;
     sqlite3_stmt *stmt = mws->insert_usage;
+    const char *no_iccid_str = "0";
 
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
@@ -192,11 +193,17 @@ static int32_t md_sqlite_execute_insert_usage(struct md_writer_sqlite *mws,
     if (mce->imei) {
         if (sqlite3_bind_text(stmt, 1, mce->imei, strlen(mce->imei), SQLITE_STATIC) ||
             sqlite3_bind_text(stmt, 3, mce->imsi, strlen(mce->imsi), SQLITE_STATIC)) {
-            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI/IMSI\n");
             return SQLITE_ERROR;
         }
 
         interface_id_idx = 2;
+    } else {
+        if (sqlite3_bind_text(stmt, 2, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 3, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind empty IMEI/IMSI\n");
+            return SQLITE_ERROR;
+        }
     }
 
     if (sqlite3_bind_text(stmt, interface_id_idx, mce->interface_id,

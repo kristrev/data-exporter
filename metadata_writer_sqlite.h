@@ -102,9 +102,9 @@
 
 #define CREATE_USAGE_SQL    "CREATE TABLE IF NOT EXISTS DataUse(" \
                             "DeviceId TEXT NOT NULL," \
-                            "SimCardIccid TEXT DEFAULT '0'," \
-                            "SimCardImsi TEXT DEFAULT '0'," \
-                            "Timestamp INTEGER DEFAULT 0," \
+                            "SimCardIccid TEXT NOT NULL," \
+                            "SimCardImsi TEXT NOT NULL," \
+                            "Timestamp INTEGER NOT NULL," \
                             "RxData INTEGER NOT NULL,"\
                             "TxData INTEGER NOT NULL," \
                             "PRIMARY KEY(DeviceId,SimCardIccid,SimCardImsi,Timestamp))"

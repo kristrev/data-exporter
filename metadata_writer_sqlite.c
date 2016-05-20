@@ -564,8 +564,6 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
             return;
 
         retval = md_sqlite_handle_conn_event(mws, (struct md_conn_event*) event);
-        /*if (!retval)
-            mws->num_conn_events++;*/
         break;
     case META_TYPE_POS:
         if (!mws->gps_prefix[0])
