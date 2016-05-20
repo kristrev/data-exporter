@@ -100,15 +100,14 @@
                             "Boottime    INTEGER NOT NULL," \
                             "PRIMARY KEY(NodeId,Timestamp,Sequence))"
 
-#define CREATE_USAGE_SQL    "CREATE TABLE IF NOT EXISTS DataUsage(" \
-                            "NodeId INTEGER NOT NULL," \
+#define CREATE_USAGE_SQL    "CREATE TABLE IF NOT EXISTS DataUse(" \
                             "DeviceId TEXT NOT NULL," \
-                            "Iccid TEXT DEFAULT '0'," \
-                            "DateStart INTEGER DEFAULT 0," \
-                            "DateEnd INTEGER DEFAULT 0,"\
-                            "Rx INTEGER NOT NULL,"\
-                            "Tx INTEGER NOT NULL," \
-                            "PRIMARY KEY(NodeId,DeviceId,Iccid,DateStart))"
+                            "SimCardIccid TEXT DEFAULT '0'," \
+                            "SimCardImsi TEXT DEFAULT '0'," \
+                            "Timestamp INTEGER DEFAULT 0," \
+                            "RxData INTEGER NOT NULL,"\
+                            "TxData INTEGER NOT NULL," \
+                            "PRIMARY KEY(DeviceId,SimCardIccid,SimCardImsi,Timestamp))"
 
 #define INSERT_EVENT        "INSERT INTO NetworkEvent(NodeId,SessionId,"\
                             "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
@@ -133,8 +132,8 @@
                              ",Sequence,Boottime) " \
                              "VALUES (?,?,?,?)"
 
-#define INSERT_USAGE        "INSERT INTO DataUsage(NodeId,DeviceId,Iccid" \
-                            ",DateStart,Rx,Tx) " \
+#define INSERT_USAGE        "INSERT INTO DataUse(DeviceId,SimCardIccid" \
+                            ",SimCardImsi,Timestamp,RxData,TxData) " \
                             "VALUES (?,?,?,?,?,?)"
 
 #define SELECT_LAST_UPDATE  "SELECT EventValueStr FROM NetworkUpdates WHERE "\
@@ -156,10 +155,10 @@
                             "L3SessionId=? AND L4SessionId=? " \
                             "AND NetworkAddress=? AND InterfaceId=?"
 
-#define UPDATE_USAGE        "UPDATE DataUsage SET " \
-                            "Rx = Rx + ?, Tx = Tx + ? " \
+#define UPDATE_USAGE        "UPDATE DataUse SET " \
+                            "RxData = RxData + ?, TxData = TxData + ? " \
                             "WHERE " \
-                            "DeviceId=? AND Iccid=? AND DateStart=?"
+                            "DeviceId=? AND SimCardIccid=? AND SimCardImsi=? AND Timestamp=?"
 
 #define UPDATE_EVENT_ID     "UPDATE NetworkEvent SET " \
                             "NodeId=? "\
@@ -191,7 +190,7 @@
 
 #define DELETE_MONITOR_TABLE "DELETE FROM MonitorEvents"
 
-#define DELETE_USAGE_TABLE "DELETE FROM DataUsage"
+#define DELETE_USAGE_TABLE "DELETE FROM DataUse"
 
 //This statement is a static version of what the .dump command does. A dynamic
 //version would query the master table to get tables and then PRAGMA to get
@@ -275,14 +274,15 @@
                             "quote(\"Sequence\"), quote(\"Boottime\") "\
                             "|| \")\" FROM \"MonitorEvents\" ORDER BY Timestamp;"
 
-#define DUMP_USAGE          "SELECT \"INSERT INTO DataUsage" \
-                            "(NodeId,DeviceId,Iccid,StartTime,Rx,Tx) VALUES(\" "\
-                            "|| quote(\"NodeId\"), quote(\"DeviceId\"), "\
-                            "quote(\"Iccid\"), quote(\"DateStart\"), "\
-                            "quote(\"Rx\"), quote(\"Tx\") "\
-                            "|| \") ON DUPLICATE KEY UPDATE Rx=Rx+\"" \
-                            "|| quote(\"Rx\") || \", Tx=Tx+\"" \
-                            "|| quote(\"Tx\") FROM \"DataUsage\";"
+#define DUMP_USAGE          "SELECT \"INSERT INTO DataUse" \
+                            "(DeviceId,SimCardIccid,SimCardImsi,Timestamp,RxData,TxData) VALUES(\" "\
+                            "|| quote(\"DeviceId\"), quote(\"SimCardIccid\"), " \
+                            "quote(\"SimCardImsi\") || \",FROM_UNIXTIME(\" "\
+                            "|| quote(\"Timestamp\") || \"),\" || "\
+                            "quote(\"RxData\"), quote(\"TxData\") "\
+                            "|| \") ON DUPLICATE KEY UPDATE RxData=RxData+\"" \
+                            "|| quote(\"RxData\") || \", TxData=TxData+\"" \
+                            "|| quote(\"TxData\") FROM \"DataUse\";"
 
 struct md_event;
 struct md_writer;

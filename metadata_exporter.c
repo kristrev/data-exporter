@@ -321,6 +321,12 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
     }
     json_object_object_add(obj, "imei", obj_add);
 
+    if (!(obj_add = json_object_new_string("22222"))) {
+        json_object_put(obj);
+        return NULL;
+    }
+    json_object_object_add(obj, "imsi", obj_add);
+
     if (!(obj_add = json_object_new_string("192.168.0.153/24"))) {
         json_object_put(obj);
         return NULL;
@@ -543,7 +549,7 @@ static void test_netlink(uint32_t packets)
         /*if (i < 4)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, "1,2,1", i+1);
         else*/
-            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,4", tv.tv_sec);
+            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_DATA_USAGE_UPDATE, "1,2,1,4", tv.tv_sec);
 
         if (!obj_to_send)
             continue;

@@ -181,7 +181,7 @@ static int32_t md_sqlite_execute_insert_usage(struct md_writer_sqlite *mws,
                                               struct md_conn_event *mce,
                                               uint64_t date_start)
 {
-    uint8_t interface_id_idx = 2;
+    uint8_t interface_id_idx = 1;
     sqlite3_stmt *stmt = mws->insert_usage;
 
     sqlite3_clear_bindings(stmt);
@@ -190,16 +190,16 @@ static int32_t md_sqlite_execute_insert_usage(struct md_writer_sqlite *mws,
     //For modems we need both IMEI and ICCID. ICCID is currently stored in the
     //interface_id variable, so some special handling is needed for now
     if (mce->imei) {
-        if (sqlite3_bind_text(stmt, 2, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 1, mce->imei, strlen(mce->imei), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 3, mce->imsi, strlen(mce->imsi), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
             return SQLITE_ERROR;
         }
 
-        interface_id_idx = 3;
+        interface_id_idx = 2;
     }
 
-    if (sqlite3_bind_int64(stmt, 1, mws->node_id) ||
-        sqlite3_bind_text(stmt, interface_id_idx, mce->interface_id,
+    if (sqlite3_bind_text(stmt, interface_id_idx, mce->interface_id,
             strlen(mce->interface_id), SQLITE_STATIC) ||
         sqlite3_bind_int64(stmt, 4, date_start) ||
         sqlite3_bind_int64(stmt, 5, mce->rx_bytes) ||
@@ -223,7 +223,7 @@ static int32_t md_sqlite_execute_update_usage(struct md_writer_sqlite *mws,
 
     if (sqlite3_bind_int64(stmt, 1, mce->rx_bytes) ||
         sqlite3_bind_int64(stmt, 2, mce->tx_bytes) ||
-        sqlite3_bind_int64(stmt, 5, date_start)) {
+        sqlite3_bind_int64(stmt, 6, date_start)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query\n");
         return SQLITE_ERROR;
     }
@@ -232,7 +232,9 @@ static int32_t md_sqlite_execute_update_usage(struct md_writer_sqlite *mws,
         if (sqlite3_bind_text(stmt, 3, mce->imei, strlen(mce->imei),
                 SQLITE_STATIC) ||
             sqlite3_bind_text(stmt, 4, mce->interface_id,
-                strlen(mce->interface_id), SQLITE_STATIC)) {
+                strlen(mce->interface_id), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 5, mce->imsi,
+                strlen(mce->imsi), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query #2\n");
             return SQLITE_ERROR;
         }
@@ -240,6 +242,8 @@ static int32_t md_sqlite_execute_update_usage(struct md_writer_sqlite *mws,
         if (sqlite3_bind_text(stmt, 3, mce->interface_id,
                 strlen(mce->interface_id), SQLITE_STATIC) ||
             sqlite3_bind_text(stmt, 4, no_iccid_str,
+                strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 5, no_iccid_str,
                 strlen(no_iccid_str), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query #2\n");
             return SQLITE_ERROR;
@@ -259,6 +263,7 @@ static uint8_t md_sqlite_handle_insert_conn_event(struct md_writer_sqlite *mws,
         return RETVAL_FAILURE;
     }
 
+    mws->num_conn_events++;
     return RETVAL_SUCCESS;
 }
 
@@ -449,7 +454,8 @@ static uint8_t md_sqlite_handle_update_event(struct md_writer_sqlite *mws,
                 sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
-    
+
+    mws->num_conn_events++;
     return RETVAL_SUCCESS;
 }
 
@@ -499,14 +505,10 @@ uint8_t md_sqlite_handle_conn_event(struct md_writer_sqlite *mws,
         mws->last_msg_tstamp = mce->tstamp;
 
     if (mce->event_param == CONN_EVENT_META_UPDATE) {
-        //Without node id and valid timestamp, we can't place data usage in time
-        //or location so just ignore. Assume that the tool which exports
-        //connection events wait until this information is in place before
-        //including rx/tx
-        if (mws->usage_prefix_len && (mce->rx_bytes || mce->tx_bytes))
-            md_sqlite_handle_usage_update(mws, mce);
-        
         retval = md_sqlite_handle_update_event(mws, mce);
+    } else if (mce->event_param == CONN_EVENT_DATA_USAGE_UPDATE) {
+        if (mws->usage_prefix[0] && (mce->rx_bytes || mce->tx_bytes))
+            retval = md_sqlite_handle_usage_update(mws, mce);
     } else {
         retval = md_sqlite_handle_insert_conn_event(mws, mce);
     }

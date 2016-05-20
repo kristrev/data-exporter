@@ -74,6 +74,9 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_input_netlink *min,
         if (!strcmp(key, "imei"))
             mce->imei = json_object_get_string(val);
 
+        if (!strcmp(key, "imsi"))
+            mce->imsi = json_object_get_string(val);
+
         if (!strcmp(key, "interface_name"))
             mce->interface_name = json_object_get_string(val);
 
@@ -106,6 +109,15 @@ static uint8_t md_input_netlink_parse_conn_event(struct md_input_netlink *min,
 
         if (!strcmp(key, "tx_bytes"))
             mce->tx_bytes = (uint64_t) json_object_get_int64(val);
+    }
+
+    if (mce->event_param == CONN_EVENT_DATA_USAGE_UPDATE) {
+        if (!mce->tstamp || !mce->event_param || !mce->interface_id) {
+            META_PRINT_SYSLOG(min->parent, LOG_ERR, "Missing required argument in usageJSON\n");
+            return RETVAL_FAILURE;
+        } else {
+            return RETVAL_SUCCESS;
+        }
     }
 
     if (!mce->tstamp || !mce->sequence ||
