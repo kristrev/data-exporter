@@ -168,14 +168,18 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
 
 static void md_zeromq_send(struct md_writer_zeromq* mwz, const void *buf, size_t len, int flags) {
     if (mwz->connected != 1) {
-        if ((zmq_bind(mwz->zmq_publisher, mwz->zmq_addr)) != 0) {
-            mwz->connected = 0;
-        } else {
-            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "zmq_bind retry SUCCEEDED.\n" );
+        if ((zmq_bind(mwz->zmq_publisher, mwz->zmq_addr)) == 0) {
             mwz->connected = 1;
         }
     }
-    zmq_send(mwz->zmq_publisher, buf, len, flags);
+    if (mwz->connected == 1) {
+        if (zmq_send(mwz->zmq_publisher, buf, len, flags) != 0) {
+            if (errno != EAGAIN ) {
+               zmq_unbind(mwz->zmq_publisher, mwz->zmq_addr);
+               mwz->connected = 0;
+            }
+        }
+    }
 }
 
 static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
@@ -589,7 +593,6 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
     //INET6_ADDRSTRLEN is 46 (max length of ipv6 + trailing 0), 5 is port, 6 is
     //protocol (we right now only support TCP)
     int32_t addrlen = INET6_ADDRSTRLEN + 5 + 6;
-    int32_t retval;
 
     mwz->zmq_addr = calloc(addrlen, 1);
     if (mwz->zmq_addr == NULL) 
@@ -603,7 +606,7 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
     if ((mwz->zmq_publisher = zmq_socket(mwz->zmq_context, ZMQ_PUB)) == NULL)
         return RETVAL_FAILURE;
 
-    if ((retval = zmq_bind(mwz->zmq_publisher, mwz->zmq_addr)) != 0) {
+    if ((zmq_bind(mwz->zmq_publisher, mwz->zmq_addr)) != 0) {
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "zmq_bind failed (%d): %s - will try again.\n", errno,
                 zmq_strerror(errno));
         mwz->connected = 0;
