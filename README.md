@@ -174,6 +174,7 @@ the JSON object:
   application has crashed in case proper event has been lost. Only inserted if
   mode in update message is different than what is stored in DB.
 * META\_QUALITY\_CHANGE (9): Same as fake mode change, but for quality.
+* DATA\_USAGE\_UPDATE (10): Data usage since last update.
 
 ###### Interface type
 

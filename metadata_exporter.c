@@ -315,11 +315,18 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
     }
     json_object_object_add(obj, "interface_id", obj_add);
 
+    
     if (!(obj_add = json_object_new_string("1234567"))) {
         json_object_put(obj);
         return NULL;
     }
     json_object_object_add(obj, "imei", obj_add);
+
+    if (!(obj_add = json_object_new_string("22222"))) {
+        json_object_put(obj);
+        return NULL;
+    }
+    json_object_object_add(obj, "imsi", obj_add);
 
     if (!(obj_add = json_object_new_string("192.168.0.153/24"))) {
         json_object_put(obj);
@@ -344,6 +351,18 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
         return NULL;
     }
     json_object_object_add(obj, "signal_strength", obj_add);
+
+    if (!(obj_add = json_object_new_int(100))) {
+        json_object_put(obj);
+        return NULL;
+    }
+    json_object_object_add(obj, "rx_bytes", obj_add);
+
+    if (!(obj_add = json_object_new_int(100))) {
+        json_object_put(obj);
+        return NULL;
+    }
+    json_object_object_add(obj, "tx_bytes", obj_add);
 
 	return obj;	
 }
@@ -495,7 +514,6 @@ static void test_netlink(uint32_t packets)
 	struct json_object *obj_to_send = NULL;
     struct timeval tv;
 
-    gettimeofday(&tv, NULL);
 
     mnl_sock = nlhelper_create_socket(NETLINK_USERSOCK, 0);
 
@@ -522,6 +540,7 @@ static void test_netlink(uint32_t packets)
 
     //TODO: Specify number of packets from command line
     while(1) {
+        gettimeofday(&tv, NULL);
 #if 0
         if (i == 0)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,", i+1);
@@ -531,7 +550,7 @@ static void test_netlink(uint32_t packets)
         /*if (i < 4)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, "1,2,1", i+1);
         else*/
-            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,4", tv.tv_sec);
+            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_DATA_USAGE_UPDATE, "1,2,1,4", tv.tv_sec);
 
         if (!obj_to_send)
             continue;
@@ -540,6 +559,7 @@ static void test_netlink(uint32_t packets)
                 (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
 
+#if 0
         obj_to_send = create_fake_gps_gga_obj();
         send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
@@ -549,9 +569,9 @@ static void test_netlink(uint32_t packets)
         send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
         json_object_put(obj_to_send);
-
         test_modem_metadata(snd_buf, mnl_socket_get_fd(mnl_sock),
                 (struct sockaddr*) &netlink_addr);
+#endif
         if (packets && (++i >= packets))
             break;
 

@@ -30,6 +30,7 @@
 #include <string.h>
 #include <sqlite3.h>
 #include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "metadata_utils.h"
@@ -176,6 +177,89 @@ static int32_t md_sqlite_update_event(struct md_writer_sqlite *mws,
     return sqlite3_step(stmt);
 }
 
+static int32_t md_sqlite_execute_insert_usage(struct md_writer_sqlite *mws,
+                                              struct md_conn_event *mce,
+                                              uint64_t date_start)
+{
+    uint8_t interface_id_idx = 1;
+    sqlite3_stmt *stmt = mws->insert_usage;
+    const char *no_iccid_str = "0";
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    //For modems we need both IMEI and ICCID. ICCID is currently stored in the
+    //interface_id variable, so some special handling is needed for now
+    if (mce->imei) {
+        if (sqlite3_bind_text(stmt, 1, mce->imei, strlen(mce->imei), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 3, mce->imsi, strlen(mce->imsi), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI/IMSI\n");
+            return SQLITE_ERROR;
+        }
+
+        interface_id_idx = 2;
+    } else {
+        if (sqlite3_bind_text(stmt, 2, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 3, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind empty IMEI/IMSI\n");
+            return SQLITE_ERROR;
+        }
+    }
+
+    if (sqlite3_bind_text(stmt, interface_id_idx, mce->interface_id,
+            strlen(mce->interface_id), SQLITE_STATIC) ||
+        sqlite3_bind_int64(stmt, 4, date_start) ||
+        sqlite3_bind_int64(stmt, 5, mce->rx_bytes) ||
+        sqlite3_bind_int64(stmt, 6, mce->tx_bytes)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT usage query\n");
+        return SQLITE_ERROR;
+    }
+
+    return sqlite3_step(stmt);
+}
+
+static int32_t md_sqlite_execute_update_usage(struct md_writer_sqlite *mws,
+                                              struct md_conn_event *mce,
+                                              uint64_t date_start)
+{
+    const char *no_iccid_str = "0";
+    sqlite3_stmt *stmt = mws->update_usage;
+
+    sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
+
+    if (sqlite3_bind_int64(stmt, 1, mce->rx_bytes) ||
+        sqlite3_bind_int64(stmt, 2, mce->tx_bytes) ||
+        sqlite3_bind_int64(stmt, 6, date_start)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query\n");
+        return SQLITE_ERROR;
+    }
+        
+    if (mce->imei) {
+        if (sqlite3_bind_text(stmt, 3, mce->imei, strlen(mce->imei),
+                SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 4, mce->interface_id,
+                strlen(mce->interface_id), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 5, mce->imsi,
+                strlen(mce->imsi), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query #2\n");
+            return SQLITE_ERROR;
+        }
+    } else {
+        if (sqlite3_bind_text(stmt, 3, mce->interface_id,
+                strlen(mce->interface_id), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 4, no_iccid_str,
+                strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 5, no_iccid_str,
+                strlen(no_iccid_str), SQLITE_STATIC)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query #2\n");
+            return SQLITE_ERROR;
+        }
+    }
+
+    return sqlite3_step(stmt);
+}
+
 static uint8_t md_sqlite_handle_insert_conn_event(struct md_writer_sqlite *mws,
                                                   struct md_conn_event *mce)
 {
@@ -186,6 +270,7 @@ static uint8_t md_sqlite_handle_insert_conn_event(struct md_writer_sqlite *mws,
         return RETVAL_FAILURE;
     }
 
+    mws->num_conn_events++;
     return RETVAL_SUCCESS;
 }
 
@@ -372,10 +457,48 @@ static uint8_t md_sqlite_handle_update_event(struct md_writer_sqlite *mws,
     retval = md_sqlite_update_event(mws, mce);
 
     if (retval != SQLITE_DONE) {
-        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "UPDATE failed: %s\n", sqlite3_errstr(retval));
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "UPDATE failed: %s\n",
+                sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
-    
+
+    mws->num_conn_events++;
+    return RETVAL_SUCCESS;
+}
+
+static uint8_t md_sqlite_handle_usage_update(struct md_writer_sqlite *mws,
+                                             struct md_conn_event *mce)
+{
+    uint64_t date_start = 0;
+    struct tm tm_tmp = {0};
+    time_t tstamp = (time_t) mce->tstamp;
+    int32_t retval;
+
+    //Create correct date_start and date_end (always to the hour) and keep at 0
+    //if not, so that we can more easily update
+    gmtime_r(&tstamp, &tm_tmp);
+
+    //Only keep hour for date_start, date_end
+    tm_tmp.tm_sec = 0;
+    tm_tmp.tm_min = 0;
+
+    date_start = (uint64_t) timegm(&tm_tmp);
+
+    retval = md_sqlite_execute_update_usage(mws, mce, date_start);
+
+    if (retval == SQLITE_DONE && sqlite3_changes(mws->db_handle)) {
+        mws->num_usage_events++;
+        return RETVAL_SUCCESS;
+    }
+
+    retval = md_sqlite_execute_insert_usage(mws, mce, date_start);
+
+    if (retval != SQLITE_DONE) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to update usage\n");
+        return RETVAL_FAILURE;
+    }
+
+    mws->num_usage_events++;
     return RETVAL_SUCCESS;
 }
 
@@ -383,14 +506,19 @@ uint8_t md_sqlite_handle_conn_event(struct md_writer_sqlite *mws,
                                            struct md_conn_event *mce)
 {
     uint8_t retval = RETVAL_SUCCESS;
+
     //Not quite sure how to handle timestamps that would go back in time
     if (mce->tstamp > mws->last_msg_tstamp)
         mws->last_msg_tstamp = mce->tstamp;
 
-    if (mce->event_param == CONN_EVENT_META_UPDATE)
+    if (mce->event_param == CONN_EVENT_META_UPDATE) {
         retval = md_sqlite_handle_update_event(mws, mce);
-    else
+    } else if (mce->event_param == CONN_EVENT_DATA_USAGE_UPDATE) {
+        if (mws->usage_prefix[0] && (mce->rx_bytes || mce->tx_bytes))
+            retval = md_sqlite_handle_usage_update(mws, mce);
+    } else {
         retval = md_sqlite_handle_insert_conn_event(mws, mce);
+    }
 
     return retval;
 }
@@ -410,6 +538,16 @@ static uint8_t md_sqlite_conn_dump_db(struct md_writer_sqlite *mws, FILE *output
         return RETVAL_SUCCESS;
 }
 
+static uint8_t md_sqlite_usage_dump_db(struct md_writer_sqlite *mws, FILE *output)
+{
+    sqlite3_reset(mws->dump_usage);
+    
+    if (md_sqlite_helpers_dump_write(mws->dump_usage, output))
+        return RETVAL_FAILURE;
+    else
+        return RETVAL_SUCCESS;
+}
+
 uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = md_writer_helpers_copy_db(mws->meta_prefix,
@@ -423,4 +561,18 @@ uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws)
 
     return retval;
 
+}
+
+uint8_t md_sqlite_conn_usage_copy_db(struct md_writer_sqlite *mws)
+{
+    uint8_t retval = md_writer_helpers_copy_db(mws->usage_prefix,
+            mws->usage_prefix_len, md_sqlite_usage_dump_db, mws,
+            mws->delete_usage);
+   
+    if (retval == RETVAL_SUCCESS) {
+        mws->dump_tstamp = mws->last_msg_tstamp;
+        mws->num_usage_events = 0;
+    }
+
+    return retval;
 }

@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(meta_exporter)
 
-set(CMAKE_C_FLAGS "-O1 -Wall -std=gnu99")
+set(CMAKE_C_FLAGS "-O1 -Wall -std=gnu99 -g")
 
 set(LIBS pthread mnl)
 set(SOURCE
@@ -90,7 +90,7 @@ set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_SOURCE_DIR}/../files/linux/pos
 set (CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 include(CPack)
 
-set(CMAKE_C_LINK_EXECUTABLE "${CMAKE_C_LINK_EXECUTABLE} -s")
+#set(CMAKE_C_LINK_EXECUTABLE "${CMAKE_C_LINK_EXECUTABLE} -s")
 add_executable(meta_exporter ${SOURCE})
 target_link_libraries(meta_exporter ${LIBS})
 

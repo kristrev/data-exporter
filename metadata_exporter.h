@@ -71,7 +71,8 @@ enum conn_event {
     CONN_EVENT_QUALITY_CHANGE,
     CONN_EVENT_META_UPDATE,
     CONN_EVENT_META_MODE_UPDATE,
-    CONN_EVENT_META_QUALITY_UPDATE
+    CONN_EVENT_META_QUALITY_UPDATE,
+    CONN_EVENT_DATA_USAGE_UPDATE
 };
 
 enum interface_types {
@@ -174,8 +175,11 @@ struct md_conn_event {
     int8_t signal_strength;
     uint64_t l3_session_id;
     uint64_t l4_session_id;
+    uint64_t rx_bytes;
+    uint64_t tx_bytes;
     const char *interface_id;
     const char *imei;
+    const char *imsi;
     const char *interface_name;
     uint32_t network_provider;
     const char *network_address;

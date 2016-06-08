@@ -101,7 +101,7 @@ uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
     }
 
     fclose(output);
-    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Done with tmpfile\n");
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Done with tmpfile %s\n", dst_filename);
 
     if (link(prefix, dst_filename) ||
         unlink(prefix)) {
