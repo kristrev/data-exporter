@@ -275,7 +275,7 @@
                             "|| \")\" FROM \"MonitorEvents\" ORDER BY Timestamp;"
 
 #define DUMP_USAGE          "SELECT \"INSERT INTO DataUse" \
-                            "(DeviceId,SimCardIccid,SimCardImsi,IntervalStart,RxData,TxData) VALUES(\" "\
+                            "(DeviceId,SimCardIccid,SimCardImsi,Timestamp,RxData,TxData) VALUES(\" "\
                             "|| quote(\"DeviceId\"), quote(\"SimCardIccid\"), " \
                             "quote(\"SimCardImsi\") || \",FROM_UNIXTIME(\" "\
                             "|| quote(\"Timestamp\") || \"),\" || "\
