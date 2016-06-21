@@ -329,6 +329,33 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
     json_object_put(json_obj);
 }
 
+static const char* map_operator(const char* operator) {
+    const char* const lookup[] = {
+        "Telenor", "op0",
+        "NetCom", "op1",
+        "242 14", "op2",
+        "ICE Nordisk Mobiltelefon AS", "op2",
+        "Telia Norge", "op2",
+
+        "voda IT", "op0",
+        "TIM", "op1",
+        "I WIND", "op2",
+
+        "Orange", "op0",
+        "Orange Internet Móvil", "op0",
+        "YOIGO", "op1",
+
+        "Telenor SE", "op0",
+        "Telia", "op1",
+        "3 SE", "op2"
+    };
+    int items = 16;
+    for (int i=0; i<items; i++) 
+        if (strcmp(lookup[i*2], operator)==0) 
+            return lookup[i*2+1];
+    return NULL;
+}
+
 static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
 {
     struct json_object *obj = NULL;
@@ -349,6 +376,12 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
 
     if (mie->isp_name && !md_zeromq_create_json_string(obj, ZMQ_KEY_ISP_NAME,
                 mie->isp_name)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (mie->isp_name && !md_zeromq_create_json_string(obj, ZMQ_KEY_IIF_NAME,
+                map_operator(mie->isp_name))) {
         json_object_put(obj);
         return NULL;
     }

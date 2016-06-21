@@ -36,6 +36,7 @@
 #define ZMQ_KEY_ENODEB_ID      "ENODEBID"
 #define ZMQ_KEY_ICCID          "ICCID"
 #define ZMQ_KEY_IF_NAME        "InterfaceName"
+#define ZMQ_KEY_IIF_NAME       "InternalInterface"
 #define ZMQ_KEY_IMSI           "IMSI"
 #define ZMQ_KEY_IMSI_MCCMNC    "IMSIMCCMNC"
 #define ZMQ_KEY_IMEI           "IMEI"
