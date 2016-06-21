@@ -380,10 +380,12 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
         return NULL;
     }
 
-    if (mie->isp_name && !md_zeromq_create_json_string(obj, ZMQ_KEY_IIF_NAME,
-                map_operator(mie->isp_name))) {
-        json_object_put(obj);
-        return NULL;
+    if (mie->ifname && (strncmp(mie->ifname, "usb", 3) == 0)) {
+        if (mie->isp_name && !md_zeromq_create_json_string(obj, ZMQ_KEY_IIF_NAME,
+                    map_operator(mie->isp_name))) {
+            json_object_put(obj);
+            return NULL;
+        }
     }
 
     if (mie->ip_addr && !md_zeromq_create_json_string(obj, ZMQ_KEY_IP_ADDR,
