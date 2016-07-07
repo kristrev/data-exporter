@@ -346,10 +346,11 @@ static const char* map_operator(const char* operator) {
         "YOIGO", "op1",
 
         "Telenor SE", "op0",
+        "TelenorS", "op0",
         "Telia", "op1",
         "3 SE", "op2"
     };
-    int items = 16;
+    int items = 15;
     for (int i=0; i<items; i++) 
         if (strcmp(lookup[i*2], operator)==0) 
             return lookup[i*2+1];
@@ -381,10 +382,13 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
     }
 
     if (mie->ifname && (strncmp(mie->ifname, "usb", 3) == 0)) {
-        if (mie->isp_name && !md_zeromq_create_json_string(obj, ZMQ_KEY_IIF_NAME,
-                    map_operator(mie->isp_name))) {
-            json_object_put(obj);
-            return NULL;
+        const char *iifname=map_operator(mie->isp_name);
+        if (iifname != NULL) {
+            if (mie->isp_name && !md_zeromq_create_json_string(obj, ZMQ_KEY_IIF_NAME,
+                        map_operator(mie->isp_name))) {
+                json_object_put(obj);
+                return NULL;
+            }
         }
     }
 
