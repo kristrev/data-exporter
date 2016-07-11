@@ -509,7 +509,7 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
         return RETVAL_FAILURE;
 
     //read uptime
-    if (system_helpers_read_uptime(&uptime))
+    if (system_helpers_read_uint_from_file("/proc/uptime", &uptime))
         return RETVAL_FAILURE;
 
     real_boot_time = tv.tv_sec - uptime;
