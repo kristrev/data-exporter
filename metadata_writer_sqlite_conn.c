@@ -569,10 +569,8 @@ uint8_t md_sqlite_conn_usage_copy_db(struct md_writer_sqlite *mws)
             mws->usage_prefix_len, md_sqlite_usage_dump_db, mws,
             mws->delete_usage);
    
-    if (retval == RETVAL_SUCCESS) {
-        mws->dump_tstamp = mws->last_msg_tstamp;
+    if (retval == RETVAL_SUCCESS)
         mws->num_usage_events = 0;
-    }
 
     return retval;
 }
