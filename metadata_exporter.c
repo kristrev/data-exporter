@@ -539,15 +539,17 @@ static void test_netlink(uint32_t packets)
     //
     //When testing, there is no need to multicast. We can just send to the PID
     netlink_addr.nl_pid = getpid();
+    
+    srand(time(NULL));
 
     //TODO: Specify number of packets from command line
     while(1) {
         gettimeofday(&tv, NULL);
 
         if (i == 0)
-            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,", i+1);
+            obj_to_send = create_fake_conn_obj(0, 0, CONN_EVENT_META_UPDATE, "1,2,1,", i+1);
         else
-            obj_to_send = create_fake_conn_obj(2, 3, CONN_EVENT_META_UPDATE, "1,2,1,4", i+1);
+            obj_to_send = create_fake_conn_obj(0, 0, CONN_EVENT_META_UPDATE, "1,2,1,4", i+1);
 
         /*if (i < 4)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, "1,2,1", i+1);

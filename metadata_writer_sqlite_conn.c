@@ -450,8 +450,10 @@ static uint8_t md_sqlite_handle_update_event(struct md_writer_sqlite *mws,
         md_sqlite_insert_fake_events(mws, mce, retval);
 
     //No need to do UPDATE if INSERT was successful
-    if (retval == SQLITE_DONE)
+    if (retval == SQLITE_DONE) {
+        mws->num_conn_events++;
         return RETVAL_SUCCESS;
+    }
 
     //Update in update table
     retval = md_sqlite_update_event(mws, mce);
