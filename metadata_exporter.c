@@ -224,11 +224,13 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
 	struct json_object *obj = NULL, *obj_add = NULL;
     uint8_t rand_value = 0;
     uint64_t rand_value_64 = 0;
+    struct timeval tv;
 
 	if (!(obj = json_object_new_object()))
 		return NULL;
 
-	if (!(obj_add = json_object_new_int64((int64_t) tstamp))) {
+    gettimeofday(&tv, NULL);
+	if (!(obj_add = json_object_new_int64(tv.tv_sec))) {
         json_object_put(obj);
         return NULL;
     }
@@ -541,16 +543,16 @@ static void test_netlink(uint32_t packets)
     //TODO: Specify number of packets from command line
     while(1) {
         gettimeofday(&tv, NULL);
-#if 0
+
         if (i == 0)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_META_UPDATE, "1,2,1,", i+1);
         else
             obj_to_send = create_fake_conn_obj(2, 3, CONN_EVENT_META_UPDATE, "1,2,1,4", i+1);
-#endif
+
         /*if (i < 4)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, "1,2,1", i+1);
-        else*/
-            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_DATA_USAGE_UPDATE, "1,2,1,4", tv.tv_sec);
+        else
+            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_DATA_USAGE_UPDATE, "1,2,1,4", tv.tv_sec);*/
 
         if (!obj_to_send)
             continue;

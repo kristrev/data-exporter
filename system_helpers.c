@@ -146,6 +146,27 @@ uint8_t system_helpers_read_uint64_from_file(const char *filename,
     return RETVAL_SUCCESS;
 }
 
+uint8_t system_helpers_write_uint64_to_file(const char *filename,
+        uint64_t value)
+{
+    //The only user (so far) of this function only uses this value for help.
+    //Thus, it is not critical if writing fails. Therefore, no need to write to
+    //partial first, link, etc.
+    FILE *file_to_write = fopen(filename, "w");
+    int retval;
+
+    if (!file_to_write)
+        return RETVAL_FAILURE;
+
+    retval = fprintf(file_to_write, "%"PRIu64, value);
+    fclose(file_to_write);
+
+    if (retval < 0)
+        return RETVAL_FAILURE;
+    else
+        return RETVAL_SUCCESS;
+}
+
 uint8_t system_helpers_read_session_id(const char *path, uint64_t *session_id,
         uint64_t *session_id_multip)
 {

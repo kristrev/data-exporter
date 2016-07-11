@@ -557,6 +557,10 @@ uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws)
     if (retval == RETVAL_SUCCESS) {
         mws->dump_tstamp = mws->last_msg_tstamp;
         mws->num_conn_events = 0;
+
+        if (mws->last_conn_tstamp_path)
+            system_helpers_write_uint64_to_file(mws->last_conn_tstamp_path,
+                    mws->dump_tstamp);
     }
 
     return retval;
