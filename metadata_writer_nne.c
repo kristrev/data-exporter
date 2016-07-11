@@ -299,7 +299,7 @@ static void md_nne_send_message(struct md_writer_nne *mwn,
 
     md_nne_add_json_key_value_string(obj, "type", NNE_MESSAGE_TYPE_STR[msg->type]);
     md_nne_add_json_key_value_int(obj, "ts", msg->tstamp);
-    md_nne_add_json_key_value_string(obj, "node", "nne601");
+    md_nne_add_json_key_value_string(obj, "node", msg->node);
     md_nne_add_json_key_value_int(obj, "mccmnc", msg->mccmnc);
     md_nne_add_json_key_value_string(obj, "key", msg->key);
 
@@ -345,7 +345,7 @@ static void md_nne_process_iface_event(struct md_writer_nne *mwn,
         struct nne_message msg;
         msg.type = NNE_MESSAGE_TYPE_EVENT;
         msg.tstamp = mie->tstamp;
-        msg.node = "nne601";
+        msg.node = mwn->node_id;
         msg.mccmnc = mie->imsi_mccmnc;
         msg.key = descr->key;
         msg.value = value;
@@ -365,7 +365,7 @@ static void md_nne_process_iface_event(struct md_writer_nne *mwn,
         struct nne_message msg;
         msg.type = NNE_MESSAGE_TYPE_BINS1MIN;
         msg.tstamp = (mie->tstamp / 60) * 60;
-        msg.node = "nne601";
+        msg.node = mwn->node_id;
         msg.mccmnc = mie->imsi_mccmnc;
         msg.key = descr->key;
         msg.value = value;
@@ -618,15 +618,53 @@ static int32_t md_nne_init(void *ptr, json_object* config)
 
     strcpy(mwn->directory, NNE_DEFAULT_DIRECTORY);
     mwn->interval = NNE_DEFAULT_INTERVAL_MS;
+    strcpy(mwn->node_id, "");
     strcpy(mwn->gps_prefix, NNE_DEFAULT_GPS_PREFIX);
     mwn->gps_instance_id = 0;
     strcpy(mwn->gps_extension, NNE_DEFAULT_GPS_EXTENSION);
     strcpy(mwn->metadata_prefix, NNE_DEFAULT_METADATA_PREFIX);
     strcpy(mwn->metadata_extension, NNE_DEFAULT_METADATA_EXTENSION);
-    strcpy(mwn->metadata_nodeid, "nne601");
 
     mwn->gps_file = NULL;
     mwn->gps_sequence = 0;
+
+    mwn->metadata_cache = NULL;
+    LIST_INIT(&(mwn->modem_list));
+
+    json_object* subconfig;
+    if (json_object_object_get_ex(config, "nne", &subconfig)) {
+        json_object_object_foreach(subconfig, key, val) {
+            if (!strcmp(key, "node_id")) {
+                const char* node_id = json_object_get_string(val);
+                if (strlen(node_id) > sizeof(mwn->node_id) - 1) {
+                    META_PRINT_SYSLOG(mwn->parent, LOG_ERR,
+                            "NNE writer: node_id too long (>%ld)\n",
+                            sizeof(mwn->node_id) - 1);
+                    return RETVAL_FAILURE;
+                } else
+                    strcpy(mwn->node_id, node_id);
+            }
+            else if (!strcmp(key, "interval"))
+                mwn->interval = ((uint32_t) json_object_get_int(val)) * 1000;
+            else if (!strcmp(key, "gps_instance"))
+                mwn->gps_instance_id = ((uint32_t) json_object_get_int(val)) * 1000;
+            else if (!strcmp(key, "gps_prefix")) {
+                const char* prefix = json_object_get_string(val);
+                if (strlen(prefix) > sizeof(mwn->gps_prefix) - 1) {
+                    META_PRINT_SYSLOG(mwn->parent, LOG_ERR,
+                            "NNE writer: gps prefix too long (>%ld)\n",
+                            sizeof(mwn->gps_prefix) - 1);
+                    return RETVAL_FAILURE;
+                } else
+                    strcpy(mwn->gps_prefix, prefix);
+            }
+        }
+    }
+
+    if (strlen(mwn->node_id) == 0) {
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Missing mandatory parameter node_id\n");
+        return RETVAL_FAILURE;
+    }
 
     retval = snprintf(mwn->gps_fname, sizeof(mwn->gps_fname), "%s%s%d%s",
                       mwn->directory, mwn->gps_prefix,
@@ -645,7 +683,7 @@ static int32_t md_nne_init(void *ptr, json_object* config)
     }
 
     retval = snprintf(mwn->metadata_fname, sizeof(mwn->metadata_fname), "%s.%s%stmp%s",
-                      mwn->directory, mwn->metadata_nodeid,
+                      mwn->directory, mwn->node_id,
                       mwn->metadata_prefix, mwn->metadata_extension);
     if (retval >= sizeof(mwn->metadata_fname)) {
         META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Failed to format file name\n");
@@ -653,33 +691,11 @@ static int32_t md_nne_init(void *ptr, json_object* config)
     }
 
     retval = snprintf(mwn->metadata_fname_tm, sizeof(mwn->metadata_fname_tm), "%s%s%s%%s%s",
-                      mwn->directory, mwn->metadata_nodeid,
+                      mwn->directory, mwn->node_id,
                       mwn->metadata_prefix, mwn->metadata_extension);
     if (retval >= sizeof(mwn->metadata_fname_tm)) {
         META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Failed to format file name\n");
         return RETVAL_FAILURE;
-    }
-
-    mwn->metadata_cache = NULL;
-    LIST_INIT(&(mwn->modem_list));
-
-    json_object* subconfig;
-    if (json_object_object_get_ex(config, "nne", &subconfig)) {
-        json_object_object_foreach(subconfig, key, val) {
-            if (!strcmp(key, "interval"))
-                mwn->interval = ((uint32_t) json_object_get_int(val)) * 1000;
-            else if (!strcmp(key, "gps_instance"))
-                mwn->gps_instance_id = ((uint32_t) json_object_get_int(val)) * 1000;
-            else if (!strcmp(key, "gps_prefix")) {
-                const char* prefix = json_object_get_string(val);
-                if (strlen(prefix) > sizeof(mwn->gps_prefix) - 1) {
-                    META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: gps prefix too long (>%ld)\n",
-                        sizeof(mwn->gps_prefix) - 1);
-                    return RETVAL_FAILURE;
-                } else
-                    strcpy(mwn->gps_prefix, prefix);
-            }
-        }
     }
 
     if(!(mwn->timeout_handle = backend_event_loop_create_timeout(0,
@@ -716,6 +732,7 @@ static void md_nne_handle(struct md_writer *writer, struct md_event *event)
 void md_nne_usage()
 {
     fprintf(stderr, "\"nne\": {\t\tNornet Edge writer.\n");
+    fprintf(stderr, "  \"node_id\":\t\tNornet node id (e.g. nne601)\n");
     fprintf(stderr, "  \"interval\":\t\tFile rotation/export interval (in seconds)\n");
     fprintf(stderr, "  \"gsp_instance\":\t\tNNE measurement instance id for gps\n");
     fprintf(stderr, "  \"gps_prefix\":\t\tFile prefix for gps /nne/data/<PREFIX><INSTANCE>.sdat\n");

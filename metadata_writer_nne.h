@@ -91,13 +91,13 @@ struct md_writer_nne {
     MD_WRITER;
 
     char directory[64];
+    char node_id[16];
     uint32_t interval;
     char gps_prefix[16];
     uint32_t gps_instance_id;
     char gps_extension[16];
     char metadata_prefix[32];
     char metadata_extension[16];
-    char metadata_nodeid[16];
 
     FILE *gps_file;
     uint32_t gps_sequence;
