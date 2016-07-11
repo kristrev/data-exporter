@@ -304,6 +304,7 @@ struct md_writer_sqlite {
     sqlite3_stmt *insert_usage, *update_usage, *dump_usage, *delete_usage;
 
     const char *session_id_file;
+    const char *last_conn_tstamp_path;
 
     uint32_t node_id;
     uint32_t db_interval;

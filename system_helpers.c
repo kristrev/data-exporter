@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <inttypes.h>
 
 #ifdef OPENWRT
 #include <uci.h>
@@ -136,7 +137,7 @@ uint8_t system_helpers_read_uint_from_file(const char *filename,
     if (!file_to_read)
         return RETVAL_FAILURE;
 
-    retval = fscanf(file_to_read, "%llu", value);
+    retval = fscanf(file_to_read, "%"PRIu64, value);
     fclose(file_to_read);
 
     if (retval != 1 || retval == EOF)
@@ -154,14 +155,13 @@ uint8_t system_helpers_read_session_id(const char *path, uint64_t *session_id,
     if (!session_id_file)
         return RETVAL_FAILURE;
 
-    retval = fscanf(session_id_file, "%llu %llu", session_id,
+    retval = fscanf(session_id_file, "%"PRIu64" %"PRIu64, session_id,
             session_id_multip);
     fclose(session_id_file);
 
-    if (retval != 2) {
-        printf("Missin values\n");
+    if (retval != 2)
         return RETVAL_FAILURE;
-    } else
+    else
         return RETVAL_SUCCESS;
 }
 

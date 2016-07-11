@@ -402,6 +402,9 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         system_helpers_read_session_id(mws->session_id_file, &(mws->session_id),
                 &(mws->session_id_multip));
 
+    if (mws->last_conn_tstamp_path)
+        system_helpers_read_uint_from_file(mws->last_conn_tstamp_path, &(mws->dump_tstamp));
+
     return RETVAL_SUCCESS;
 }
 
@@ -419,6 +422,7 @@ void md_sqlite_usage()
     fprintf(stderr, "  \"events\":\t\tnumber of events before copying database (default: 10)\n");
     fprintf(stderr, "  \"session_id\":\t\tpath to session id file\n");
     fprintf(stderr, "  \"api_version\":\tbackend API version (default: 1)\n");
+    fprintf(stderr, "  \"last_conn_tstamp_path\":\toptional path to file where we read/store timestamp of last conn dump\n");
     fprintf(stderr, "}\n");
 }
 
@@ -454,6 +458,8 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
                 mws->session_id_file = strdup(json_object_get_string(val));
             else if (!strcmp(key, "api_version"))
                 mws->api_version = (uint32_t) json_object_get_int(val);
+            else if (!strcmp(key, "last_conn_tstamp_path"))
+                mws->last_conn_tstamp_path = strdup(json_object_get_string(val));
         }
     }
 
