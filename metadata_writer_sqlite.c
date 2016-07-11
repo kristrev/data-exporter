@@ -403,7 +403,8 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
                 &(mws->session_id_multip));
 
     if (mws->last_conn_tstamp_path)
-        system_helpers_read_uint_from_file(mws->last_conn_tstamp_path, &(mws->dump_tstamp));
+        system_helpers_read_uint64_from_file(mws->last_conn_tstamp_path,
+                &(mws->dump_tstamp));
 
     return RETVAL_SUCCESS;
 }
@@ -515,7 +516,7 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
         return RETVAL_FAILURE;
 
     //read uptime
-    if (system_helpers_read_uint_from_file("/proc/uptime", &uptime))
+    if (system_helpers_read_uint64_from_file("/proc/uptime", &uptime))
         return RETVAL_FAILURE;
 
     real_boot_time = tv.tv_sec - uptime;

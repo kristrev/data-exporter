@@ -128,7 +128,7 @@ uint8_t system_helpers_check_address(const char *addr)
 }
 
 //Reads uptime and stores value in uptime.
-uint8_t system_helpers_read_uint_from_file(const char *filename,
+uint8_t system_helpers_read_uint64_from_file(const char *filename,
         uint64_t *value)
 {
     FILE *file_to_read = fopen(filename, "r");
