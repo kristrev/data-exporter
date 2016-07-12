@@ -38,6 +38,7 @@
 #include "metadata_writer_sqlite_conn.h"
 #include "metadata_writer_sqlite_helpers.h"
 #include "metadata_exporter_log.h"
+#include "system_helpers.h"
 
 static int32_t md_sqlite_execute_insert_update(struct md_writer_sqlite *mws,
                                                struct md_conn_event *mce)
@@ -540,6 +541,54 @@ static uint8_t md_sqlite_conn_dump_db(struct md_writer_sqlite *mws, FILE *output
         return RETVAL_SUCCESS;
 }
 
+static uint8_t md_sqlite_conn_delete_db(struct md_writer_sqlite *mws)
+{
+    int32_t retval;
+    sqlite3_stmt *delete_update;
+
+    sqlite3_reset(mws->delete_table);
+    retval = sqlite3_step(mws->delete_table);
+
+    if (retval != SQLITE_DONE) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to delete events %s\n",
+                sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    if (!mws->delete_conn_update)
+        return RETVAL_SUCCESS;
+
+    if ((retval = sqlite3_prepare_v2(mws->db_handle, DELETE_NW_UPDATE, -1,
+                    &delete_update, NULL))) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Prepare failed %s\n",
+                sqlite3_errstr(retval));
+        return RETVAL_FAILURE; 
+    }
+
+    //Delete all updates that have not been updated for the last half hour, to
+    //reduce size of database. If metadata exporter has been stopped for a long
+    //time, we might create some redundant fake events, but those can be handled
+    //by backend. This can happen if we export for example before an update
+    //message for all active sessions have been receieved
+    if ((retval = sqlite3_bind_int64(delete_update, 1,
+                    mws->last_msg_tstamp - 1800))) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Bind failed %s\n",
+                sqlite3_errstr(retval));
+        return RETVAL_FAILURE; 
+    }
+
+    retval = sqlite3_step(delete_update);
+
+    if (retval != SQLITE_DONE) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to delete updates: %s\n",
+                sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    mws->delete_conn_update = 0;
+    return RETVAL_SUCCESS;
+}
+
 static uint8_t md_sqlite_usage_dump_db(struct md_writer_sqlite *mws, FILE *output)
 {
     sqlite3_reset(mws->dump_usage);
@@ -550,12 +599,27 @@ static uint8_t md_sqlite_usage_dump_db(struct md_writer_sqlite *mws, FILE *outpu
         return RETVAL_SUCCESS;
 }
 
+static uint8_t md_sqlite_usage_delete_db(struct md_writer_sqlite *mws)
+{
+    int32_t retval;
+
+    sqlite3_reset(mws->delete_usage);
+    retval = sqlite3_step(mws->delete_usage);
+
+    if (retval == SQLITE_DONE) {
+        return RETVAL_SUCCESS;
+    } else {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to delete usage\n");
+        return RETVAL_FAILURE;
+    }
+}
+
 uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = md_writer_helpers_copy_db(mws->meta_prefix,
             mws->meta_prefix_len, md_sqlite_conn_dump_db, mws,
-            mws->delete_table);
-   
+            md_sqlite_conn_delete_db);
+  
     if (retval == RETVAL_SUCCESS) {
         mws->dump_tstamp = mws->last_msg_tstamp;
         mws->num_conn_events = 0;
@@ -566,14 +630,13 @@ uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws)
     }
 
     return retval;
-
 }
 
 uint8_t md_sqlite_conn_usage_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = md_writer_helpers_copy_db(mws->usage_prefix,
             mws->usage_prefix_len, md_sqlite_usage_dump_db, mws,
-            mws->delete_usage);
+            md_sqlite_usage_delete_db);
    
     if (retval == RETVAL_SUCCESS)
         mws->num_usage_events = 0;

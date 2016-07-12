@@ -76,7 +76,7 @@ uint32_t system_helpers_get_nodeid()
     return (uint32_t) node_id;
 }
 #elif MONROE
-uint32_t system_helpers_get_nodeid(char* nodeid_file)
+uint32_t system_helpers_get_nodeid(const char* nodeid_file)
 {
     char num_buf[255];
     long node_id;

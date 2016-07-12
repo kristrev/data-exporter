@@ -186,6 +186,8 @@
 
 #define DELETE_TABLE         "DELETE FROM NetworkEvent"
 
+#define DELETE_NW_UPDATE     "DELETE FROM NetworkUpdates WHERE Timestamp < ?"
+
 #define DELETE_GPS_TABLE     "DELETE FROM GpsUpdate"
 
 #define DELETE_MONITOR_TABLE "DELETE FROM MonitorEvents"
@@ -303,7 +305,7 @@ struct md_writer_sqlite {
 
     sqlite3_stmt *insert_usage, *update_usage, *dump_usage, *delete_usage;
 
-    const char *session_id_file;
+    char *session_id_file;
     const char *last_conn_tstamp_path;
 
     uint32_t node_id;
@@ -337,6 +339,7 @@ struct md_writer_sqlite {
     size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len, usage_prefix_len;
 
     uint8_t api_version;
+    uint8_t delete_conn_update;
 };
 
 void md_sqlite_usage();

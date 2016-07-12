@@ -34,12 +34,14 @@
 
 uint32_t system_helpers_get_nodeid();
 #else
-uint32_t system_helpers_get_nodeid(char* nodeid_file);
+uint32_t system_helpers_get_nodeid(const char *nodeid_file);
 #endif
 
 uint8_t system_helpers_check_address(const char *addr);
 uint8_t system_helpers_read_uint64_from_file(const char *path, uint64_t *value);
 uint8_t system_helpers_read_session_id(const char *path, uint64_t *session_id,
         uint64_t *session_id_multip);
+uint8_t system_helpers_write_uint64_to_file(const char *filename,
+        uint64_t value);
 
 #endif

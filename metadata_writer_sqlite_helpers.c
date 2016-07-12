@@ -66,9 +66,9 @@ uint8_t md_sqlite_helpers_dump_write(sqlite3_stmt *stmt, FILE *output)
 
 uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
         dump_db_cb dump_db, struct md_writer_sqlite *mws,
-        sqlite3_stmt *delete_stmt)
+        delete_db_cb delete_db)
 {
-    int32_t output_fd, retval;
+    int32_t output_fd;
     FILE *output;
     //TODO: Specify prefix from command line
     char dst_filename[128];
@@ -111,20 +111,16 @@ uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
         return RETVAL_FAILURE;
     }
 
-    if (!delete_stmt)
+    if (!delete_db)
         return RETVAL_SUCCESS;
 
-    sqlite3_reset(delete_stmt);
-    retval = sqlite3_step(delete_stmt);
+    if (!delete_db(mws))
+        return RETVAL_SUCCESS;
 
-    if (retval != SQLITE_DONE) {
-        //TODO: Decide what to do here! It is not really critical (content is
-        //dumped to file and we handle multiple inserts), but we transfer
-        //redundant data
-        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "DELETE failed %s\n", sqlite3_errstr(retval));
-        remove(dst_filename);
-        return RETVAL_FAILURE;
-    }
-
-    return RETVAL_SUCCESS;
+    //TODO: Decide what to do here! It is not really critical (content is
+    //dumped to file and we handle multiple inserts), but we transfer
+    //redundant data
+    META_PRINT_SYSLOG(mws->parent, LOG_ERR, "DELETE failed\n");
+    remove(dst_filename);
+    return RETVAL_FAILURE;
 }
