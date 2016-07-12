@@ -268,7 +268,7 @@ static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char 
 }
 
 static int md_sqlite_configure(struct md_writer_sqlite *mws,
-        const char *db_filename, uint32_t node_id, char* nodeid_file, uint32_t db_interval,
+        const char *db_filename, uint32_t node_id, const char* nodeid_file, uint32_t db_interval,
         uint32_t db_events, const char *meta_prefix, const char *gps_prefix,
         const char *monitor_prefix, const char *usage_prefix)
 {
@@ -290,6 +290,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
     mws->db_interval = db_interval;
     mws->db_events = db_events;
     mws->do_fake_updates = 1;
+    mws->delete_conn_update = 1;
     
     //We will not use timer right away
     if(!(mws->timeout_handle = backend_event_loop_create_timeout(0,
@@ -402,6 +403,10 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         system_helpers_read_session_id(mws->session_id_file, &(mws->session_id),
                 &(mws->session_id_multip));
 
+    if (mws->last_conn_tstamp_path)
+        system_helpers_read_uint64_from_file(mws->last_conn_tstamp_path,
+                &(mws->dump_tstamp));
+
     return RETVAL_SUCCESS;
 }
 
@@ -419,6 +424,7 @@ void md_sqlite_usage()
     fprintf(stderr, "  \"events\":\t\tnumber of events before copying database (default: 10)\n");
     fprintf(stderr, "  \"session_id\":\t\tpath to session id file\n");
     fprintf(stderr, "  \"api_version\":\tbackend API version (default: 1)\n");
+    fprintf(stderr, "  \"last_conn_tstamp_path\":\toptional path to file where we read/store timestamp of last conn dump\n");
     fprintf(stderr, "}\n");
 }
 
@@ -454,6 +460,8 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
                 mws->session_id_file = strdup(json_object_get_string(val));
             else if (!strcmp(key, "api_version"))
                 mws->api_version = (uint32_t) json_object_get_int(val);
+            else if (!strcmp(key, "last_conn_tstamp_path"))
+                mws->last_conn_tstamp_path = strdup(json_object_get_string(val));
         }
     }
 
@@ -509,7 +517,7 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
         return RETVAL_FAILURE;
 
     //read uptime
-    if (system_helpers_read_uptime(&uptime))
+    if (system_helpers_read_uint64_from_file("/proc/uptime", &uptime))
         return RETVAL_FAILURE;
 
     real_boot_time = tv.tv_sec - uptime;
@@ -547,7 +555,7 @@ static uint8_t md_sqlite_check_session_id(struct md_writer_sqlite *mws)
 
     free(mws->session_id_file);
 
-    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Session ID values: %llu %llu\n",
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Session ID values: %"PRIu64" %"PRIu64"\n",
             mws->session_id, mws->session_id_multip);
 
     return RETVAL_SUCCESS;

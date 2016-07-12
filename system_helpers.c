@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <inttypes.h>
 
 #ifdef OPENWRT
 #include <uci.h>
@@ -75,7 +76,7 @@ uint32_t system_helpers_get_nodeid()
     return (uint32_t) node_id;
 }
 #elif MONROE
-uint32_t system_helpers_get_nodeid(char* nodeid_file)
+uint32_t system_helpers_get_nodeid(const char* nodeid_file)
 {
     char num_buf[255];
     long node_id;
@@ -127,21 +128,43 @@ uint8_t system_helpers_check_address(const char *addr)
 }
 
 //Reads uptime and stores value in uptime.
-uint8_t system_helpers_read_uptime(uint64_t *uptime)
+uint8_t system_helpers_read_uint64_from_file(const char *filename,
+        uint64_t *value)
 {
-    FILE *uptime_file = fopen("/proc/uptime", "r");
+    FILE *file_to_read = fopen(filename, "r");
     int retval;
 
-    if (!uptime_file)
+    if (!file_to_read)
         return RETVAL_FAILURE;
 
-    retval = fscanf(uptime_file, "%llu", uptime);
-    fclose(uptime_file);
+    retval = fscanf(file_to_read, "%"PRIu64, value);
+    fclose(file_to_read);
 
     if (retval != 1 || retval == EOF)
         return RETVAL_FAILURE;
 
     return RETVAL_SUCCESS;
+}
+
+uint8_t system_helpers_write_uint64_to_file(const char *filename,
+        uint64_t value)
+{
+    //The only user (so far) of this function only uses this value for help.
+    //Thus, it is not critical if writing fails. Therefore, no need to write to
+    //partial first, link, etc.
+    FILE *file_to_write = fopen(filename, "w");
+    int retval;
+
+    if (!file_to_write)
+        return RETVAL_FAILURE;
+
+    retval = fprintf(file_to_write, "%"PRIu64, value);
+    fclose(file_to_write);
+
+    if (retval < 0)
+        return RETVAL_FAILURE;
+    else
+        return RETVAL_SUCCESS;
 }
 
 uint8_t system_helpers_read_session_id(const char *path, uint64_t *session_id,
@@ -153,14 +176,13 @@ uint8_t system_helpers_read_session_id(const char *path, uint64_t *session_id,
     if (!session_id_file)
         return RETVAL_FAILURE;
 
-    retval = fscanf(session_id_file, "%llu %llu", session_id,
+    retval = fscanf(session_id_file, "%"PRIu64" %"PRIu64, session_id,
             session_id_multip);
     fclose(session_id_file);
 
-    if (retval != 2) {
-        printf("Missin values\n");
+    if (retval != 2)
         return RETVAL_FAILURE;
-    } else
+    else
         return RETVAL_SUCCESS;
 }
 

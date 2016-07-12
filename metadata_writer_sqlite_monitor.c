@@ -43,11 +43,26 @@ static uint8_t md_sqlite_monitor_dump_db(struct md_writer_sqlite *mws, FILE *out
         return RETVAL_SUCCESS;
 }
 
+static uint8_t md_sqlite_monitor_delete_db(struct md_writer_sqlite *mws)
+{
+    int32_t retval = 0;
+    sqlite3_reset(mws->delete_monitor);
+
+    retval = sqlite3_step(mws->delete_monitor);
+
+    if (retval == SQLITE_DONE) {
+        return RETVAL_SUCCESS;
+    } else {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to delete monitor table\n");
+        return RETVAL_FAILURE;
+    }
+}
+
 uint8_t md_sqlite_monitor_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = md_writer_helpers_copy_db(mws->monitor_prefix,
             mws->monitor_prefix_len, md_sqlite_monitor_dump_db, mws,
-            mws->delete_monitor);
+            md_sqlite_monitor_delete_db);
 
     if (retval == RETVAL_SUCCESS)
         mws->num_munin_events = 0;
