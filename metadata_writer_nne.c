@@ -61,6 +61,8 @@ struct nne_metadata_descr NNE_METADATA_DESCR[] = {
     { NNE_IDX_OPER,    "oper",    NNE_TYPE_UINT32, offsetof(struct md_iface_event, nw_mccmnc) }
 };
 
+
+
 #define NNE_METADATA_DESCR_LEN (sizeof(NNE_METADATA_DESCR) / sizeof(struct nne_metadata_descr))
 
 enum nne_message_type
@@ -166,6 +168,14 @@ static struct nne_modem *md_nne_get_modem(struct nne_modem_list *modem_list, uin
             return e;
 
     return NULL;
+}
+
+struct nne_value nne_value_init_str(char* str)
+{
+    struct nne_value value;
+    value.type = NNE_TYPE_STRING;
+    value.u.v_str = str;
+    return value;
 }
 
 struct nne_value nne_value_init(enum nne_type type, void *ptr, int offset)
@@ -326,6 +336,17 @@ static void md_nne_send_message(struct md_writer_nne *mwn,
     //json_object_put(obj);
 }
 
+
+/*static void md_nne_process_mode(struct md_writer_nne *mwn,
+                                       struct nne_metadata_descr* descr,
+                                       struct nne_modem* modem,
+                                       struct md_iface_event *mie,
+                                       enum nne_message_source source)
+{
+
+}*/
+
+
 static void md_nne_process_iface_event(struct md_writer_nne *mwn,
                                        struct nne_metadata_descr* descr,
                                        struct nne_modem* modem,
@@ -374,6 +395,44 @@ static void md_nne_process_iface_event(struct md_writer_nne *mwn,
         msg.delta = 0;
 
         md_nne_send_message(mwn, &msg);
+    }
+}
+
+static void md_nne_check_removed_modems(struct md_writer_nne *mwn,
+                                        uint64_t tstamp)
+{
+    struct nne_modem *modem = NULL, *rm_modem = NULL;
+    struct nne_message msg;
+
+    modem = mwn->modem_list.lh_first;
+    while(modem != NULL)
+    {
+        // check if modem has been removed
+        rm_modem = NULL;
+        if (modem->tstamp < tstamp - 30)
+            rm_modem = modem;
+        
+        modem = LIST_NEXT(modem, entries);
+
+        // if modem has been removed generate 
+        // usbmodem DOWN event and remove the entry
+        if (rm_modem != NULL)
+        {
+            msg.type = NNE_MESSAGE_TYPE_EVENT;
+            msg.tstamp = tstamp;
+            msg.node = mwn->node_id;
+            msg.mccmnc = rm_modem->mccmnc;
+            msg.key = "usbmodem";
+            msg.value = nne_value_init_str("DOWN");
+            msg.extra = NULL;
+            msg.source = NNE_MESSAGE_SOURCE_REPORT;
+            msg.delta = 0;
+            md_nne_send_message(mwn, &msg);
+
+            LIST_REMOVE(rm_modem, entries);
+            META_PRINT_SYSLOG(mwn->parent, LOG_ERR,
+                    "NNE writer: mccmnc %d: Removed modem\n", rm_modem->mccmnc);
+        }
     }
 }
 
@@ -435,17 +494,27 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
 
     if (modem == NULL)
     {
-//        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: No modem found\n", mie->imsi_mccmnc);
-        // Create new modem
-
         modem = malloc(sizeof(struct nne_modem));
         LIST_INSERT_HEAD(&(mwn->modem_list), modem, entries);
-        modem->tstamp = mie->tstamp;
         modem->mccmnc = mie->imsi_mccmnc;
-//        memcpy(modem->metadata, NNE_INITIAL_METADATA, sizeof(NNE_INITIAL_METADATA));
         META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: Added new  modem\n", mie->imsi_mccmnc);
+
         // generate usbmodem UP event
+        struct nne_message msg;
+        msg.type = NNE_MESSAGE_TYPE_EVENT;
+        msg.tstamp = mie->tstamp;
+        msg.node = mwn->node_id;
+        msg.mccmnc = mie->imsi_mccmnc;
+        msg.key = "usbmodem";
+        msg.value = nne_value_init_str("UP");
+        msg.extra = NULL;
+        msg.source = NNE_MESSAGE_SOURCE_REPORT;
+        msg.delta = 0;
+
+        md_nne_send_message(mwn, &msg);
     }
+
+    modem->tstamp = mie->tstamp;
 
     META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: modem %d, sec=%ld\n",
                       mie->imsi_mccmnc, modem->mccmnc, mie->tstamp % 60);
@@ -460,53 +529,9 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
     {
         md_nne_process_iface_event(mwn, &(NNE_METADATA_DESCR[i]), modem, mie, source);
     }
-/*
-
-    // update modem's metadata
-    if (mie->device_mode != modem->metadata[NNE_IDX_MODE].value.v_uint8)
-    {
-        modem->metadata[NNE_IDX_MODE].tstamp = mie->tstamp;
-        modem->metadata[NNE_IDX_MODE].value.v_uint8 = mie->device_mode;
-        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: mode changed %d\n", mie->imsi_mccmnc, mie->device_mode);
-        // append event to json file
 
 
-        struct json_object* obj = json_object_new_object();
-
-        struct json_object* obj_add = json_object_new_int(mie->imsi_mccmnc);
-//        if (obj_add == NULL) {
-//            json_object_put(obj);
-//            return NULL;
-//        }
-        json_object_object_add(obj, "mccmnc", obj_add);
-
-
-        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: %s\n", mie->imsi_mccmnc, json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
-
-
-        json_object_put(obj);
-
-    }
-    else
-    {
-        modem->metadata[NNE_IDX_MODE].tstamp = mie->tstamp;
-    }
-*/
-    // TODO Go through all modems, find stale ones (tstamp > 60 secs),
-    // generate usbmodem LOST event and remove the modem from the list
-
-/*
-    if (mie->mie->device_mode != mwn->metadata[NNE_IDX_MODE].value.v_int)
-    {
-        mwn->metadata[NNE_IDX_MODE].tstamp = tstamp;
-        mwn->metadata[NNE_IDX_MODE].value = mie->mie->device_mode;
-        // append event to json file
-    }
-    else
-    {
-        mwn->metadata[NNE_IDX_MODE].tstamp = tstamp;
-    }
-*/
+    md_nne_check_removed_modems(mwn, mie->tstamp);
 }
 
 static int md_nne_format_fname_tm(char *s, int max, const char *format)
@@ -566,6 +591,14 @@ static void md_nne_handle_metadata_timeout(struct md_writer_nne *mwn)
     FILE *file;
     const char* str;
     char fname_tm[128];
+
+    struct timeval tv;
+    if (gettimeofday(&tv, NULL))
+    {
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: gettimeofday failed\n");
+    }
+
+    md_nne_check_removed_modems(mwn, tv.tv_sec);
 
     if (mwn->metadata_cache != NULL)
     {
