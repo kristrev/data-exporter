@@ -310,9 +310,13 @@ static void md_nne_send_message(struct md_writer_nne *mwn,
     md_nne_add_json_key_value_string(obj, "type", NNE_MESSAGE_TYPE_STR[msg->type]);
     md_nne_add_json_key_value_int(obj, "ts", msg->tstamp);
     md_nne_add_json_key_value_string(obj, "node", msg->node);
-    md_nne_add_json_key_value_int(obj, "mccmnc", msg->mccmnc);
-    md_nne_add_json_key_value_string(obj, "key", msg->key);
 
+    if (msg->mccmnc == 0)
+        md_nne_add_json_key_value_null(obj, "mccmnc");
+    else
+        md_nne_add_json_key_value_int(obj, "mccmnc", msg->mccmnc);
+
+    md_nne_add_json_key_value_string(obj, "key", msg->key);
     md_nne_add_json_key_value(obj, "value", msg->value);
 
     if (msg->extra == NULL)
@@ -332,8 +336,6 @@ static void md_nne_send_message(struct md_writer_nne *mwn,
         mwn->metadata_cache = json_object_new_array();
 
     json_object_array_add(mwn->metadata_cache, obj);
-
-    //json_object_put(obj);
 }
 
 
@@ -380,7 +382,7 @@ static void md_nne_process_iface_event(struct md_writer_nne *mwn,
 
     modem->metadata[descr->idx].tstamp = mie->tstamp;
 
-    if (source == NNE_MESSAGE_SOURCE_QUERY)
+/*    if (source == NNE_MESSAGE_SOURCE_QUERY)
     {
         // generate json event
         struct nne_message msg;
@@ -395,6 +397,40 @@ static void md_nne_process_iface_event(struct md_writer_nne *mwn,
         msg.delta = 0;
 
         md_nne_send_message(mwn, &msg);
+    }*/
+}
+
+static void md_nne_generate_bins1min(struct md_writer_nne *mwn,
+                                        uint64_t tstamp)
+{
+    struct nne_modem *modem = NULL;
+    struct nne_metadata_descr *descr;
+    struct nne_message msg;
+    int i;
+
+    LIST_FOREACH(modem, &(mwn->modem_list), entries)
+    {
+        // On first event after new minute has begun
+        // generate bins1min entries for all metadata values
+        if ((tstamp / 60) <= (modem->tstamp / 60))
+            continue;
+
+        for (i = 0; i < NNE_METADATA_DESCR_LEN; i++)
+        {
+            descr = &(NNE_METADATA_DESCR[i]);
+
+            msg.type = NNE_MESSAGE_TYPE_BINS1MIN;
+            msg.tstamp = (tstamp / 60) * 60;
+            msg.node = mwn->node_id;
+            msg.mccmnc = modem->mccmnc;
+            msg.key = descr->key;
+            msg.value = modem->metadata[descr->idx].value;
+            msg.extra = NULL;
+            msg.source = NNE_MESSAGE_SOURCE_QUERY;
+            msg.delta = msg.tstamp - modem->metadata[descr->idx].tstamp;
+
+            md_nne_send_message(mwn, &msg);
+        }
     }
 }
 
@@ -409,7 +445,7 @@ static void md_nne_check_removed_modems(struct md_writer_nne *mwn,
     {
         // check if modem has been removed
         rm_modem = NULL;
-        if (modem->tstamp < tstamp - 30)
+        if (modem->tstamp < tstamp - 40)
             rm_modem = modem;
         
         modem = LIST_NEXT(modem, entries);
@@ -514,22 +550,23 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
         md_nne_send_message(mwn, &msg);
     }
 
-    modem->tstamp = mie->tstamp;
-
     META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: modem %d, sec=%ld\n",
                       mie->imsi_mccmnc, modem->mccmnc, mie->tstamp % 60);
 
+    md_nne_generate_bins1min(mwn, mie->tstamp);
+
+    modem->tstamp = mie->tstamp;
+
     source = NNE_MESSAGE_SOURCE_REPORT;
-    if (mie->event_param == IFACE_EVENT_UPDATE && mie->tstamp % 60 < 30)
-    {
-        source = NNE_MESSAGE_SOURCE_QUERY;
-    }
+//    if (mie->event_param == IFACE_EVENT_UPDATE && mie->tstamp % 60 < 30)
+//    {
+//        source = NNE_MESSAGE_SOURCE_QUERY;
+//    }
 
     for (i = 0; i < NNE_METADATA_DESCR_LEN; i++)
     {
         md_nne_process_iface_event(mwn, &(NNE_METADATA_DESCR[i]), modem, mie, source);
     }
-
 
     md_nne_check_removed_modems(mwn, mie->tstamp);
 }
@@ -591,12 +628,32 @@ static void md_nne_handle_metadata_timeout(struct md_writer_nne *mwn)
     FILE *file;
     const char* str;
     char fname_tm[128];
-
+    struct nne_message msg;
     struct timeval tv;
+
     if (gettimeofday(&tv, NULL))
     {
         META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: gettimeofday failed\n");
     }
+
+    // Generate collector UP bins1min entry
+    // every minute (at first invocation of this
+    // timeout handler after minute changes)
+    if ((tv.tv_sec / 60) > (mwn->timeout_tstamp / 60))
+    {
+        msg.type = NNE_MESSAGE_TYPE_BINS1MIN;
+        msg.tstamp = (tv.tv_sec / 60) * 60;
+        msg.node = mwn->node_id;
+        msg.mccmnc = 0;
+        msg.key = "collector";
+        msg.value = nne_value_init_str("UP");
+        msg.extra = NULL;
+        msg.source = NNE_MESSAGE_SOURCE_QUERY;
+        msg.delta = 0;
+        md_nne_send_message(mwn, &msg);
+    }
+
+    mwn->timeout_tstamp = tv.tv_sec;
 
     md_nne_check_removed_modems(mwn, tv.tv_sec);
 
@@ -663,6 +720,7 @@ static int32_t md_nne_init(void *ptr, json_object* config)
 
     mwn->metadata_cache = NULL;
     LIST_INIT(&(mwn->modem_list));
+    mwn->timeout_tstamp = 0;
 
     json_object* subconfig;
     if (json_object_object_get_ex(config, "nne", &subconfig)) {
