@@ -107,8 +107,8 @@ struct md_writer_nne {
     char metadata_fname_tm[128];
     struct json_object* metadata_cache;
     LIST_HEAD(nne_modem_list, nne_modem) modem_list;
-
     struct backend_timeout_handle *timeout_handle;
+    uint64_t timeout_tstamp;
 };
 
 void md_nne_setup(struct md_exporter *mde, struct md_writer_nne* mwn);
