@@ -344,7 +344,7 @@ static const char* map_operator(const char* operator) {
         "Orange", "op0",
         "Orange Internet Móvil", "op0",
         "YOIGO", "op1",
-        "Movistar", "op2",
+        "Movistar", "op1",
 
         "Telenor SE", "op0",
         "TelenorS", "op0",
