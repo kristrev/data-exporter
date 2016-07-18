@@ -344,13 +344,14 @@ static const char* map_operator(const char* operator) {
         "Orange", "op0",
         "Orange Internet Móvil", "op0",
         "YOIGO", "op1",
+        "Movistar", "op2",
 
         "Telenor SE", "op0",
         "TelenorS", "op0",
         "Telia", "op1",
         "3 SE", "op2"
     };
-    int items = 15;
+    int items = 16;
     for (int i=0; i<items; i++) 
         if (strcmp(lookup[i*2], operator)==0) 
             return lookup[i*2+1];
