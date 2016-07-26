@@ -174,9 +174,9 @@ static void md_zeromq_send(struct md_writer_zeromq* mwz, const void *buf, size_t
     }
     if (mwz->connected == 1) {
         if (zmq_send(mwz->zmq_publisher, buf, len, flags) != 0) {
-            META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "zmq_send returned errno %s (dropped message of len %zu)\n", 
-                zmq_strerror(errno), len);
-            META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "Message: %.128s(...)\n", (char *)buf);
+            //META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "zmq_send returned errno %s (dropped message of len %zu)\n", 
+            //    zmq_strerror(errno), len);
+            //META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "Message: %.128s(...)\n", (char *)buf);
             if (errno != EAGAIN ) {
                 zmq_unbind(mwz->zmq_publisher, mwz->zmq_addr);
                 mwz->connected = 0;
