@@ -30,6 +30,7 @@
 
 enum nne_type
 {
+    NNE_TYPE_NULL,
     NNE_TYPE_INT8,
     NNE_TYPE_UINT8,
     NNE_TYPE_INT16,
@@ -66,15 +67,21 @@ enum nne_metadata_idx
     NNE_IDX_LAC,
     NNE_IDX_CID,
     NNE_IDX_OPER,
+    NNE_IDX_IPADDR,
+    NNE_IDX_DEV_STATE,
     __NNE_IDX_MAX
 };
 
 #define NNE_IDX_MAX (__NNE_IDX_MAX - 1)
 
+#define NNE_MODE_NOSERVICE (0)
+#define NNE_MODE_GSM (3)
+#define NNE_MODE_WCDMA (5)
+#define NNE_MODE_LTE (6)
+
 struct nne_metadata
 {
     uint64_t tstamp;
-    const char *key;
     struct nne_value value;
 };
 
