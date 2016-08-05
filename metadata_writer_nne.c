@@ -44,24 +44,193 @@ struct nne_metadata_descr
 {
     enum nne_metadata_idx idx;
     const char *key;
+    int mode_dependent;
     enum nne_type type;
-    int offset; // offset to member in md_iface_event structure
+    enum iface_event event; // iface event that updates this metadata
+    struct nne_value (*parse_cb)(struct nne_modem *modem, struct md_iface_event *mie);
 };
+
+
+
+struct nne_value md_iface_parse_mode(struct nne_modem *modem, struct md_iface_event *mie)
+{
+    struct nne_value value;
+    value.type = NNE_TYPE_UINT8;
+    switch (mie->device_mode) {
+        case 0: // UNKNOWN
+        case 1: // DISCONNECTED
+            value.type = NNE_TYPE_NULL;
+            break;
+        case 2:
+            value.u.v_int8 = NNE_MODE_NOSERVICE;
+            break;
+        case 3:
+            value.u.v_int8 = NNE_MODE_GSM;
+            break;
+        case 4:
+            value.u.v_int8 = NNE_MODE_WCDMA;
+            break;
+        case 5:
+            value.u.v_int8 = NNE_MODE_LTE;
+            break;
+        default:
+            value.type = NNE_TYPE_NULL;
+    }
+    return value;
+}
+
+struct nne_value md_iface_parse_submode(struct nne_modem *modem, struct md_iface_event *mie)
+{
+    struct nne_value value;
+    value.type = NNE_TYPE_UINT8;
+    value.u.v_uint8 = mie->device_submode;
+    return value;
+}
+
+struct nne_value md_iface_parse_rssi(struct nne_modem *modem, struct md_iface_event *mie)
+{
+    struct nne_value value;
+    value.type = NNE_TYPE_INT8;
+    if (modem->metadata[NNE_IDX_MODE].value.u.v_uint8 == NNE_MODE_LTE)
+        value.u.v_int8 = mie->lte_rssi;
+    else
+        value.u.v_int8 = mie->rssi;
+    return value;
+}
+
+struct nne_value md_iface_parse_rscp(struct nne_modem *modem, struct md_iface_event *mie)
+{
+    struct nne_value value;
+    uint8_t mode = modem->metadata[NNE_IDX_MODE].value.u.v_uint8;
+    if (mode == NNE_MODE_GSM || mode == NNE_MODE_WCDMA) {
+        value.type = NNE_TYPE_INT16;
+        value.u.v_int16 = mie->rscp;
+    }
+    else
+        value.type = NNE_TYPE_NULL;
+    return value;
+}
+
+struct nne_value md_iface_parse_ecio(struct nne_modem *modem, struct md_iface_event *mie)
+{
+    struct nne_value value;
+    uint8_t mode = modem->metadata[NNE_IDX_MODE].value.u.v_uint8;
+    if (mode == NNE_MODE_GSM || mode == NNE_MODE_WCDMA) {
+        value.type = NNE_TYPE_INT8;
+        value.u.v_int8 = mie->ecio;
+    }
+    else
+        value.type = NNE_TYPE_NULL;
+    return value;
+}
+
+struct nne_value md_iface_parse_rsrp(struct nne_modem *modem, struct md_iface_event *mie)
+{
+    struct nne_value value;
+    uint8_t mode = modem->metadata[NNE_IDX_MODE].value.u.v_uint8;
+    if (mode == NNE_MODE_LTE) {
+        value.type = NNE_TYPE_INT16;
+        value.u.v_int16 = mie->lte_rsrp;
+    }
+    else
+        value.type = NNE_TYPE_NULL;
+    return value;
+}
+
+struct nne_value md_iface_parse_rsrq(struct nne_modem *modem, struct md_iface_event *mie)
+{
+    struct nne_value value;
+    uint8_t mode = modem->metadata[NNE_IDX_MODE].value.u.v_uint8;
+    if (mode == NNE_MODE_LTE) {
+        value.type = NNE_TYPE_INT8;
+        value.u.v_int16 = mie->lte_rsrq;
+    }
+    else
+        value.type = NNE_TYPE_NULL;
+    return value;
+}
+
+struct nne_value md_iface_parse_lac(struct nne_modem *modem, struct md_iface_event *mie)
+{
+    int len = 16;
+    size_t retval;
+    struct nne_value value;
+    value.type = NNE_TYPE_STRING;
+    value.u.v_str = malloc(len);
+    if (value.u.v_str != NULL) {
+        retval = snprintf(value.u.v_str, len, "%X", mie->lac);
+        if (retval >= len) {
+            value.type = NNE_TYPE_NULL;
+            free(value.u.v_str);
+            value.u.v_str = NULL;
+        }
+    }
+    else
+        value.type = NNE_TYPE_NULL;
+    return value;
+}
+
+struct nne_value md_iface_parse_cid(struct nne_modem *modem, struct md_iface_event *mie)
+{
+    int len = 16;
+    size_t retval;
+    struct nne_value value;
+    value.type = NNE_TYPE_STRING;
+    value.u.v_str = malloc(len);
+    if (value.u.v_str != NULL) {
+        retval = snprintf(value.u.v_str, len, "%X", mie->cid);
+        if (retval >= len) {
+            value.type = NNE_TYPE_NULL;
+            free(value.u.v_str);
+            value.u.v_str = NULL;
+        }
+    }
+    else
+        value.type = NNE_TYPE_NULL;
+    return value;
+}
+
+struct nne_value md_iface_parse_oper(struct nne_modem *modem, struct md_iface_event *mie)
+{
+    struct nne_value value;
+    value.type = NNE_TYPE_UINT32;
+    value.u.v_uint32 = mie->nw_mccmnc;
+    return value;
+}
+
+struct nne_value md_iface_parse_ipaddr(struct nne_modem *modem, struct md_iface_event *mie)
+{
+    struct nne_value value;
+    value.type = NNE_TYPE_STRING;
+    if (mie->ip_addr != NULL)
+        value.u.v_str = strdup("UP");
+    else
+        value.u.v_str = strdup("DOWN");
+    return value;
+}
+
+struct nne_value md_iface_parse_dev_state(struct nne_modem *modem, struct md_iface_event *mie)
+{
+    struct nne_value value;
+    value.type = NNE_TYPE_UINT8;
+    value.u.v_int8 = mie->device_state;
+    return value;
+}
 
 struct nne_metadata_descr NNE_METADATA_DESCR[] = {
-    { NNE_IDX_MODE,    "mode",    NNE_TYPE_UINT8,  offsetof(struct md_iface_event, device_mode)    },
-    { NNE_IDX_SUBMODE, "submode", NNE_TYPE_UINT8,  offsetof(struct md_iface_event, device_submode) },
-    { NNE_IDX_RSSI,    "rssi",    NNE_TYPE_INT8,   offsetof(struct md_iface_event, rssi) },
-    { NNE_IDX_RSCP,    "rscp",    NNE_TYPE_INT16,  offsetof(struct md_iface_event, rscp) },
-    { NNE_IDX_ECIO,    "ecio",    NNE_TYPE_INT8,   offsetof(struct md_iface_event, ecio) },
-    { NNE_IDX_RSRP,    "rsrp",    NNE_TYPE_INT16,  offsetof(struct md_iface_event, lte_rsrp) },
-    { NNE_IDX_RSRQ,    "rsrq",    NNE_TYPE_INT8,   offsetof(struct md_iface_event, lte_rsrq) },
-    { NNE_IDX_LAC,     "lac",     NNE_TYPE_UINT16, offsetof(struct md_iface_event, lac) },
-    { NNE_IDX_CID,     "cid",     NNE_TYPE_INT32,  offsetof(struct md_iface_event, cid) },
-    { NNE_IDX_OPER,    "oper",    NNE_TYPE_UINT32, offsetof(struct md_iface_event, nw_mccmnc) }
+    { NNE_IDX_MODE,      "mode",         0, NNE_TYPE_UINT8,  IFACE_EVENT_MODE_CHANGE, md_iface_parse_mode },
+    { NNE_IDX_SUBMODE,   "submode",      0, NNE_TYPE_UINT8,  IFACE_EVENT_MODE_CHANGE, md_iface_parse_submode },
+    { NNE_IDX_RSSI,      "rssi",         1, NNE_TYPE_INT8,   IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_rssi },
+    { NNE_IDX_RSCP,      "rscp",         1, NNE_TYPE_INT16,  IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_rscp },
+    { NNE_IDX_ECIO,      "ecio",         1, NNE_TYPE_INT8,   IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_ecio },
+    { NNE_IDX_RSRP,      "rsrp",         1, NNE_TYPE_INT16,  IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_rsrp },
+    { NNE_IDX_RSRQ,      "rsrq",         1, NNE_TYPE_INT8,   IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_rsrq },
+    { NNE_IDX_LAC,       "lac",          0, NNE_TYPE_STRING, IFACE_EVENT_LOC_CHANGE, md_iface_parse_lac },
+    { NNE_IDX_CID,       "cid",          0, NNE_TYPE_STRING, IFACE_EVENT_LOC_CHANGE, md_iface_parse_cid },
+    { NNE_IDX_OPER,      "oper",         0, NNE_TYPE_UINT32, IFACE_EVENT_NW_MCCMNC_CHANGE, md_iface_parse_oper },
+    { NNE_IDX_IPADDR,    "ipaddr",       0, NNE_TYPE_STRING, IFACE_EVENT_IP_ADDR_CHANGE, md_iface_parse_ipaddr },
+    { NNE_IDX_DEV_STATE, "device_state", 0, NNE_TYPE_UINT8,  IFACE_EVENT_DEV_STATE, md_iface_parse_dev_state }
 };
-
-
 
 #define NNE_METADATA_DESCR_LEN (sizeof(NNE_METADATA_DESCR) / sizeof(struct nne_metadata_descr))
 
@@ -184,6 +353,8 @@ struct nne_value nne_value_init(enum nne_type type, void *ptr, int offset)
     value.type = type;
     switch(type)
     {
+        case NNE_TYPE_NULL:
+            break;
         case NNE_TYPE_INT8:
             value.u.v_int8 = *(int8_t*)((char*)ptr + offset);
             break;
@@ -217,6 +388,8 @@ static int nne_value_compare(struct nne_value v1, struct nne_value v2)
 
     switch(v1.type)
     {
+        case NNE_TYPE_NULL:
+            return 0; // NULL equals NULL
         case NNE_TYPE_INT8:
             return (v1.u.v_int8 == v2.u.v_int8) ? 0 : ((v1.u.v_int8 < v2.u.v_int8) ? -1 : 1);
         case NNE_TYPE_UINT8:
@@ -274,6 +447,8 @@ static int md_nne_add_json_key_value(struct json_object *obj,
 {
     switch(value.type)
     {
+        case NNE_TYPE_NULL:
+            return md_nne_add_json_key_value_null(obj, key);
         case NNE_TYPE_INT8:
             return md_nne_add_json_key_value_int(obj, key, value.u.v_int8);
         case NNE_TYPE_UINT8:
@@ -355,16 +530,20 @@ static void md_nne_process_iface_event(struct md_writer_nne *mwn,
                                        struct md_iface_event *mie,
                                        enum nne_message_source source)
 {
-    struct nne_value value = nne_value_init(descr->type, mie, descr->offset);
+    int i;
+    struct nne_value value =  descr->parse_cb(modem, mie);
 
-    if (nne_value_compare(modem->metadata[descr->idx].value, value) != 0)
-    {
+    if (nne_value_compare(modem->metadata[descr->idx].value, value) != 0) {
+
+        if (modem->metadata[descr->idx].value.type == NNE_TYPE_STRING)
+            free(modem->metadata[descr->idx].value.u.v_str);
         modem->metadata[descr->idx].value = value;
+
         META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: %d,%s changed %d\n",
                           mie->imsi_mccmnc, descr->idx, descr->key,
                           modem->metadata[descr->idx].value.u.v_uint8);
 
-        // generate json event
+        // Generate json event
         struct nne_message msg;
         msg.type = NNE_MESSAGE_TYPE_EVENT;
         msg.tstamp = mie->tstamp;
@@ -378,26 +557,29 @@ static void md_nne_process_iface_event(struct md_writer_nne *mwn,
 
         md_nne_send_message(mwn, &msg);
 
+        // if mode has changed nullify mode dependend metadata
+        if (descr->idx == NNE_IDX_MODE) {
+            for(i = 0; i <= NNE_IDX_MAX; i++) {
+                if (descr->mode_dependent) {
+                    if (modem->metadata[i].value.type == NNE_TYPE_STRING) {
+                        free(modem->metadata[i].value.u.v_str);
+                    }
+                    modem->metadata[i].value.type = NNE_TYPE_NULL;
+
+                    META_PRINT_SYSLOG(mwn->parent, LOG_ERR,
+                            "NNE writer: mccmnc %d: %d,%s nullified\n",
+                            mie->imsi_mccmnc, descr->idx, descr->key);
+                }
+            }
+        }
+    }
+    else {
+        if (value.type == NNE_TYPE_STRING) {
+            free(value.u.v_str);
+        }
     }
 
     modem->metadata[descr->idx].tstamp = mie->tstamp;
-
-/*    if (source == NNE_MESSAGE_SOURCE_QUERY)
-    {
-        // generate json event
-        struct nne_message msg;
-        msg.type = NNE_MESSAGE_TYPE_BINS1MIN;
-        msg.tstamp = (mie->tstamp / 60) * 60;
-        msg.node = mwn->node_id;
-        msg.mccmnc = mie->imsi_mccmnc;
-        msg.key = descr->key;
-        msg.value = value;
-        msg.extra = NULL;
-        msg.source = source;
-        msg.delta = 0;
-
-        md_nne_send_message(mwn, &msg);
-    }*/
 }
 
 static void md_nne_generate_bins1min(struct md_writer_nne *mwn,
@@ -447,10 +629,10 @@ static void md_nne_check_removed_modems(struct md_writer_nne *mwn,
         rm_modem = NULL;
         if (modem->tstamp < tstamp - 40)
             rm_modem = modem;
-        
+
         modem = LIST_NEXT(modem, entries);
 
-        // if modem has been removed generate 
+        // if modem has been removed generate
         // usbmodem DOWN event and remove the entry
         if (rm_modem != NULL)
         {
@@ -466,6 +648,13 @@ static void md_nne_check_removed_modems(struct md_writer_nne *mwn,
             md_nne_send_message(mwn, &msg);
 
             LIST_REMOVE(rm_modem, entries);
+
+            for(int i = 0; i <= NNE_IDX_MAX; i++)
+                if (rm_modem->metadata[i].value.type == NNE_TYPE_STRING)
+                    free(rm_modem->metadata[i].value.u.v_str);
+
+            free(rm_modem);
+
             META_PRINT_SYSLOG(mwn->parent, LOG_ERR,
                     "NNE writer: mccmnc %d: Removed modem\n", rm_modem->mccmnc);
         }
@@ -522,9 +711,7 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
 
 
     struct nne_modem *modem = NULL;
-    enum nne_message_source source;
     int i;
-
 
     modem = md_nne_get_modem(&(mwn->modem_list), mie->imsi_mccmnc);
 
@@ -533,6 +720,14 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
         modem = malloc(sizeof(struct nne_modem));
         LIST_INSERT_HEAD(&(mwn->modem_list), modem, entries);
         modem->mccmnc = mie->imsi_mccmnc;
+        modem->tstamp = mie->tstamp;
+
+        for(i = 0; i <= NNE_IDX_MAX; i++)
+        {
+            modem->metadata[i].tstamp = mie->tstamp;
+            modem->metadata[i].value.type = NNE_TYPE_NULL;
+        }
+
         META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: Added new  modem\n", mie->imsi_mccmnc);
 
         // generate usbmodem UP event
@@ -548,6 +743,11 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
         msg.delta = 0;
 
         md_nne_send_message(mwn, &msg);
+
+        // Initiate cache with current values
+        for (i = 0; i < NNE_METADATA_DESCR_LEN; i++) {
+            md_nne_process_iface_event(mwn, &(NNE_METADATA_DESCR[i]), modem, mie, NNE_MESSAGE_SOURCE_QUERY);
+        }
     }
 
     META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: modem %d, sec=%ld\n",
@@ -557,15 +757,11 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
 
     modem->tstamp = mie->tstamp;
 
-    source = NNE_MESSAGE_SOURCE_REPORT;
-//    if (mie->event_param == IFACE_EVENT_UPDATE && mie->tstamp % 60 < 30)
-//    {
-//        source = NNE_MESSAGE_SOURCE_QUERY;
-//    }
-
-    for (i = 0; i < NNE_METADATA_DESCR_LEN; i++)
-    {
-        md_nne_process_iface_event(mwn, &(NNE_METADATA_DESCR[i]), modem, mie, source);
+    // Process metadata; only related to this iface event
+    for (i = 0; i < NNE_METADATA_DESCR_LEN; i++) {
+        if (mie->event_param == NNE_METADATA_DESCR[i].event) {
+            md_nne_process_iface_event(mwn, &(NNE_METADATA_DESCR[i]), modem, mie, NNE_MESSAGE_SOURCE_REPORT);
+        }
     }
 
     md_nne_check_removed_modems(mwn, mie->tstamp);
