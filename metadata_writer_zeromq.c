@@ -354,9 +354,11 @@ static const char* map_operator(const char* operator) {
         "TelenorS", "op0",
         "Weblink", "op0",
         "Telia", "op1",
-        "3 SE", "op2"
+        "3 SE", "op2",
+
+        "460 99", "op0"
     };
-    int items = 18;
+    int items = 19;
     for (int i=0; i<items; i++) 
         if (strcmp(lookup[i*2], operator)==0) 
             return lookup[i*2+1];
