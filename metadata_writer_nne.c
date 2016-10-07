@@ -32,27 +32,38 @@
 #include "backend_event_loop.h"
 #include "metadata_exporter_log.h"
 
-#define NNE_DEFAULT_INTERVAL_MS 15000
-#define NNE_DEFAULT_DIRECTORY "/nne/data/"
-#define NNE_DEFAULT_GPS_PREFIX "gps_"
-#define NNE_DEFAULT_GPS_EXTENSION ".sdat"
-#define NNE_DEFAULT_METADATA_PREFIX "-metadatacollector-"
-#define NNE_DEFAULT_METADATA_EXTENSION ".json"
+static struct nne_value md_iface_parse_mode(struct nne_modem *modem, struct md_iface_event *mie);
+static struct nne_value md_iface_parse_submode(struct nne_modem *modem, struct md_iface_event *mie);
+static struct nne_value md_iface_parse_rssi(struct nne_modem *modem, struct md_iface_event *mie);
+static struct nne_value md_iface_parse_rscp(struct nne_modem *modem, struct md_iface_event *mie);
+static struct nne_value md_iface_parse_ecio(struct nne_modem *modem, struct md_iface_event *mie);
+static struct nne_value md_iface_parse_rsrp(struct nne_modem *modem, struct md_iface_event *mie);
+static struct nne_value md_iface_parse_rsrq(struct nne_modem *modem, struct md_iface_event *mie);
+static struct nne_value md_iface_parse_lac(struct nne_modem *modem, struct md_iface_event *mie);
+static struct nne_value md_iface_parse_cid(struct nne_modem *modem, struct md_iface_event *mie);
+static struct nne_value md_iface_parse_oper(struct nne_modem *modem, struct md_iface_event *mie);
+static struct nne_value md_iface_parse_ipaddr(struct nne_modem *modem, struct md_iface_event *mie);
+static struct nne_value md_iface_parse_dev_state(struct nne_modem *modem, struct md_iface_event *mie);
 
-
-struct nne_metadata_descr
-{
-    enum nne_metadata_idx idx;
-    const char *key;
-    int mode_dependent;
-    enum nne_type type;
-    enum iface_event event; // iface event that updates this metadata
-    struct nne_value (*parse_cb)(struct nne_modem *modem, struct md_iface_event *mie);
+static struct nne_metadata_descr NNE_METADATA_DESCR[] = {
+    { NNE_IDX_MODE,      "mode",         0, NNE_TYPE_UINT8,  IFACE_EVENT_MODE_CHANGE, md_iface_parse_mode },
+    { NNE_IDX_SUBMODE,   "submode",      0, NNE_TYPE_UINT8,  IFACE_EVENT_MODE_CHANGE, md_iface_parse_submode },
+    { NNE_IDX_RSSI,      "rssi",         1, NNE_TYPE_INT8,   IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_rssi },
+    { NNE_IDX_RSCP,      "rscp",         1, NNE_TYPE_INT16,  IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_rscp },
+    { NNE_IDX_ECIO,      "ecio",         1, NNE_TYPE_INT8,   IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_ecio },
+    { NNE_IDX_RSRP,      "rsrp",         1, NNE_TYPE_INT16,  IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_rsrp },
+    { NNE_IDX_RSRQ,      "rsrq",         1, NNE_TYPE_INT8,   IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_rsrq },
+    { NNE_IDX_LAC,       "lac",          0, NNE_TYPE_STRING, IFACE_EVENT_LOC_CHANGE, md_iface_parse_lac },
+    { NNE_IDX_CID,       "cid",          0, NNE_TYPE_STRING, IFACE_EVENT_LOC_CHANGE, md_iface_parse_cid },
+    { NNE_IDX_OPER,      "oper",         0, NNE_TYPE_UINT32, IFACE_EVENT_NW_MCCMNC_CHANGE, md_iface_parse_oper },
+    { NNE_IDX_IPADDR,    "ipaddr",       0, NNE_TYPE_STRING, IFACE_EVENT_IP_ADDR_CHANGE, md_iface_parse_ipaddr },
+    { NNE_IDX_DEV_STATE, "device_state", 0, NNE_TYPE_UINT8,  IFACE_EVENT_DEV_STATE, md_iface_parse_dev_state }
 };
 
+#define NNE_METADATA_DESCR_LEN (sizeof(NNE_METADATA_DESCR) / sizeof(struct nne_metadata_descr))
 
 
-struct nne_value md_iface_parse_mode(struct nne_modem *modem, struct md_iface_event *mie)
+static struct nne_value md_iface_parse_mode(struct nne_modem *modem, struct md_iface_event *mie)
 {
     struct nne_value value;
     value.type = NNE_TYPE_UINT8;
@@ -79,7 +90,7 @@ struct nne_value md_iface_parse_mode(struct nne_modem *modem, struct md_iface_ev
     return value;
 }
 
-struct nne_value md_iface_parse_submode(struct nne_modem *modem, struct md_iface_event *mie)
+static struct nne_value md_iface_parse_submode(struct nne_modem *modem, struct md_iface_event *mie)
 {
     struct nne_value value;
     value.type = NNE_TYPE_UINT8;
@@ -87,7 +98,7 @@ struct nne_value md_iface_parse_submode(struct nne_modem *modem, struct md_iface
     return value;
 }
 
-struct nne_value md_iface_parse_rssi(struct nne_modem *modem, struct md_iface_event *mie)
+static struct nne_value md_iface_parse_rssi(struct nne_modem *modem, struct md_iface_event *mie)
 {
     struct nne_value value;
     value.type = NNE_TYPE_INT8;
@@ -98,7 +109,7 @@ struct nne_value md_iface_parse_rssi(struct nne_modem *modem, struct md_iface_ev
     return value;
 }
 
-struct nne_value md_iface_parse_rscp(struct nne_modem *modem, struct md_iface_event *mie)
+static struct nne_value md_iface_parse_rscp(struct nne_modem *modem, struct md_iface_event *mie)
 {
     struct nne_value value;
     uint8_t mode = modem->metadata[NNE_IDX_MODE].value.u.v_uint8;
@@ -111,7 +122,7 @@ struct nne_value md_iface_parse_rscp(struct nne_modem *modem, struct md_iface_ev
     return value;
 }
 
-struct nne_value md_iface_parse_ecio(struct nne_modem *modem, struct md_iface_event *mie)
+static struct nne_value md_iface_parse_ecio(struct nne_modem *modem, struct md_iface_event *mie)
 {
     struct nne_value value;
     uint8_t mode = modem->metadata[NNE_IDX_MODE].value.u.v_uint8;
@@ -124,7 +135,7 @@ struct nne_value md_iface_parse_ecio(struct nne_modem *modem, struct md_iface_ev
     return value;
 }
 
-struct nne_value md_iface_parse_rsrp(struct nne_modem *modem, struct md_iface_event *mie)
+static struct nne_value md_iface_parse_rsrp(struct nne_modem *modem, struct md_iface_event *mie)
 {
     struct nne_value value;
     uint8_t mode = modem->metadata[NNE_IDX_MODE].value.u.v_uint8;
@@ -137,7 +148,7 @@ struct nne_value md_iface_parse_rsrp(struct nne_modem *modem, struct md_iface_ev
     return value;
 }
 
-struct nne_value md_iface_parse_rsrq(struct nne_modem *modem, struct md_iface_event *mie)
+static struct nne_value md_iface_parse_rsrq(struct nne_modem *modem, struct md_iface_event *mie)
 {
     struct nne_value value;
     uint8_t mode = modem->metadata[NNE_IDX_MODE].value.u.v_uint8;
@@ -150,7 +161,7 @@ struct nne_value md_iface_parse_rsrq(struct nne_modem *modem, struct md_iface_ev
     return value;
 }
 
-struct nne_value md_iface_parse_lac(struct nne_modem *modem, struct md_iface_event *mie)
+static struct nne_value md_iface_parse_lac(struct nne_modem *modem, struct md_iface_event *mie)
 {
     int len = 16;
     size_t retval;
@@ -170,7 +181,7 @@ struct nne_value md_iface_parse_lac(struct nne_modem *modem, struct md_iface_eve
     return value;
 }
 
-struct nne_value md_iface_parse_cid(struct nne_modem *modem, struct md_iface_event *mie)
+static struct nne_value md_iface_parse_cid(struct nne_modem *modem, struct md_iface_event *mie)
 {
     int len = 16;
     size_t retval;
@@ -190,7 +201,7 @@ struct nne_value md_iface_parse_cid(struct nne_modem *modem, struct md_iface_eve
     return value;
 }
 
-struct nne_value md_iface_parse_oper(struct nne_modem *modem, struct md_iface_event *mie)
+static struct nne_value md_iface_parse_oper(struct nne_modem *modem, struct md_iface_event *mie)
 {
     struct nne_value value;
     value.type = NNE_TYPE_UINT32;
@@ -198,7 +209,7 @@ struct nne_value md_iface_parse_oper(struct nne_modem *modem, struct md_iface_ev
     return value;
 }
 
-struct nne_value md_iface_parse_ipaddr(struct nne_modem *modem, struct md_iface_event *mie)
+static struct nne_value md_iface_parse_ipaddr(struct nne_modem *modem, struct md_iface_event *mie)
 {
     struct nne_value value;
     value.type = NNE_TYPE_STRING;
@@ -209,55 +220,13 @@ struct nne_value md_iface_parse_ipaddr(struct nne_modem *modem, struct md_iface_
     return value;
 }
 
-struct nne_value md_iface_parse_dev_state(struct nne_modem *modem, struct md_iface_event *mie)
+static struct nne_value md_iface_parse_dev_state(struct nne_modem *modem, struct md_iface_event *mie)
 {
     struct nne_value value;
     value.type = NNE_TYPE_UINT8;
     value.u.v_int8 = mie->device_state;
     return value;
 }
-
-struct nne_metadata_descr NNE_METADATA_DESCR[] = {
-    { NNE_IDX_MODE,      "mode",         0, NNE_TYPE_UINT8,  IFACE_EVENT_MODE_CHANGE, md_iface_parse_mode },
-    { NNE_IDX_SUBMODE,   "submode",      0, NNE_TYPE_UINT8,  IFACE_EVENT_MODE_CHANGE, md_iface_parse_submode },
-    { NNE_IDX_RSSI,      "rssi",         1, NNE_TYPE_INT8,   IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_rssi },
-    { NNE_IDX_RSCP,      "rscp",         1, NNE_TYPE_INT16,  IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_rscp },
-    { NNE_IDX_ECIO,      "ecio",         1, NNE_TYPE_INT8,   IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_ecio },
-    { NNE_IDX_RSRP,      "rsrp",         1, NNE_TYPE_INT16,  IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_rsrp },
-    { NNE_IDX_RSRQ,      "rsrq",         1, NNE_TYPE_INT8,   IFACE_EVENT_SIGNAL_CHANGE, md_iface_parse_rsrq },
-    { NNE_IDX_LAC,       "lac",          0, NNE_TYPE_STRING, IFACE_EVENT_LOC_CHANGE, md_iface_parse_lac },
-    { NNE_IDX_CID,       "cid",          0, NNE_TYPE_STRING, IFACE_EVENT_LOC_CHANGE, md_iface_parse_cid },
-    { NNE_IDX_OPER,      "oper",         0, NNE_TYPE_UINT32, IFACE_EVENT_NW_MCCMNC_CHANGE, md_iface_parse_oper },
-    { NNE_IDX_IPADDR,    "ipaddr",       0, NNE_TYPE_STRING, IFACE_EVENT_IP_ADDR_CHANGE, md_iface_parse_ipaddr },
-    { NNE_IDX_DEV_STATE, "device_state", 0, NNE_TYPE_UINT8,  IFACE_EVENT_DEV_STATE, md_iface_parse_dev_state }
-};
-
-#define NNE_METADATA_DESCR_LEN (sizeof(NNE_METADATA_DESCR) / sizeof(struct nne_metadata_descr))
-
-enum nne_message_type
-{
-    NNE_MESSAGE_TYPE_EVENT,
-    NNE_MESSAGE_TYPE_BINS1MIN
-};
-
-enum nne_message_source
-{
-    NNE_MESSAGE_SOURCE_REPORT,
-    NNE_MESSAGE_SOURCE_QUERY
-};
-
-struct nne_message
-{
-    enum nne_message_type  type;
-    uint64_t tstamp;
-    const char *node;
-    uint32_t mccmnc;
-    const char *key;
-    struct nne_value value;
-    const char* extra;
-    enum nne_message_source source;
-    uint64_t delta;
-};
 
 static uint8_t md_nne_handle_gps_event(struct md_writer_nne *mwn,
                                        struct md_gps_event *mge)
@@ -309,26 +278,6 @@ static uint8_t md_nne_handle_gps_event(struct md_writer_nne *mwn,
     return RETVAL_SUCCESS;
 }
 
-/*static void md_nne_handle_conn_event(struct md_writer_nne *mwn,
-                                     struct md_conn_event* mce) {
-
-    const char* const conn_event_type[] = {
-        "",
-        "CONN_EVENT_L3_UP",
-        "CONN_EVENT_L3_DOWN",
-        "CONN_EVENT_L4_UP",
-        "CONN_EVENT_L4_DOWN",
-        "CONN_EVENT_MODE_CHANGE",
-        "CONN_EVENT_QUALITY_CHANGE",
-        "CONN_EVENT_META_UPDATE",
-        "CONN_EVENT_META_MODE_UPDATE",
-        "CONN_EVENT_META_QUALITY_UPDATE",
-    };
-
-    META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: md_conn_event %s: interface_name=%s, imei=%s, network_address=%s, event_value=%d, event_value_str=%s",
-                      conn_event_type[mce->event_param],  mce->interface_name, mce->imei, mce->network_address, mce->event_value, mce->event_value_str);
-}*/
-
 static struct nne_modem *md_nne_get_modem(struct nne_modem_list *modem_list, uint32_t mccmnc)
 {
     struct nne_modem *e = NULL;
@@ -339,7 +288,7 @@ static struct nne_modem *md_nne_get_modem(struct nne_modem_list *modem_list, uin
     return NULL;
 }
 
-struct nne_value nne_value_init_str(char* str)
+static struct nne_value nne_value_init_str(char* str)
 {
     struct nne_value value;
     value.type = NNE_TYPE_STRING;
@@ -347,7 +296,7 @@ struct nne_value nne_value_init_str(char* str)
     return value;
 }
 
-struct nne_value nne_value_init(enum nne_type type, void *ptr, int offset)
+static struct nne_value nne_value_init(enum nne_type type, void *ptr, int offset)
 {
     struct nne_value value;
     value.type = type;
@@ -512,17 +461,6 @@ static void md_nne_send_message(struct md_writer_nne *mwn,
 
     json_object_array_add(mwn->metadata_cache, obj);
 }
-
-
-/*static void md_nne_process_mode(struct md_writer_nne *mwn,
-                                       struct nne_metadata_descr* descr,
-                                       struct nne_modem* modem,
-                                       struct md_iface_event *mie,
-                                       enum nne_message_source source)
-{
-
-}*/
-
 
 static void md_nne_process_iface_event(struct md_writer_nne *mwn,
                                        struct nne_metadata_descr* descr,
@@ -1005,9 +943,6 @@ static void md_nne_handle(struct md_writer *writer, struct md_event *event)
         case META_TYPE_POS:
             md_nne_handle_gps_event(mwn, (struct md_gps_event*) event);
             break;
-//        case META_TYPE_CONNECTION:
-//            md_nne_handle_conn_event(mwn, (struct md_conn_event*) event);
-//            break;
         case META_TYPE_INTERFACE:
             md_nne_handle_iface_event(mwn, (struct md_iface_event*) event);
             break;

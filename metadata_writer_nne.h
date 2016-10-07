@@ -28,6 +28,13 @@
 #include <sys/queue.h>
 #include "metadata_exporter.h"
 
+#define NNE_DEFAULT_INTERVAL_MS 15000
+#define NNE_DEFAULT_DIRECTORY "/nne/data/"
+#define NNE_DEFAULT_GPS_PREFIX "gps_"
+#define NNE_DEFAULT_GPS_EXTENSION ".sdat"
+#define NNE_DEFAULT_METADATA_PREFIX "-metadatacollector-"
+#define NNE_DEFAULT_METADATA_EXTENSION ".json"
+
 enum nne_type
 {
     NNE_TYPE_NULL,
@@ -93,6 +100,40 @@ struct nne_modem
     struct nne_metadata metadata[NNE_IDX_MAX + 1];
 };
 
+struct nne_metadata_descr
+{
+    enum nne_metadata_idx idx;
+    const char *key;
+    int mode_dependent;
+    enum nne_type type;
+    enum iface_event event; // iface event that updates this metadata
+    struct nne_value (*parse_cb)(struct nne_modem *modem, struct md_iface_event *mie);
+};
+
+enum nne_message_type
+{
+    NNE_MESSAGE_TYPE_EVENT,
+    NNE_MESSAGE_TYPE_BINS1MIN
+};
+
+enum nne_message_source
+{
+    NNE_MESSAGE_SOURCE_REPORT,
+    NNE_MESSAGE_SOURCE_QUERY
+};
+
+struct nne_message
+{
+    enum nne_message_type  type;
+    uint64_t tstamp;
+    const char *node;
+    uint32_t mccmnc;
+    const char *key;
+    struct nne_value value;
+    const char* extra;
+    enum nne_message_source source;
+    uint64_t delta;
+};
 
 struct md_writer_nne {
     MD_WRITER;
