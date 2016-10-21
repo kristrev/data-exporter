@@ -70,7 +70,7 @@ static json_object *md_zeromq_create_json_string(json_object *obj,
 
     if (!obj_add)
         return NULL;
-    
+
     json_object_object_add(obj, key, obj_add);
     return obj;
 }
@@ -82,7 +82,7 @@ static json_object *md_zeromq_create_json_int(json_object *obj, const char *key,
 
     if (!obj_add)
         return NULL;
-    
+
     json_object_object_add(obj, key, obj_add);
     return obj;
 }
@@ -94,7 +94,7 @@ static json_object *md_zeromq_create_json_int64(json_object *obj,
 
     if (!obj_add)
         return NULL;
-    
+
     json_object_object_add(obj, key, obj_add);
     return obj;
 }
@@ -106,7 +106,7 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
 
     if (!(obj = json_object_new_object()))
         return NULL;
-    
+
     md_zeromq_add_default_fields(obj, mge->sequence, mge->tstamp_tv.tv_sec, MONROE_ZMQ_DATA_ID_GPS);
 
     if (!(obj_add = json_object_new_double(mge->latitude))) {
@@ -162,7 +162,7 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
         }
         json_object_object_add(obj, ZMQ_KEY_NMEA, obj_add);
     }
-    
+
     return obj;
 }
 
@@ -174,7 +174,7 @@ static void md_zeromq_send(struct md_writer_zeromq* mwz, const void *buf, size_t
     }
     if (mwz->connected == 1) {
         if (zmq_send(mwz->zmq_publisher, buf, len, flags) != 0) {
-            //META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "zmq_send returned errno %s (dropped message of len %zu)\n", 
+            //META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "zmq_send returned errno %s (dropped message of len %zu)\n",
             //    zmq_strerror(errno), len);
             //META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "Message: %.128s(...)\n", (char *)buf);
             if (errno != EAGAIN ) {
@@ -297,7 +297,7 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
         event_str_cpy[event_str_len] = '\0';
         mode = metadata_utils_get_csv_pos(event_str_cpy, 2);
     }
-    
+
     json_obj = md_zeromq_create_json_modem_default(mwz, mce);
 
     if (!(obj_add = json_object_new_int(mode))) {
@@ -355,12 +355,13 @@ static const char* map_operator(const char* operator) {
         "Weblink", "op0",
         "Telia", "op1",
         "3 SE", "op2",
+        "SWE", "op2",
 
         "460 99", "op0"
     };
-    int items = 19;
-    for (int i=0; i<items; i++) 
-        if (strcmp(lookup[i*2], operator)==0) 
+    int items = 20;
+    for (int i=0; i<items; i++)
+        if (strcmp(lookup[i*2], operator)==0)
             return lookup[i*2+1];
     return NULL;
 }
@@ -528,7 +529,7 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
     //Switch on topic
     switch (mie->event_param) {
     case IFACE_EVENT_DEV_STATE:
-        retval = snprintf(topic, sizeof(topic), "%s.%s.%s %s", 
+        retval = snprintf(topic, sizeof(topic), "%s.%s.%s %s",
                 MONROE_ZMQ_TOPIC_MODEM,
                 mie->iccid,
                 MONROE_ZMQ_TOPIC_MODEM_STATE,
@@ -639,7 +640,7 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
     int32_t addrlen = INET6_ADDRSTRLEN + 5 + 6;
 
     mwz->zmq_addr = calloc(addrlen, 1);
-    if (mwz->zmq_addr == NULL) 
+    if (mwz->zmq_addr == NULL)
         return RETVAL_FAILURE;
 
     snprintf(mwz->zmq_addr, addrlen, "tcp://%s:%d", address, port);
