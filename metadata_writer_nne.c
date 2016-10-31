@@ -278,11 +278,11 @@ static uint8_t md_nne_handle_gps_event(struct md_writer_nne *mwn,
     return RETVAL_SUCCESS;
 }
 
-static struct nne_modem *md_nne_get_modem(struct nne_modem_list *modem_list, uint32_t mccmnc)
+static struct nne_modem *md_nne_get_modem(struct nne_modem_list *modem_list, uint32_t network_id)
 {
     struct nne_modem *e = NULL;
     for (e = modem_list->lh_first; e != NULL; e = e->entries.le_next)
-        if (e->mccmnc == mccmnc)
+        if (e->network_id == network_id)
             return e;
 
     return NULL;
@@ -434,11 +434,7 @@ static void md_nne_send_message(struct md_writer_nne *mwn,
     md_nne_add_json_key_value_string(obj, "type", NNE_MESSAGE_TYPE_STR[msg->type]);
     md_nne_add_json_key_value_int(obj, "ts", msg->tstamp);
     md_nne_add_json_key_value_string(obj, "node", msg->node);
-
-    if (msg->mccmnc == 0)
-        md_nne_add_json_key_value_null(obj, "mccmnc");
-    else
-        md_nne_add_json_key_value_int(obj, "mccmnc", msg->mccmnc);
+    md_nne_add_json_key_value_int(obj, "network_id", msg->network_id);
 
     md_nne_add_json_key_value_string(obj, "key", msg->key);
     md_nne_add_json_key_value(obj, "value", msg->value);
@@ -453,7 +449,7 @@ static void md_nne_send_message(struct md_writer_nne *mwn,
     if (msg->type == NNE_MESSAGE_TYPE_BINS1MIN)
         md_nne_add_json_key_value_int(obj, "delta", msg->delta);
 
-    META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: %s\n", msg->mccmnc,
+    META_PRINT_SYSLOG(mwn->parent, LOG_INFO, "NNE writer: network_id %u: %s\n", msg->network_id,
                       json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
 
     if (mwn->metadata_cache == NULL)
@@ -477,8 +473,8 @@ static void md_nne_process_iface_event(struct md_writer_nne *mwn,
             free(modem->metadata[descr->idx].value.u.v_str);
         modem->metadata[descr->idx].value = value;
 
-        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: %d,%s changed %d\n",
-                          mie->imsi_mccmnc, descr->idx, descr->key,
+        META_PRINT_SYSLOG(mwn->parent, LOG_INFO, "NNE writer: network_id %u: %d,%s changed %d\n",
+                          modem->network_id, descr->idx, descr->key,
                           modem->metadata[descr->idx].value.u.v_uint8);
 
         // Generate json event
@@ -486,7 +482,7 @@ static void md_nne_process_iface_event(struct md_writer_nne *mwn,
         msg.type = NNE_MESSAGE_TYPE_EVENT;
         msg.tstamp = mie->tstamp;
         msg.node = mwn->node_id;
-        msg.mccmnc = mie->imsi_mccmnc;
+        msg.network_id = modem->network_id;
         msg.key = descr->key;
         msg.value = value;
         msg.extra = NULL;
@@ -505,8 +501,8 @@ static void md_nne_process_iface_event(struct md_writer_nne *mwn,
                     modem->metadata[i].value.type = NNE_TYPE_NULL;
 
                     META_PRINT_SYSLOG(mwn->parent, LOG_ERR,
-                            "NNE writer: mccmnc %d: %d,%s nullified\n",
-                            mie->imsi_mccmnc, descr->idx, descr->key);
+                            "NNE writer: network_id %u: %d,%s nullified\n",
+                            modem->network_id, descr->idx, descr->key);
                 }
             }
         }
@@ -542,7 +538,7 @@ static void md_nne_generate_bins1min(struct md_writer_nne *mwn,
             msg.type = NNE_MESSAGE_TYPE_BINS1MIN;
             msg.tstamp = (tstamp / 60) * 60;
             msg.node = mwn->node_id;
-            msg.mccmnc = modem->mccmnc;
+            msg.network_id = modem->network_id;
             msg.key = descr->key;
             msg.value = modem->metadata[descr->idx].value;
             msg.extra = NULL;
@@ -577,7 +573,7 @@ static void md_nne_check_removed_modems(struct md_writer_nne *mwn,
             msg.type = NNE_MESSAGE_TYPE_EVENT;
             msg.tstamp = tstamp;
             msg.node = mwn->node_id;
-            msg.mccmnc = rm_modem->mccmnc;
+            msg.network_id = rm_modem->network_id;
             msg.key = "usbmodem";
             msg.value = nne_value_init_str("DOWN");
             msg.extra = NULL;
@@ -594,9 +590,32 @@ static void md_nne_check_removed_modems(struct md_writer_nne *mwn,
             free(rm_modem);
 
             META_PRINT_SYSLOG(mwn->parent, LOG_ERR,
-                    "NNE writer: mccmnc %d: Removed modem\n", rm_modem->mccmnc);
+                    "NNE writer: network_id %u: Removed modem\n", rm_modem->network_id);
         }
     }
+}
+
+static uint32_t md_find_network_id(uint32_t imsi_mccmnc, uint32_t nw_mccmnc)
+{
+    uint32_t network_id = 0;
+    switch (imsi_mccmnc) {
+    case 24201:
+        network_id = 1;
+        break; 
+    case 24202:
+        network_id = 2;
+        break; 
+    case 24214:
+        if (nw_mccmnc != 24202)
+            network_id = 18;
+        else
+            network_id = 19;
+        break; 
+    case 26001:
+        network_id = 9;
+        break;
+    }
+    return network_id;
 }
 
 static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
@@ -649,15 +668,24 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
 
 
     struct nne_modem *modem = NULL;
+    uint32_t network_id;
     int i;
 
-    modem = md_nne_get_modem(&(mwn->modem_list), mie->imsi_mccmnc);
+    // Get network_id and check if it is supported
+    network_id = md_find_network_id(mie->imsi_mccmnc, mie->nw_mccmnc);
+    if (network_id == 0) {
+        META_PRINT_SYSLOG(mwn->parent, LOG_INFO,
+            "NNE writer: unsupported network imsi_mccmnc: %d, nw_mccmnc %d\n",
+            mie->imsi_mccmnc, mie->nw_mccmnc);
+        return;
+    }
 
+    modem = md_nne_get_modem(&(mwn->modem_list), network_id);
     if (modem == NULL)
     {
         modem = malloc(sizeof(struct nne_modem));
         LIST_INSERT_HEAD(&(mwn->modem_list), modem, entries);
-        modem->mccmnc = mie->imsi_mccmnc;
+        modem->network_id = network_id;
         modem->tstamp = mie->tstamp;
 
         for(i = 0; i <= NNE_IDX_MAX; i++)
@@ -666,14 +694,14 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
             modem->metadata[i].value.type = NNE_TYPE_NULL;
         }
 
-        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: Added new  modem\n", mie->imsi_mccmnc);
+        META_PRINT_SYSLOG(mwn->parent, LOG_INFO, "NNE writer: network_id %u: Added new  modem\n", network_id);
 
         // generate usbmodem UP event
         struct nne_message msg;
         msg.type = NNE_MESSAGE_TYPE_EVENT;
         msg.tstamp = mie->tstamp;
         msg.node = mwn->node_id;
-        msg.mccmnc = mie->imsi_mccmnc;
+        msg.network_id = network_id;
         msg.key = "usbmodem";
         msg.value = nne_value_init_str("UP");
         msg.extra = NULL;
@@ -687,9 +715,6 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
             md_nne_process_iface_event(mwn, &(NNE_METADATA_DESCR[i]), modem, mie, NNE_MESSAGE_SOURCE_QUERY);
         }
     }
-
-    META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: mccmnc %d: modem %d, sec=%ld\n",
-                      mie->imsi_mccmnc, modem->mccmnc, mie->tstamp % 60);
 
     md_nne_generate_bins1min(mwn, mie->tstamp);
 
@@ -778,7 +803,7 @@ static void md_nne_handle_metadata_timeout(struct md_writer_nne *mwn)
         msg.type = NNE_MESSAGE_TYPE_BINS1MIN;
         msg.tstamp = (tv.tv_sec / 60) * 60;
         msg.node = mwn->node_id;
-        msg.mccmnc = 0;
+        msg.network_id = 0;
         msg.key = "collector";
         msg.value = nne_value_init_str("UP");
         msg.extra = NULL;
