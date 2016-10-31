@@ -96,7 +96,7 @@ struct nne_modem
 {
     LIST_ENTRY(nne_modem) entries;
     uint64_t tstamp;
-    uint32_t mccmnc;
+    uint32_t network_id;
     struct nne_metadata metadata[NNE_IDX_MAX + 1];
 };
 
@@ -127,7 +127,7 @@ struct nne_message
     enum nne_message_type  type;
     uint64_t tstamp;
     const char *node;
-    uint32_t mccmnc;
+    uint32_t network_id;
     const char *key;
     struct nne_value value;
     const char* extra;
