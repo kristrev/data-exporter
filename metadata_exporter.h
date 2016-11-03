@@ -49,6 +49,7 @@
 #define META_TYPE_POS        0x04
 #define META_TYPE_MUNIN      0x05
 #define META_TYPE_SYSEVENT   0x06
+#define META_TYPE_RADIO      0x08
 
 enum iface_event {
     IFACE_EVENT_DEV_STATE=1,
@@ -203,6 +204,13 @@ struct md_munin_event {
     MD_EVENT;
     json_object* json_blob;
 };
+
+struct md_radio_event {
+    MD_EVENT;
+    char *type;
+    const char *object;
+};
+
 #define md_sysevent md_munin_event
 
 struct md_exporter {

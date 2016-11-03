@@ -4,11 +4,13 @@
 #define MONROE_ZMQ_DATA_ID_SYSEVENT "MONROE.META.NODE.EVENT"
 #define MONROE_ZMQ_DATA_ID_SENSOR   "MONROE.META.NODE.SENSOR"
 #define MONROE_ZMQ_DATA_ID_MODEM    "MONROE.META.DEVICE.MODEM"
+#define MONROE_ZMQ_DATA_ID_CONNECTIVITY  "MONROE.META.CONNECTIVITY"
 #define MONROE_ZMQ_DATA_ID_GPS      "MONROE.META.DEVICE.GPS"
 
 #define MONROE_ZMQ_TOPIC_SYSEVENT   "MONROE.META.NODE.EVENT"
 #define MONROE_ZMQ_TOPIC_SENSOR     "MONROE.META.NODE.SENSOR"
 #define MONROE_ZMQ_TOPIC_MODEM      "MONROE.META.DEVICE.MODEM"
+#define MONROE_ZMQ_TOPIC_CONNECTIVITY    "MONROE.META.DEVICE.CONNECTIVITY"
 #define MONROE_ZMQ_TOPIC_GPS        "MONROE.META.DEVICE.GPS"
 
 #define MONROE_ZMQ_TOPIC_MODEM_STATE            "STATE"
@@ -24,7 +26,7 @@
 #define ZMQ_KEY_SEQ            "seq"
 #define ZMQ_KEY_TSTAMP         "tstamp"
 
-## these are disabled if -DMONROE is not set
+// these are disabled if -DMONROE is not set
 #define ZMQ_KEY_DATAID         "" 
 #define ZMQ_KEY_DATAVERSION    ""
 
@@ -61,4 +63,8 @@
 #define ZMQ_KEY_NUMSAT        "num_sat"
 #define ZMQ_KEY_NMEA          "nmea_raw"
 #define ZMQ_KEY_SPEED         "speed"
+
+#define ZMQ_KEY_INTERFACEID    "interface_id"
+#define ZMQ_KEY_INTERFACENAME  "interface_name"
+#define ZMQ_KEY_OPERATOR       "operator"
 

@@ -545,6 +545,21 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
     json_object_put(json_obj);
 }
 
+static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz, 
+                                   struct md_radio_event *mre)
+{
+    char topic[8192] = {0};
+    int retval;
+
+    retval = snprintf(topic, sizeof(topic), "RADIO.%s %s", mre->type,
+            mre->object);
+
+    if (retval >= sizeof(topic))
+        return;
+
+    retval = zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+}
+
 static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
 {
     struct md_writer_zeromq *mwz = (struct md_writer_zeromq*) writer;
@@ -564,6 +579,9 @@ static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
         break;
     case META_TYPE_INTERFACE:
         md_zeromq_handle_iface(mwz, (struct md_iface_event*) event);
+        break;
+    case META_TYPE_RADIO:
+        md_zeromq_handle_radio(mwz, (struct md_radio_event*) event);
         break;
     default:
         break;

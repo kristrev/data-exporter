@@ -37,6 +37,7 @@ struct md_input_netlink {
     struct backend_epoll_handle *event_handle;
     struct md_conn_event *mce;
     struct md_iface_event *mie;
+    struct md_radio_event *mre;
 };
 
 void md_netlink_usage();

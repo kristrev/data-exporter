@@ -233,31 +233,86 @@ static uint8_t md_input_netlink_parse_iface_event(struct md_input_netlink *min,
     return RETVAL_SUCCESS;
 }
 
+static uint8_t md_input_netlink_parse_iface_radio_event(
+        struct md_input_netlink *min, struct json_object *meta_obj)
+{
+    json_object *obj_found;
+
+    if (!json_object_object_get_ex(meta_obj, "type", &obj_found)) {
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "Missing radio type\n");
+        return RETVAL_FAILURE;
+    }
+
+    //TODO: Pick a better maxmimum length
+    min->mre->type = strndup(json_object_get_string(obj_found), 64);
+
+    if (!min->mre->type) {
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "Could not store type\n");
+        return RETVAL_FAILURE;
+    }
+
+    //Remove redundant paramters
+    json_object_object_del(meta_obj, "md_seq");
+    json_object_object_del(meta_obj, "md_ver");
+    json_object_object_del(meta_obj, "event_type");
+    json_object_object_del(meta_obj, "event_param");
+    json_object_object_del(meta_obj, "type");
+
+    min->mre->object = json_object_to_json_string_ext(meta_obj,
+            JSON_C_TO_STRING_PLAIN);
+
+    META_PRINT_SYSLOG(min->parent, LOG_INFO, "Type: %s Object: %s\n",
+            min->mre->type, min->mre->object);
+    return RETVAL_SUCCESS;
+}
+
 static void md_input_netlink_handle_iface_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
     //struct md_iface_event mie;
     uint8_t retval = 0;
+    json_object *event_param_json;
+    uint8_t event_param;
 
-    memset(min->mie, 0, sizeof(struct md_iface_event));
-    min->mie->md_type = META_TYPE_INTERFACE;
-    min->mie->lac = -1;
-    min->mie->cid = -1;
-    min->mie->rscp = (int16_t) META_IFACE_INVALID;
-    min->mie->lte_rsrp = (int16_t) META_IFACE_INVALID;
-    min->mie->rssi = (int8_t) META_IFACE_INVALID;
-    min->mie->ecio = (int8_t) META_IFACE_INVALID;
-    min->mie->lte_rssi = (int8_t) META_IFACE_INVALID;
-    min->mie->lte_rsrq = (int8_t) META_IFACE_INVALID;
-    min->mie->lte_pci = 0xFFFF;
-    min->mie->enodeb_id = -1;
+    if (!json_object_object_get_ex(obj, "event_param", &event_param_json)) {
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "Missing event type\n");
+        return;
+    }
 
-    retval = md_input_netlink_parse_iface_event(min, obj, min->mie);
+    event_param = (uint8_t) json_object_get_int(event_param_json);
+
+    //Radio event requires special handling for now
+    //TODO: Use constant
+    if (event_param == 10) {
+        memset(min->mre, 0, sizeof(struct md_radio_event));
+        min->mre->md_type = META_TYPE_RADIO;
+        retval = md_input_netlink_parse_iface_radio_event(min, obj); 
+    } else {
+        memset(min->mie, 0, sizeof(struct md_iface_event));
+        min->mie->md_type = META_TYPE_INTERFACE;
+        min->mie->lac = -1;
+        min->mie->cid = -1;
+        min->mie->rscp = (int16_t) META_IFACE_INVALID;
+        min->mie->lte_rsrp = (int16_t) META_IFACE_INVALID;
+        min->mie->rssi = (int8_t) META_IFACE_INVALID;
+        min->mie->ecio = (int8_t) META_IFACE_INVALID;
+        min->mie->lte_rssi = (int8_t) META_IFACE_INVALID;
+        min->mie->lte_rsrq = (int8_t) META_IFACE_INVALID;
+        min->mie->lte_pci = 0xFFFF;
+        min->mie->enodeb_id = -1;
+
+        retval = md_input_netlink_parse_iface_event(min, obj, min->mie);
+    }
 
     if (retval == RETVAL_FAILURE)
         return;
 
-    mde_publish_event_obj(min->parent, (struct md_event*) min->mie);
+    if (event_param == 10) {
+        mde_publish_event_obj(min->parent, (struct md_event*) min->mre);
+        free(min->mre->type);
+    } else {
+        mde_publish_event_obj(min->parent, (struct md_event*) min->mie);
+    }
 }
 
 static void md_input_netlink_handle_conn_event(struct md_input_netlink *min,
@@ -462,6 +517,10 @@ static uint8_t md_input_netlink_config(struct md_input_netlink *min)
    
     min->mie = calloc(sizeof(struct md_iface_event), 1);
     if (min->mie == NULL)
+        return RETVAL_FAILURE;
+
+    min->mre = calloc(sizeof(struct md_radio_event), 1);
+    if (min->mre == NULL)
         return RETVAL_FAILURE;
 
     return RETVAL_SUCCESS;
