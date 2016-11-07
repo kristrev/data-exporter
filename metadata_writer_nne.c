@@ -93,8 +93,49 @@ static struct nne_value md_iface_parse_mode(struct nne_modem *modem, struct md_i
 static struct nne_value md_iface_parse_submode(struct nne_modem *modem, struct md_iface_event *mie)
 {
     struct nne_value value;
-    value.type = NNE_TYPE_UINT8;
-    value.u.v_uint8 = mie->device_submode;
+    value.type = NNE_TYPE_NULL;
+    if (modem->metadata[NNE_IDX_MODE].value.u.v_uint8 == NNE_MODE_WCDMA) {
+        value.type = NNE_TYPE_UINT8;
+        switch(mie->device_submode) {
+            case 0: // UNKNOWN
+                value.u.v_int8 = NNE_SUBMODE_UNKWONW;
+                break;
+            // case 1: // MODE_UMTS:
+            case 2: // MODE_WCDMA:
+                value.u.v_int8 = NNE_SUBMODE_WCDMA;
+                break;
+            //case 3: // MODE_EVDO,
+            case 4: // MODE_HSPA
+                value.u.v_int8 = NNE_SUBMODE_HSPA;
+                break;
+            case 5: // MODE_HSPA_PLUS
+                value.u.v_int8 = NNE_SUBMODE_HSPA_PLUS;
+                break;
+            //case 6: // MODE_DC_HSPA
+            case 7: // MODE_DC_HSPA_PLUS
+                value.u.v_int8 = NNE_SUBMODE_DC_HSPA_PLUS;
+                break;
+            case 8: // MODE_HSDPA
+                value.u.v_int8 = NNE_SUBMODE_HSDPA;
+                break;
+            case 9: // MODE_HSUPA
+                value.u.v_int8 = NNE_SUBMODE_HSUPA;
+                break;
+            case 10: // MODE_HSDPA_HSUPA
+                value.u.v_int8 = NNE_SUBMODE_HSPA;
+                break;
+            //case 11: // MODE_HSDPA_PLUS
+            case 12: // MODE_HSDPA_PLUS_HSUPA
+                value.u.v_int8 = NNE_SUBMODE_HSPA_PLUS;
+                break;
+            //case 13: // MODE_DC_HSDPA_PLUS
+            case 14: // MODE_DC_HSDPA_PLUS_HSUPA
+                value.u.v_int8 = NNE_SUBMODE_DC_HSPA_PLUS;
+                break;
+            default:
+                value.type = NNE_TYPE_NULL;
+        }
+    }
     return value;
 }
 
