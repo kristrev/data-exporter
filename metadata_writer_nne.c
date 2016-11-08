@@ -569,7 +569,7 @@ static void md_nne_generate_bins1min(struct md_writer_nne *mwn,
     {
         // On first event after new minute has begun
         // generate bins1min entries for all metadata values
-        if ((tstamp / 60) <= (modem->tstamp / 60))
+        if ((tstamp / 60) <= (modem->bins1min_tstamp / 60))
             continue;
 
         for (i = 0; i < NNE_METADATA_DESCR_LEN; i++)
@@ -588,6 +588,8 @@ static void md_nne_generate_bins1min(struct md_writer_nne *mwn,
 
             md_nne_send_message(mwn, &msg);
         }
+
+        modem->bins1min_tstamp = tstamp;
     }
 }
 
@@ -728,6 +730,7 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
         LIST_INSERT_HEAD(&(mwn->modem_list), modem, entries);
         modem->network_id = network_id;
         modem->tstamp = mie->tstamp;
+        modem->bins1min_tstamp = mie->tstamp;
 
         for(i = 0; i <= NNE_IDX_MAX; i++)
         {

@@ -103,7 +103,8 @@ struct nne_metadata
 struct nne_modem
 {
     LIST_ENTRY(nne_modem) entries;
-    uint64_t tstamp;
+    uint64_t tstamp; // Timestamp of the last message processes
+    uint64_t bins1min_tstamp; // Timestamp of the last sent bins1mins
     uint32_t network_id;
     struct nne_metadata metadata[NNE_IDX_MAX + 1];
 };
