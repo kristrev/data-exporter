@@ -86,6 +86,14 @@ enum nne_metadata_idx
 #define NNE_MODE_WCDMA (5)
 #define NNE_MODE_LTE (6)
 
+#define NNE_SUBMODE_UNKWONW (0)
+#define NNE_SUBMODE_WCDMA (4)
+#define NNE_SUBMODE_HSDPA (5)
+#define NNE_SUBMODE_HSUPA (6)
+#define NNE_SUBMODE_HSPA (7)
+#define NNE_SUBMODE_HSPA_PLUS (9)
+#define NNE_SUBMODE_DC_HSPA_PLUS (10)
+
 struct nne_metadata
 {
     uint64_t tstamp;
@@ -95,7 +103,8 @@ struct nne_metadata
 struct nne_modem
 {
     LIST_ENTRY(nne_modem) entries;
-    uint64_t tstamp;
+    uint64_t tstamp; // Timestamp of the last message processes
+    uint64_t bins1min_tstamp; // Timestamp of the last sent bins1mins
     uint32_t network_id;
     struct nne_metadata metadata[NNE_IDX_MAX + 1];
 };

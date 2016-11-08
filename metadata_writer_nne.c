@@ -93,8 +93,49 @@ static struct nne_value md_iface_parse_mode(struct nne_modem *modem, struct md_i
 static struct nne_value md_iface_parse_submode(struct nne_modem *modem, struct md_iface_event *mie)
 {
     struct nne_value value;
-    value.type = NNE_TYPE_UINT8;
-    value.u.v_uint8 = mie->device_submode;
+    value.type = NNE_TYPE_NULL;
+    if (modem->metadata[NNE_IDX_MODE].value.u.v_uint8 == NNE_MODE_WCDMA) {
+        value.type = NNE_TYPE_UINT8;
+        switch(mie->device_submode) {
+            case 0: // UNKNOWN
+                value.u.v_int8 = NNE_SUBMODE_UNKWONW;
+                break;
+            // case 1: // MODE_UMTS:
+            case 2: // MODE_WCDMA:
+                value.u.v_int8 = NNE_SUBMODE_WCDMA;
+                break;
+            //case 3: // MODE_EVDO,
+            case 4: // MODE_HSPA
+                value.u.v_int8 = NNE_SUBMODE_HSPA;
+                break;
+            case 5: // MODE_HSPA_PLUS
+                value.u.v_int8 = NNE_SUBMODE_HSPA_PLUS;
+                break;
+            //case 6: // MODE_DC_HSPA
+            case 7: // MODE_DC_HSPA_PLUS
+                value.u.v_int8 = NNE_SUBMODE_DC_HSPA_PLUS;
+                break;
+            case 8: // MODE_HSDPA
+                value.u.v_int8 = NNE_SUBMODE_HSDPA;
+                break;
+            case 9: // MODE_HSUPA
+                value.u.v_int8 = NNE_SUBMODE_HSUPA;
+                break;
+            case 10: // MODE_HSDPA_HSUPA
+                value.u.v_int8 = NNE_SUBMODE_HSPA;
+                break;
+            //case 11: // MODE_HSDPA_PLUS
+            case 12: // MODE_HSDPA_PLUS_HSUPA
+                value.u.v_int8 = NNE_SUBMODE_HSPA_PLUS;
+                break;
+            //case 13: // MODE_DC_HSDPA_PLUS
+            case 14: // MODE_DC_HSDPA_PLUS_HSUPA
+                value.u.v_int8 = NNE_SUBMODE_DC_HSPA_PLUS;
+                break;
+            default:
+                value.type = NNE_TYPE_NULL;
+        }
+    }
     return value;
 }
 
@@ -528,7 +569,7 @@ static void md_nne_generate_bins1min(struct md_writer_nne *mwn,
     {
         // On first event after new minute has begun
         // generate bins1min entries for all metadata values
-        if ((tstamp / 60) <= (modem->tstamp / 60))
+        if ((tstamp / 60) <= (modem->bins1min_tstamp / 60))
             continue;
 
         for (i = 0; i < NNE_METADATA_DESCR_LEN; i++)
@@ -547,6 +588,8 @@ static void md_nne_generate_bins1min(struct md_writer_nne *mwn,
 
             md_nne_send_message(mwn, &msg);
         }
+
+        modem->bins1min_tstamp = tstamp;
     }
 }
 
@@ -595,8 +638,11 @@ static void md_nne_check_removed_modems(struct md_writer_nne *mwn,
     }
 }
 
-static uint32_t md_find_network_id(uint32_t imsi_mccmnc, uint32_t nw_mccmnc)
+static uint32_t md_find_network_id(uint32_t imsi_mccmnc, const char *iccid)
 {
+    if (iccid == NULL)
+        return 0;
+
     uint32_t network_id = 0;
     switch (imsi_mccmnc) {
     case 24201:
@@ -606,9 +652,9 @@ static uint32_t md_find_network_id(uint32_t imsi_mccmnc, uint32_t nw_mccmnc)
         network_id = 2;
         break; 
     case 24214:
-        if (nw_mccmnc != 24202)
+        if (strncmp(iccid, "894707150000033", 15) == 0)
             network_id = 18;
-        else
+        else if (strncmp(iccid, "894707150000014", 15) == 0)
             network_id = 19;
         break; 
     case 26001:
@@ -638,6 +684,7 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
     META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: %s: "
                       "ip_addr=%s, "
                       "ifname=%s, "
+                      "iccid=%s, "
                       "imsi_mccmnc=%d, "
                       "nw_mccmnc=%d, "
                       "cid=%d, "
@@ -653,6 +700,7 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
                       iface_event_type[mie->event_param],
                       mie->ip_addr,
                       mie->ifname,
+                      mie->iccid,
                       mie->imsi_mccmnc,
                       mie->nw_mccmnc,
                       mie->cid,
@@ -672,11 +720,14 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
     int i;
 
     // Get network_id and check if it is supported
-    network_id = md_find_network_id(mie->imsi_mccmnc, mie->nw_mccmnc);
+    network_id = md_find_network_id(mie->imsi_mccmnc, mie->iccid);
+    META_PRINT_SYSLOG(mwn->parent, LOG_INFO, "NNE writer: "
+            "network: imsi_mccmnc %u iccid %s => network_id %u\n",
+             mie->imsi_mccmnc, mie->iccid, network_id);
     if (network_id == 0) {
         META_PRINT_SYSLOG(mwn->parent, LOG_INFO,
-            "NNE writer: unsupported network imsi_mccmnc: %d, nw_mccmnc %d\n",
-            mie->imsi_mccmnc, mie->nw_mccmnc);
+            "NNE writer: unsupported network imsi_mccmnc: %u, iccid %s\n",
+            mie->imsi_mccmnc, mie->iccid);
         return;
     }
 
@@ -687,6 +738,7 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
         LIST_INSERT_HEAD(&(mwn->modem_list), modem, entries);
         modem->network_id = network_id;
         modem->tstamp = mie->tstamp;
+        modem->bins1min_tstamp = mie->tstamp;
 
         for(i = 0; i <= NNE_IDX_MAX; i++)
         {
