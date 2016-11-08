@@ -638,8 +638,11 @@ static void md_nne_check_removed_modems(struct md_writer_nne *mwn,
     }
 }
 
-static uint32_t md_find_network_id(uint32_t imsi_mccmnc, uint32_t nw_mccmnc)
+static uint32_t md_find_network_id(uint32_t imsi_mccmnc, const char *iccid)
 {
+    if (iccid == NULL)
+        return 0;
+
     uint32_t network_id = 0;
     switch (imsi_mccmnc) {
     case 24201:
@@ -649,9 +652,9 @@ static uint32_t md_find_network_id(uint32_t imsi_mccmnc, uint32_t nw_mccmnc)
         network_id = 2;
         break; 
     case 24214:
-        if (nw_mccmnc != 24202)
+        if (strncmp(iccid, "894707150000033", 15) == 0)
             network_id = 18;
-        else
+        else if (strncmp(iccid, "894707150000014", 15) == 0)
             network_id = 19;
         break; 
     case 26001:
@@ -681,6 +684,7 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
     META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: %s: "
                       "ip_addr=%s, "
                       "ifname=%s, "
+                      "iccid=%s, "
                       "imsi_mccmnc=%d, "
                       "nw_mccmnc=%d, "
                       "cid=%d, "
@@ -696,6 +700,7 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
                       iface_event_type[mie->event_param],
                       mie->ip_addr,
                       mie->ifname,
+                      mie->iccid,
                       mie->imsi_mccmnc,
                       mie->nw_mccmnc,
                       mie->cid,
@@ -715,11 +720,14 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
     int i;
 
     // Get network_id and check if it is supported
-    network_id = md_find_network_id(mie->imsi_mccmnc, mie->nw_mccmnc);
+    network_id = md_find_network_id(mie->imsi_mccmnc, mie->iccid);
+    META_PRINT_SYSLOG(mwn->parent, LOG_INFO, "NNE writer: "
+            "network: imsi_mccmnc %u iccid %s => network_id %u\n",
+             mie->imsi_mccmnc, mie->iccid, network_id);
     if (network_id == 0) {
         META_PRINT_SYSLOG(mwn->parent, LOG_INFO,
-            "NNE writer: unsupported network imsi_mccmnc: %d, nw_mccmnc %d\n",
-            mie->imsi_mccmnc, mie->nw_mccmnc);
+            "NNE writer: unsupported network imsi_mccmnc: %u, iccid %s\n",
+            mie->imsi_mccmnc, mie->iccid);
         return;
     }
 
