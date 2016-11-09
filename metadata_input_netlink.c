@@ -422,6 +422,59 @@ static void md_input_netlink_radio_grr_cell_resel(struct md_input_netlink *min,
     free(event);
 }
 
+static void md_input_netlink_radio_gsm_rr_cell_sel_reset_param(struct md_input_netlink *min, 
+        struct json_object *obj)
+{
+    struct md_radio_gsm_rr_cell_sel_reset_param_event *event = calloc(sizeof(struct md_radio_gsm_rr_cell_sel_reset_param_event), 1);
+
+    if (!event)
+        return;
+
+    json_object_object_foreach(obj, key, val) {
+        if (!strcmp(key, "md_seq"))
+            event->sequence = (uint16_t) json_object_get_int(val);
+        else if (!strcmp(key, "timestamp"))
+            event->tstamp = json_object_get_int64(val);
+        else if (!strcmp(key, "event_param"))
+            event->event_param = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "event_type"))
+            event->md_type = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "iccid"))
+            event->iccid = json_object_get_string(val);
+        else if (!strcmp(key, "imsi"))
+            event->imsi = json_object_get_string(val);
+        else if (!strcmp(key, "imei"))
+            event->imei = json_object_get_string(val);
+        else if (!strcmp(key, "cell_reselect_hysteresis"))
+            event->cell_reselect_hysteresis = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "ms_txpwr_max_cch"))
+            event->ms_txpwr_max_cch = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "rxlev_access_min"))
+            event->rxlev_access_min = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "power_offset_valid"))
+            event->power_offset_valid = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "power_offset"))
+            event->power_offset = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "neci"))
+            event->neci = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "acs"))
+            event->acs = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "opt_reselect_param_ind"))
+            event->opt_reselect_param_ind = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "cell_bar_qualify"))
+            event->cell_bar_qualify = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "cell_reselect_offset"))
+            event->cell_reselect_offset = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "temporary_offset"))
+            event->temporary_offset = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "penalty_time"))
+            event->penalty_time = (uint8_t) json_object_get_int(val);
+    }
+
+    mde_publish_event_obj(min->parent, (struct md_event*) event);
+    free(event);
+}
+
 static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
@@ -450,6 +503,7 @@ static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
         break;
     case RADIO_EVENT_GSM_RR_CELL_SEL_RESEL_PARAM:
         META_PRINT_SYSLOG(min->parent, LOG_ERR, "GSM_RR_CELL_SEL_RESEL_PARAM\n");
+        md_input_netlink_radio_gsm_rr_cell_sel_reset_param(min, obj);
         break;
     case RADIO_EVENT_GRR_CELL_RESEL:
         META_PRINT_SYSLOG(min->parent, LOG_ERR, "GRR_CELL_RESEL\n");

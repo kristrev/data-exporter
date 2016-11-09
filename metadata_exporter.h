@@ -252,6 +252,22 @@ struct md_radio_grr_cell_resel_event {
     const char *neighbors;
 };
 
+struct md_radio_gsm_rr_cell_sel_reset_param_event {
+    MD_RADIO_EVENT;
+    uint8_t cell_reselect_hysteresis;
+    uint8_t ms_txpwr_max_cch;
+    uint8_t rxlev_access_min;
+    uint8_t power_offset_valid;
+    uint8_t power_offset;
+    uint8_t neci;
+    uint8_t acs;
+    uint8_t opt_reselect_param_ind;
+    uint8_t cell_bar_qualify;
+    uint8_t cell_reselect_offset;
+    uint8_t temporary_offset;
+    uint8_t penalty_time;
+};
+
 #define md_sysevent md_munin_event
 
 struct md_exporter {
