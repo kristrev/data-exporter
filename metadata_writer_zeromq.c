@@ -611,9 +611,11 @@ static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz,
     switch (mre->event_param) {
     case RADIO_EVENT_GSM_RR_CIPHER_MODE:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CIPHER_MODE\n");
+        topic = ZMQ_TOPIC_RADIO_GSM_RR_CIPHER_MODE;
         break;
     case RADIO_EVENT_GSM_RR_CHANNEL_CONF:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CHANNEL_CONF\n");
+        topic = ZMQ_TOPIC_RADIO_GSM_RR_CHANNEL_CONF;
         break;
     case RADIO_EVENT_CELL_LOCATION_GERAN:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "ZMQ CELL_LOCATION_GERAN\n");
@@ -623,9 +625,11 @@ static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz,
         break;
     case RADIO_EVENT_GSM_RR_CELL_SEL_RESEL_PARAM:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CELL_SEL_RESEL_PARAM\n");
+        topic = ZMQ_TOPIC_RADIO_GSM_RR_CELL_SEL_RESEL_PARAM;
         break;
     case RADIO_EVENT_GRR_CELL_RESEL:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GRR_CELL_RESEL\n");
+        topic = ZMQ_TOPIC_RADIO_GRR_CELL_RESEL;
         break;
     default:
         break;
