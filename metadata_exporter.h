@@ -132,6 +132,13 @@ enum md_writers {
     uint32_t md_type; \
     uint16_t sequence
 
+#define MD_RADIO_EVENT \
+    MD_EVENT; \
+    uint8_t event_param; \
+    const char *iccid; \
+    const char *imsi; \
+    const char *imei;
+
 struct mnl_socket;
 struct backend_event_loop;
 struct backend_epoll_handle;
@@ -214,9 +221,19 @@ struct md_munin_event {
 };
 
 struct md_radio_event {
-    MD_EVENT;
-    char *type;
-    const char *object;
+    MD_RADIO_EVENT;
+};
+
+struct md_radio_cell_loc_geran_event {
+    MD_RADIO_EVENT;
+    uint32_t cell_id;
+    const char *plmn;
+    uint16_t lac;
+    uint16_t arfcn;
+    uint8_t bsic;
+    uint32_t timing_advance;
+    uint16_t rx_lev;
+    const char *cell_geran_info_nmr;
 };
 
 #define md_sysevent md_munin_event
