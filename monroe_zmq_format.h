@@ -68,3 +68,17 @@
 #define ZMQ_KEY_NMEA           "NMEA"
 #define ZMQ_KEY_SPEED          "Speed"
 
+#define ZMQ_TOPIC_RADIO_CELL_LOCATION_GERAN "RADIO.CELL_LOCATION_GERAN"
+#define ZMQ_TOPIC_RADIO_GSM_RR_CELL_SEL_RESEL_PARAM "RADIO.GSM_RR_CELL_SEL_RESEL_PARAM"
+#define ZMQ_TOPIC_RADIO_GRR_CELL_RESEL "RADIO.GRR_CELL_RESEL"
+#define ZMQ_TOPIC_RADIO_GSM_RR_CIPHER_MODE "RADIO.GSM_RR_CIPHER_MODE"
+#define ZMQ_TOPIC_RADIO_GSM_RR_CHANNEL_CONF "RADIO.GSM_RR_CHANNEL_CONF"
+
+#define ZMQ_KEY_RADIO_CELL_ID               "cell_id"
+#define ZMQ_KEY_RADIO_PLMN                  "plmn"
+#define ZMQ_KEY_RADIO_LAC                   "lac"
+#define ZMQ_KEY_RADIO_ARFCN                 "arfcn"
+#define ZMQ_KEY_RADIO_BSIC                  "bsic"
+#define ZMQ_KEY_RADIO_TIMING_ADVANCE        "timing_advance"
+#define ZMQ_KEY_RADIO_RX_LEV                "rx_lev"
+#define ZMQ_KEY_RADIO_CELL_GERAN_INFO_NMR   "cell_geran_info_nmr"
