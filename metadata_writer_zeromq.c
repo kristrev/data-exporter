@@ -548,7 +548,9 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
 static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz, 
                                    struct md_radio_event *mre)
 {
-    META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Type %u Param %u Seq %u\n", mre->md_type, mre->event_param, mre->sequence);
+    struct md_radio_cell_loc_geran_event *geran_event = (struct md_radio_cell_loc_geran_event*) mre;
+
+    META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Type %u Param %u Seq %u %s\n", mre->md_type, mre->event_param, mre->sequence, geran_event->cell_geran_info_nmr);
 
 #if 0
     char topic[8192] = {0};
