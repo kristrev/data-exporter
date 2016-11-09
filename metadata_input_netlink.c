@@ -315,6 +315,44 @@ static void md_input_netlink_handle_iface_event(struct md_input_netlink *min,
     }
 }
 
+static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
+        struct json_object *obj)
+{
+    //struct md_iface_event mie;
+    uint8_t retval = 0;
+    json_object *event_param_json;
+    uint8_t event_param;
+
+    if (!json_object_object_get_ex(obj, "event_param", &event_param_json)) {
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "Missing event type\n");
+        return;
+    }
+
+    event_param = (uint8_t) json_object_get_int(event_param_json);
+
+    switch (event_param) {
+    case RADIO_EVENT_GSM_RR_CIPHER_MODE:
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "GSM_RR_CIPHER_MODE\n");
+        break;
+    case RADIO_EVENT_GSM_RR_CHANNEL_CONF:
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "GSM_RR_CHANNEL_CONF\n");
+        break;
+    case RADIO_EVENT_CELL_LOCATION_GERAN:
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "CELL_LOCATION_GERAN\n");
+        break;
+    case RADIO_EVENT_GSM_RR_CELL_SEL_RESEL_PARAM:
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "GSM_RR_CELL_SEL_RESEL_PARAM\n");
+        break;
+    case RADIO_EVENT_GRR_CELL_RESEL:
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "GRR_CELL_RESEL\n");
+        break;
+    default:
+        break;
+    }
+
+    mde_publish_event_obj(min->parent, (struct md_event*) min->mie);
+}
+
 static void md_input_netlink_handle_conn_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
@@ -484,7 +522,7 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
         md_input_netlink_handle_gps_event(min, nlh_obj);
         break;
     case META_TYPE_RADIO:
-        META_PRINT(min->parent->logfile, "Got radio event");
+        md_input_netlink_handle_radio_event(min, nlh_obj);
         break;
     default:
         META_PRINT(min->parent->logfile, "Unknown event type\n");
