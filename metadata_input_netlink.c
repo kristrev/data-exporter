@@ -483,6 +483,9 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
     case META_TYPE_POS:
         md_input_netlink_handle_gps_event(min, nlh_obj);
         break;
+    case META_TYPE_RADIO:
+        META_PRINT(min->parent->logfile, "Got radio event");
+        break;
     default:
         META_PRINT(min->parent->logfile, "Unknown event type\n");
         break;
@@ -540,8 +543,8 @@ static uint8_t md_input_netlink_init(void *ptr, json_object* config)
                 md_nl_mask |= META_TYPE_POS;
             if (!strcmp(key, "iface")) 
                 md_nl_mask |= META_TYPE_INTERFACE;
-			if (!strcmp(key, "radio"))
-				md_nl_mask |= META_TYPE_RADIO;
+            if (!strcmp(key, "radio"))
+                md_nl_mask |= META_TYPE_RADIO;
         }
     }
 
@@ -562,6 +565,7 @@ void md_netlink_usage()
     fprintf(stderr, "  \"conn\":\t\tReceive netlink connection events\n");
     fprintf(stderr, "  \"pos\":\t\tReceive netlink position events\n");
     fprintf(stderr, "  \"iface\":\t\tReceive netlink interface events\n");
+    fprintf(stderr, "  \"radio\":\t\tReceive netlink radio events (QXDM + neigh. cells)\n");
     fprintf(stderr, "},\n");
 }
 
