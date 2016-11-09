@@ -315,7 +315,6 @@ static void md_input_netlink_handle_iface_event(struct md_input_netlink *min,
 static void md_input_netlink_radio_cell_loc_geran(struct md_input_netlink *min,
         struct json_object *obj)
 {
-    struct json_object *obj_tmp;
     struct md_radio_cell_loc_geran_event *event = calloc(sizeof(struct md_radio_cell_loc_geran_event), 1);
 
     if (!event)
@@ -358,6 +357,71 @@ static void md_input_netlink_radio_cell_loc_geran(struct md_input_netlink *min,
     free(event);
 }
 
+static void md_input_netlink_radio_grr_cell_resel(struct md_input_netlink *min,
+        struct json_object *obj)
+{
+    struct md_radio_grr_cell_resel_event *event = calloc(sizeof(struct md_radio_grr_cell_resel_event), 1);
+    struct json_object *obj_tmp;
+    uint8_t neigh_count = 0;
+
+    if (!event)
+        return;
+
+    json_object_object_foreach(obj, key, val) {
+        if (!strcmp(key, "md_seq"))
+            event->sequence = (uint16_t) json_object_get_int(val);
+        else if (!strcmp(key, "timestamp"))
+            event->tstamp = json_object_get_int64(val);
+        else if (!strcmp(key, "event_param"))
+            event->event_param = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "event_type"))
+            event->md_type = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "iccid"))
+            event->iccid = json_object_get_string(val);
+        else if (!strcmp(key, "imsi"))
+            event->imsi = json_object_get_string(val);
+        else if (!strcmp(key, "imei"))
+            event->imei = json_object_get_string(val);
+        else if (!strcmp(key, "serving_bcch_arfcn"))
+            event->serving_bcch_arfcn = (uint16_t) json_object_get_int(val);
+        else if (!strcmp(key, "serving_pbcch_arfcn"))
+            event->serving_pbcch_arfcn = (uint16_t) json_object_get_int(val);
+        else if (!strcmp(key, "serving_priority_class"))
+            event->serving_priority_class = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "serving_rxlev_avg"))
+            event->serving_rxlev_avg = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "serving_c1"))
+            event->serving_c1 = (uint32_t) json_object_get_int(val);
+        else if (!strcmp(key, "serving_c2"))
+            event->serving_c2 = (uint32_t) json_object_get_int(val);
+        else if (!strcmp(key, "serving_c31"))
+            event->serving_c31 = (uint32_t) json_object_get_int(val);
+        else if (!strcmp(key, "serving_c32"))
+            event->serving_c32 = (uint32_t) json_object_get_int(val);
+        else if (!strcmp(key, "serving_five_second_timer"))
+            event->serving_five_second_timer = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "cell_reselet_status"))
+            event->cell_reselet_status = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "recent_cell_selection"))
+            event->recent_cell_selection = (uint8_t) json_object_get_int(val);
+    }
+
+    json_object_object_get_ex(obj, "neighbor_cell_count", &obj_tmp);
+
+    if (obj_tmp)
+        neigh_count = json_object_get_int(obj_tmp);
+
+    if (neigh_count) {
+        json_object_object_get_ex(obj, "grr_cell_neighbor", &obj_tmp);
+
+        if (obj_tmp)
+            event->neighbors = json_object_to_json_string_ext(obj_tmp, JSON_C_TO_STRING_PLAIN);
+    }
+
+    mde_publish_event_obj(min->parent, (struct md_event*) event);
+    free(event);
+}
+
 static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
@@ -389,6 +453,7 @@ static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
         break;
     case RADIO_EVENT_GRR_CELL_RESEL:
         META_PRINT_SYSLOG(min->parent, LOG_ERR, "GRR_CELL_RESEL\n");
+        md_input_netlink_radio_grr_cell_resel(min, obj);
         break;
     default:
         break;

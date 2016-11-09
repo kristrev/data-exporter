@@ -236,6 +236,22 @@ struct md_radio_cell_loc_geran_event {
     const char *cell_geran_info_nmr;
 };
 
+struct md_radio_grr_cell_resel_event {
+    MD_RADIO_EVENT;
+    uint16_t serving_bcch_arfcn;
+    uint16_t serving_pbcch_arfcn;
+    uint8_t serving_priority_class;
+    uint8_t serving_rxlev_avg;
+    uint32_t serving_c1;
+    uint32_t serving_c2;
+    uint32_t serving_c31;
+    uint32_t serving_c32;
+    uint8_t serving_five_second_timer;
+    uint8_t cell_reselet_status;
+    uint8_t recent_cell_selection;
+    const char *neighbors;
+};
+
 #define md_sysevent md_munin_event
 
 struct md_exporter {
