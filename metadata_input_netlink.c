@@ -540,6 +540,8 @@ static uint8_t md_input_netlink_init(void *ptr, json_object* config)
                 md_nl_mask |= META_TYPE_POS;
             if (!strcmp(key, "iface")) 
                 md_nl_mask |= META_TYPE_INTERFACE;
+			if (!strcmp(key, "radio"))
+				md_nl_mask |= META_TYPE_RADIO;
         }
     }
 
