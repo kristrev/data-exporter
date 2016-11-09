@@ -240,16 +240,16 @@ struct md_radio_grr_cell_resel_event {
     MD_RADIO_EVENT;
     uint16_t serving_bcch_arfcn;
     uint16_t serving_pbcch_arfcn;
-    uint8_t serving_priority_class;
-    uint8_t serving_rxlev_avg;
     uint32_t serving_c1;
     uint32_t serving_c2;
     uint32_t serving_c31;
     uint32_t serving_c32;
+    const char *neighbors;
+    uint8_t serving_priority_class;
+    uint8_t serving_rxlev_avg;
     uint8_t serving_five_second_timer;
     uint8_t cell_reselet_status;
     uint8_t recent_cell_selection;
-    const char *neighbors;
 };
 
 struct md_radio_gsm_rr_cell_sel_reset_param_event {
@@ -274,6 +274,20 @@ struct md_radio_gsm_rr_cipher_mode_event {
     uint8_t ciphering_algorithm;
 };
 
+struct md_radio_gsm_rr_channel_conf_event {
+    MD_RADIO_EVENT;
+    uint8_t num_ded_chans;
+    uint8_t dtx_indicator;
+    uint8_t power_level;
+    uint8_t starting_time_valid;
+    uint16_t starting_time;
+    uint8_t cipher_flag;
+    uint8_t cipher_algorithm;
+    const char *after_channel_config;
+    const char *before_channel_config;
+    uint8_t channel_mode_1;
+    uint8_t channel_mode_2;
+};
 
 #define md_sysevent md_munin_event
 

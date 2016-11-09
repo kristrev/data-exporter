@@ -508,6 +508,57 @@ static void md_input_netlink_radio_gsm_rr_cipher_mode(struct md_input_netlink *m
     free(event);
 }
 
+static void md_input_netlink_radio_gsm_rr_channel_conf(struct md_input_netlink *min,
+        struct json_object *obj)
+{
+    struct md_radio_gsm_rr_channel_conf_event *event = calloc(sizeof(struct md_radio_gsm_rr_channel_conf_event), 1);
+
+    if (!event)
+        return;
+
+    json_object_object_foreach(obj, key, val) {
+        if (!strcmp(key, "md_seq"))
+            event->sequence = (uint16_t) json_object_get_int(val);
+        else if (!strcmp(key, "timestamp"))
+            event->tstamp = json_object_get_int64(val);
+        else if (!strcmp(key, "event_param"))
+            event->event_param = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "event_type"))
+            event->md_type = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "iccid"))
+            event->iccid = json_object_get_string(val);
+        else if (!strcmp(key, "imsi"))
+            event->imsi = json_object_get_string(val);
+        else if (!strcmp(key, "imei"))
+            event->imei = json_object_get_string(val);
+        else if (!strcmp(key, "num_ded_chans;"))
+            event->num_ded_chans = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "dtx_indicator"))
+            event->dtx_indicator = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "power_level"))
+            event->power_level = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "starting_time_valid"))
+            event->starting_time_valid = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "starting_time"))
+            event->starting_time = (uint16_t) json_object_get_int(val);
+        else if (!strcmp(key, "cipher_flag"))
+            event->cipher_flag = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "cipher_algorithm"))
+            event->cipher_algorithm = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "channel_mode_1"))
+            event->channel_mode_1 = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "channel_mode_2"))
+            event->channel_mode_2 = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "after_channel_config"))
+            event->after_channel_config = json_object_get_string(val);
+        else if (!strcmp(key, "before_channel_config"))
+            event->before_channel_config = json_object_get_string(val);
+    }
+
+    mde_publish_event_obj(min->parent, (struct md_event*) event);
+    free(event);
+}
+
 static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
@@ -530,6 +581,7 @@ static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
         break;
     case RADIO_EVENT_GSM_RR_CHANNEL_CONF:
         META_PRINT_SYSLOG(min->parent, LOG_ERR, "GSM_RR_CHANNEL_CONF\n");
+        md_input_netlink_radio_gsm_rr_channel_conf(min, obj);
         break;
     case RADIO_EVENT_CELL_LOCATION_GERAN:
         META_PRINT_SYSLOG(min->parent, LOG_ERR, "CELL_LOCATION_GERAN\n");
