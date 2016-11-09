@@ -591,6 +591,7 @@ static json_object *md_zeromq_handle_radio_cell_loc_gerant(
         if (geran_info) {
             json_object_object_add(obj, ZMQ_KEY_RADIO_CELL_GERAN_INFO_NMR, geran_info);
         } else {
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to parse geran obj\n");
             json_object_put(obj);
             return NULL;
         }
@@ -615,7 +616,7 @@ static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz,
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CHANNEL_CONF\n");
         break;
     case RADIO_EVENT_CELL_LOCATION_GERAN:
-        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "CELL_LOCATION_GERAN\n");
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "ZMQ CELL_LOCATION_GERAN\n");
         obj = md_zeromq_handle_radio_cell_loc_gerant(mwz,
                 (struct md_radio_cell_loc_geran_event*) mre);
         topic = ZMQ_TOPIC_RADIO_CELL_LOCATION_GERAN;
@@ -631,8 +632,10 @@ static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz,
 
     }
 
-    if (!obj)
+    if (!obj) {
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to create JSON\n");
         return;
+    }
 
     retval = snprintf(msg, sizeof(msg), "%s %s", topic,
             json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
