@@ -637,7 +637,7 @@ static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz,
         return;
     }
 
-    META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Will send %s %s\n", retval, topic, msg);
+    META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Will send %s %s\n", topic, msg);
     retval = snprintf(msg, sizeof(msg), "%s %s", topic,
             json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
 
