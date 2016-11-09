@@ -475,6 +475,39 @@ static void md_input_netlink_radio_gsm_rr_cell_sel_reset_param(struct md_input_n
     free(event);
 }
 
+static void md_input_netlink_radio_gsm_rr_cipher_mode(struct md_input_netlink *min,
+        struct json_object *obj)
+{
+    struct md_radio_gsm_rr_cipher_mode_event *event = calloc(sizeof(struct md_radio_gsm_rr_cipher_mode_event), 1);
+
+    if (!event)
+        return;
+
+    json_object_object_foreach(obj, key, val) {
+        if (!strcmp(key, "md_seq"))
+            event->sequence = (uint16_t) json_object_get_int(val);
+        else if (!strcmp(key, "timestamp"))
+            event->tstamp = json_object_get_int64(val);
+        else if (!strcmp(key, "event_param"))
+            event->event_param = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "event_type"))
+            event->md_type = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "iccid"))
+            event->iccid = json_object_get_string(val);
+        else if (!strcmp(key, "imsi"))
+            event->imsi = json_object_get_string(val);
+        else if (!strcmp(key, "imei"))
+            event->imei = json_object_get_string(val);
+        else if (!strcmp(key, "ciphering_state"))
+            event->ciphering_state = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "ciphering_algorithm"))
+            event->ciphering_algorithm = (uint8_t) json_object_get_int(val);
+    }
+
+    mde_publish_event_obj(min->parent, (struct md_event*) event);
+    free(event);
+}
+
 static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
@@ -493,6 +526,7 @@ static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
     switch (event_param) {
     case RADIO_EVENT_GSM_RR_CIPHER_MODE:
         META_PRINT_SYSLOG(min->parent, LOG_ERR, "GSM_RR_CIPHER_MODE\n");
+        md_input_netlink_radio_gsm_rr_cipher_mode(min, obj);
         break;
     case RADIO_EVENT_GSM_RR_CHANNEL_CONF:
         META_PRINT_SYSLOG(min->parent, LOG_ERR, "GSM_RR_CHANNEL_CONF\n");

@@ -268,6 +268,13 @@ struct md_radio_gsm_rr_cell_sel_reset_param_event {
     uint8_t penalty_time;
 };
 
+struct md_radio_gsm_rr_cipher_mode_event {
+    MD_RADIO_EVENT;
+    uint8_t ciphering_state;
+    uint8_t ciphering_algorithm;
+};
+
+
 #define md_sysevent md_munin_event
 
 struct md_exporter {
