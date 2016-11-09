@@ -641,7 +641,7 @@ static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz,
     retval = snprintf(msg, sizeof(msg), "%s %s", topic,
             json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
 
-    if (retval >= sizeof(topic))
+    if (retval >= sizeof(msg))
         return;
 
     retval = zmq_send(mwz->zmq_publisher, msg, strlen(msg), 0);
