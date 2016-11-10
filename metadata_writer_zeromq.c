@@ -600,6 +600,62 @@ static json_object *md_zeromq_handle_radio_cell_loc_gerant(
     return obj;
 }
 
+static json_object *md_zeromq_handle_radio_cell_resel_event(
+        struct md_writer_zeromq *mwz,
+        struct md_radio_grr_cell_resel_event *event)
+{
+    struct json_object *obj, *neighbors;
+
+    if (!(obj = json_object_new_object()))
+        return NULL;
+
+    if (event->iccid &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imsi &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imei &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_BCCH_ARFCN, event->serving_bcch_arfcn) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_PBCCH_ARFCN, event->serving_pbcch_arfcn) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C1, event->serving_c1) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C2, event->serving_c2) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C31, event->serving_c31) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C32, event->serving_c32) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_PRIORITY_CLASS, event->serving_priority_class) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_RXLEV_AVG, event->serving_rxlev_avg) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_FIVE_SECOND_TIMER, event->serving_five_second_timer) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELET_STATUS, event->cell_reselet_status) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_RECENT_CELL_SELECTION, event->recent_cell_selection)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->neighbors) {
+        neighbors = json_tokener_parse(event->neighbors);
+
+        if (neighbors) {
+            json_object_object_add(obj, ZMQ_KEY_RADIO_GRR_CELL_NEIGHBORS, neighbors);
+        } else {
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to parse geran obj\n");
+            json_object_put(obj);
+            return NULL;
+        }
+    }
+    return obj;
+}
+
 static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz, 
                                    struct md_radio_event *mre)
 {
@@ -630,6 +686,8 @@ static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz,
     case RADIO_EVENT_GRR_CELL_RESEL:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GRR_CELL_RESEL\n");
         topic = ZMQ_TOPIC_RADIO_GRR_CELL_RESEL;
+        obj = md_zeromq_handle_radio_cell_resel_event(mwz,
+                (struct md_radio_grr_cell_resel_event*) mre);
         break;
     default:
         break;

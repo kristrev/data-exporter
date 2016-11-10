@@ -83,3 +83,17 @@
 #define ZMQ_KEY_RADIO_RX_LEV                "rx_lev"
 #define ZMQ_KEY_RADIO_CELL_GERAN_INFO_NMR   "cell_geran_info_nmr"
 
+{"cell_reselet_status":0,"recent_cell_selection":0,"neighbor_cell_count":1,"grr_cell_neighbor":[{"bcch_arfcn":32892,"pbcch_arfcn":0,"rxlev_avg":1,"c1":38,"c2":38,"c31":0,"c32":0}],"timestamp":1478284881,"iccid":"89470000140310208841","imsi":"242013054215742","imei":"356853052673185"}
+
+#define ZMQ_KEY_RADIO_SERVING_BCCH_ARFCN        "serving_bcch_arfcn"
+#define ZMQ_KEY_RADIO_SERVING_PBCCH_ARFCN       "serving_pbcch_arfcn"
+#define ZMQ_KEY_RADIO_SERVING_PRIORITY_CLASS    "serving_priority_class"
+#define ZMQ_KEY_RADIO_SERVING_RXLEV_AVG         "serving_rxlev_avg"
+#define ZMQ_KEY_RADIO_SERVING_C1                "serving_c1"
+#define ZMQ_KEY_RADIO_SERVING_C2                "serving_c2"
+#define ZMQ_KEY_RADIO_SERVING_C31               "serving_c31"
+#define ZMQ_KEY_RADIO_SERVING_C32               "serving_c32"
+#define ZMQ_KEY_RADIO_SERVING_FIVE_SECOND_TIMER "serving_five_second_timer"
+#define ZMQ_KEY_RADIO_CELL_RESELET_STATUS       "cell_reselet_status"
+#define ZMQ_KEY_RADIO_RECENT_CELL_SELECTION     "recent_cell_selection"
+#define ZMQ_KEY_RADIO_GRR_CELL_NEIGHBORS        "grr_cell_neighbors"
