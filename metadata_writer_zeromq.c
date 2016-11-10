@@ -656,6 +656,88 @@ static json_object *md_zeromq_handle_radio_cell_resel_event(
     return obj;
 }
 
+static json_object *md_zeromq_handle_radio_cipher_mode_event(
+        struct md_writer_zeromq *mwz,
+        struct md_radio_gsm_rr_cipher_mode_event *event)
+{
+    struct json_object *obj, *neighbors;
+
+    if (!(obj = json_object_new_object()))
+        return NULL;
+
+    if (event->iccid &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imsi &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imei &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_STATE, event->ciphering_state) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_ALGORITHM, event->ciphering_algorithm)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    return obj;
+}
+
+static json_object *md_zeromq_handle_cell_reset_param_event(
+        struct md_writer_zeromq *mwz,
+        struct md_radio_gsm_rr_cell_sel_reset_param_event *event)
+{
+    struct json_object *obj, *neighbors;
+
+    if (!(obj = json_object_new_object()))
+        return NULL;
+
+    if (event->iccid &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imsi &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imei &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELECT_HYSTERESIS, event->cell_reselect_hysteresis) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_MS_TXPWR_MAX_CCH, event->ms_txpwr_max_cch) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_RXLEV_ACCESS_MIN, event->rxlev_access_min) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_POWER_OFFSET_VALID, event->power_offset_valid) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_POWER_OFFSET, event->power_offset) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_NECI, event->neci) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_ACS, event->acs) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_OPT_RESELECT_PARAM_IND, event->opt_reselect_param_ind) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_BAR_QUALIFY, event->cell_bar_qualify) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELECT_OFFSET, event->cell_reselect_offset) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_TEMPORARY_OFFSET, event->temporary_offset) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_PENALTY_TIME, event->penalty_time)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    return obj;
+}
+
 static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz, 
                                    struct md_radio_event *mre)
 {
@@ -668,6 +750,8 @@ static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz,
     case RADIO_EVENT_GSM_RR_CIPHER_MODE:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CIPHER_MODE\n");
         topic = ZMQ_TOPIC_RADIO_GSM_RR_CIPHER_MODE;
+        obj = md_zeromq_handle_radio_cipher_mode_event(mwz,
+                (struct md_radio_gsm_rr_cipher_mode_event*) mre);
         break;
     case RADIO_EVENT_GSM_RR_CHANNEL_CONF:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CHANNEL_CONF\n");
@@ -675,13 +759,15 @@ static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz,
         break;
     case RADIO_EVENT_CELL_LOCATION_GERAN:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "ZMQ CELL_LOCATION_GERAN\n");
+        topic = ZMQ_TOPIC_RADIO_CELL_LOCATION_GERAN;
         obj = md_zeromq_handle_radio_cell_loc_gerant(mwz,
                 (struct md_radio_cell_loc_geran_event*) mre);
-        topic = ZMQ_TOPIC_RADIO_CELL_LOCATION_GERAN;
         break;
     case RADIO_EVENT_GSM_RR_CELL_SEL_RESEL_PARAM:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CELL_SEL_RESEL_PARAM\n");
         topic = ZMQ_TOPIC_RADIO_GSM_RR_CELL_SEL_RESEL_PARAM;
+        obj = md_zeromq_handle_cell_reset_param_event(mwz, 
+                (struct md_radio_gsm_rr_cell_sel_reset_param_event*) mre);
         break;
     case RADIO_EVENT_GRR_CELL_RESEL:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GRR_CELL_RESEL\n");
