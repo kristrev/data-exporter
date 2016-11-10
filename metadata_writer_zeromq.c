@@ -627,7 +627,9 @@ static json_object *md_zeromq_handle_radio_cell_resel_event(
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_BCCH_ARFCN, event->serving_bcch_arfcn) ||
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_BCCH_ARFCN, event->serving_bcch_arfcn) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_PBCCH_ARFCN, event->serving_pbcch_arfcn) ||
         !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C1, event->serving_c1) ||
         !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C2, event->serving_c2) ||
@@ -683,7 +685,9 @@ static json_object *md_zeromq_handle_radio_cipher_mode_event(
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_STATE, event->ciphering_state) ||
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_STATE, event->ciphering_state) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_ALGORITHM, event->ciphering_algorithm)) {
         json_object_put(obj);
         return NULL;
@@ -719,7 +723,9 @@ static json_object *md_zeromq_handle_cell_reset_param_event(
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELECT_HYSTERESIS, event->cell_reselect_hysteresis) ||
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELECT_HYSTERESIS, event->cell_reselect_hysteresis) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_MS_TXPWR_MAX_CCH, event->ms_txpwr_max_cch) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_RXLEV_ACCESS_MIN, event->rxlev_access_min) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_POWER_OFFSET_VALID, event->power_offset_valid) ||
@@ -765,7 +771,9 @@ static json_object *md_zeromq_handle_rr_channel_conf_event(
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_NUM_DED_CHANS, event->num_ded_chans) ||
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_NUM_DED_CHANS, event->num_ded_chans) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_DTX_INDICATOR, event->dtx_indicator) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_POWER_LEVEL, event->power_level) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_STARTING_TIME_VALID, event->starting_time_valid) ||
