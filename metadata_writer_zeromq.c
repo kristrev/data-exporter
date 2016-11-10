@@ -648,7 +648,7 @@ static json_object *md_zeromq_handle_radio_cell_resel_event(
         if (neighbors) {
             json_object_object_add(obj, ZMQ_KEY_RADIO_GRR_CELL_NEIGHBORS, neighbors);
         } else {
-            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to parse geran obj\n");
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to parse neighbor obj\n");
             json_object_put(obj);
             return NULL;
         }
@@ -660,7 +660,7 @@ static json_object *md_zeromq_handle_radio_cipher_mode_event(
         struct md_writer_zeromq *mwz,
         struct md_radio_gsm_rr_cipher_mode_event *event)
 {
-    struct json_object *obj, *neighbors;
+    struct json_object *obj;
 
     if (!(obj = json_object_new_object()))
         return NULL;
@@ -696,7 +696,7 @@ static json_object *md_zeromq_handle_cell_reset_param_event(
         struct md_writer_zeromq *mwz,
         struct md_radio_gsm_rr_cell_sel_reset_param_event *event)
 {
-    struct json_object *obj, *neighbors;
+    struct json_object *obj;
 
     if (!(obj = json_object_new_object()))
         return NULL;
@@ -738,6 +738,73 @@ static json_object *md_zeromq_handle_cell_reset_param_event(
     return obj;
 }
 
+static json_object *md_zeromq_handle_rr_channel_conf_event(
+        struct md_writer_zeromq *mwz,
+        struct md_radio_gsm_rr_channel_conf_event *event)
+{
+    struct json_object *obj, *obj_tmp;
+
+    if (!(obj = json_object_new_object()))
+        return NULL;
+
+    if (event->iccid &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imsi &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imei &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_NUM_DED_CHANS, event->num_ded_chans) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_DTX_INDICATOR, event->dtx_indicator) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_POWER_LEVEL, event->power_level) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_STARTING_TIME_VALID, event->starting_time_valid) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_STARTING_TIME, event->starting_time) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHER_FLAG, event->cipher_flag) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHER_ALGORITHM, event->cipher_algorithm) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CHANNEL_MODE_1, event->channel_mode_1) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CHANNEL_MODE_2, event->channel_mode_2)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->after_channel_config) {
+        obj_tmp = json_tokener_parse(event->after_channel_config);
+
+        if (obj_tmp) {
+            json_object_object_add(obj, ZMQ_KEY_RADIO_AFTER_CHANNEL_CONFIG, obj_tmp);
+        } else {
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to parse after conf\n");
+            json_object_put(obj);
+            return NULL;
+        }
+    }
+
+    if (event->before_channel_config) {
+        obj_tmp = json_tokener_parse(event->before_channel_config);
+
+        if (obj_tmp) {
+            json_object_object_add(obj, ZMQ_KEY_RADIO_BEFORE_CHANNEL_CONFIG, obj_tmp);
+        } else {
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to parse before conf\n");
+            json_object_put(obj);
+            return NULL;
+        }
+    }
+
+    return obj;
+}
+
 static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz, 
                                    struct md_radio_event *mre)
 {
@@ -756,6 +823,8 @@ static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz,
     case RADIO_EVENT_GSM_RR_CHANNEL_CONF:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CHANNEL_CONF\n");
         topic = ZMQ_TOPIC_RADIO_GSM_RR_CHANNEL_CONF;
+        obj = md_zeromq_handle_rr_channel_conf_event(mwz,
+                (struct md_radio_gsm_rr_channel_conf_event*) mre);
         break;
     case RADIO_EVENT_CELL_LOCATION_GERAN:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "ZMQ CELL_LOCATION_GERAN\n");
