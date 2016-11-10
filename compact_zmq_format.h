@@ -83,8 +83,6 @@
 #define ZMQ_KEY_RADIO_RX_LEV                "rx_lev"
 #define ZMQ_KEY_RADIO_CELL_GERAN_INFO_NMR   "cell_geran_info_nmr"
 
-{"cell_reselet_status":0,"recent_cell_selection":0,"neighbor_cell_count":1,"grr_cell_neighbor":[{"bcch_arfcn":32892,"pbcch_arfcn":0,"rxlev_avg":1,"c1":38,"c2":38,"c31":0,"c32":0}],"timestamp":1478284881,"iccid":"89470000140310208841","imsi":"242013054215742","imei":"356853052673185"}
-
 #define ZMQ_KEY_RADIO_SERVING_BCCH_ARFCN        "serving_bcch_arfcn"
 #define ZMQ_KEY_RADIO_SERVING_PBCCH_ARFCN       "serving_pbcch_arfcn"
 #define ZMQ_KEY_RADIO_SERVING_PRIORITY_CLASS    "serving_priority_class"
