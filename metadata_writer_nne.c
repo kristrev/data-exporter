@@ -640,9 +640,6 @@ static void md_nne_check_removed_modems(struct md_writer_nne *mwn,
 
 static uint32_t md_find_network_id(uint32_t imsi_mccmnc, const char *iccid)
 {
-    if (iccid == NULL)
-        return 0;
-
     uint32_t network_id = 0;
     switch (imsi_mccmnc) {
     case 24201:
@@ -652,10 +649,12 @@ static uint32_t md_find_network_id(uint32_t imsi_mccmnc, const char *iccid)
         network_id = 2;
         break; 
     case 24214:
-        if (strncmp(iccid, "894707150000033", 15) == 0)
-            network_id = 18;
-        else if (strncmp(iccid, "894707150000014", 15) == 0)
-            network_id = 19;
+        if (iccid != NULL) {
+            if (strncmp(iccid, "894707150000033", 15) == 0)
+                network_id = 18;
+            else if (strncmp(iccid, "894707150000014", 15) == 0)
+                network_id = 19;
+        }
         break; 
     case 26001:
         network_id = 9;
@@ -852,9 +851,27 @@ static void md_nne_send_radio_message(struct md_writer_nne *mwn,
 {
     struct nne_message msg;
     uint32_t network_id;
+    char mccmnc_str[6];
+    uint32_t mccmnc;
     int i;
 
-    network_id = 0; //TODO
+    network_id = 0;
+    mccmnc = 0;
+    if (mre->imsi != NULL) {
+        strncpy(mccmnc_str, mre->imsi, 5);
+        mccmnc_str[5] = 0;
+        mccmnc = strtol(mccmnc_str, NULL, 10);
+        network_id = md_find_network_id(mccmnc, mre->iccid);
+    }
+    META_PRINT_SYSLOG(mwn->parent, LOG_INFO, "NNE writer: "
+            "network: imsi_mccmnc %u iccid %s => network_id %u\n",
+             mccmnc, mre->iccid, network_id);
+    if (network_id == 0) {
+        META_PRINT_SYSLOG(mwn->parent, LOG_INFO,
+            "NNE writer: unsupported network imsi_mccmnc: %u, iccid %s\n",
+            mccmnc, mre->iccid);
+        return;
+    }
 
     msg.type = NNE_MESSAGE_TYPE_EVENT;
     msg.tstamp = mre->tstamp;
@@ -1169,4 +1186,5 @@ void md_nne_setup(struct md_exporter *mde, struct md_writer_nne* mwn)
     mwn->init = md_nne_init;
     mwn->handle = md_nne_handle;
 }
+
 
