@@ -541,8 +541,6 @@ static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
     default:
         break;
     }
-
-    mde_publish_event_obj(min->parent, (struct md_event*) min->mie);
 }
 
 static void md_input_netlink_handle_conn_event(struct md_input_netlink *min,
