@@ -119,6 +119,13 @@ struct nne_metadata_descr
     struct nne_value (*parse_cb)(struct nne_modem *modem, struct md_iface_event *mie);
 };
 
+struct nne_radio_descr
+{
+    const char *key;
+    enum nne_type type;
+    size_t offset;
+};
+
 enum nne_message_type
 {
     NNE_MESSAGE_TYPE_EVENT,

@@ -364,7 +364,7 @@ static struct nne_value nne_value_init(enum nne_type type, void *ptr, int offset
             value.u.v_uint32 = *(uint32_t*)((char*)ptr + offset);
             break;
         case NNE_TYPE_STRING:
-            value.u.v_str = (char*)ptr + offset;
+            value.u.v_str = *(char**)((char*)ptr + offset);
             break;
     }
 
@@ -782,6 +782,127 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
     md_nne_check_removed_modems(mwn, mie->tstamp);
 }
 
+struct nne_radio_descr NNE_RADIO_GSM_RR_CIPHER_MODE_DESCR[] = {
+    { "gsm_rr_cipher_mode.ciphering_state", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cipher_mode_event, ciphering_state) },
+    { "gsm_rr_cipher_mode.ciphering_algorithm", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cipher_mode_event, ciphering_algorithm) },
+    { NULL, NNE_TYPE_NULL, 0 }
+};
+
+struct nne_radio_descr NNE_RADIO_GSM_RR_CHANNEL_CONF_DESCR[] = {
+    { "gsm_rr_channel_conf.num_ded_chans", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_channel_conf_event, num_ded_chans) },
+    { "gsm_rr_channel_conf.dtx_indicator", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_channel_conf_event, dtx_indicator) },
+    { "gsm_rr_channel_conf.power_level", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_channel_conf_event, power_level) },
+    { "gsm_rr_channel_conf.starting_time_valid", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_channel_conf_event, starting_time_valid) },
+    { "gsm_rr_channel_conf.starting_time", NNE_TYPE_UINT16, offsetof(struct md_radio_gsm_rr_channel_conf_event, starting_time) },
+    { "gsm_rr_channel_conf.cipher_flag", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_channel_conf_event, cipher_flag) },
+    { "gsm_rr_channel_conf.cipher_algorithm", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_channel_conf_event, cipher_algorithm) },
+    { "gsm_rr_channel_conf.after_channel_config", NNE_TYPE_STRING, offsetof(struct md_radio_gsm_rr_channel_conf_event, after_channel_config) },
+    { "gsm_rr_channel_conf.before_channel_config", NNE_TYPE_STRING, offsetof(struct md_radio_gsm_rr_channel_conf_event, before_channel_config) },
+    { "gsm_rr_channel_conf.channel_mode_1", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_channel_conf_event, channel_mode_1) },
+    { "gsm_rr_channel_conf.channel_mode_2", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_channel_conf_event, channel_mode_2) },
+};
+
+struct nne_radio_descr NNE_RADIO_CELL_LOC_GERAN_DESCR[] = {
+    { "cell_loc_geran.cell_id", NNE_TYPE_UINT32, offsetof(struct md_radio_cell_loc_geran_event, cell_id) },
+    { "cell_loc_geran.plmn", NNE_TYPE_STRING, offsetof(struct md_radio_cell_loc_geran_event, plmn) },
+    { "cell_loc_geran.lac", NNE_TYPE_UINT16, offsetof(struct md_radio_cell_loc_geran_event, lac) },
+    { "cell_loc_geran.arfcn", NNE_TYPE_UINT16, offsetof(struct md_radio_cell_loc_geran_event, arfcn) },
+    { "cell_loc_geran.bsic", NNE_TYPE_UINT8, offsetof(struct md_radio_cell_loc_geran_event, bsic) },
+    { "cell_loc_geran.timing_advance", NNE_TYPE_UINT32, offsetof(struct md_radio_cell_loc_geran_event, timing_advance) },
+    { "cell_loc_geran.rx_lev", NNE_TYPE_UINT16, offsetof(struct md_radio_cell_loc_geran_event, rx_lev) },
+    { "cell_loc_geran.cell_geran_info_nmr", NNE_TYPE_STRING, offsetof(struct md_radio_cell_loc_geran_event, cell_geran_info_nmr) },
+    { NULL, NNE_TYPE_NULL, 0 }
+};
+
+struct nne_radio_descr NNE_RADIO_GSM_RR_CELL_SEL_RESEL_PARAM_DESCR[] = {
+    { "gsm_rr_cell_sel_resel_param.cell_reselect_hysteresis", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, cell_reselect_hysteresis) }, 
+    { "gsm_rr_cell_sel_resel_param.ms_txpwr_max_cch", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, ms_txpwr_max_cch) },
+    { "gsm_rr_cell_sel_resel_param.rxlev_access_min", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, rxlev_access_min) },
+    { "gsm_rr_cell_sel_resel_param.power_offset_valid", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, power_offset_valid) },
+    { "gsm_rr_cell_sel_resel_param.power_offset", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, power_offset) },
+    { "gsm_rr_cell_sel_resel_param.neci", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, neci) },
+    { "gsm_rr_cell_sel_resel_param.acs", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, acs) },
+    { "gsm_rr_cell_sel_resel_param.opt_reselect_param_ind", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, opt_reselect_param_ind) },
+    { "gsm_rr_cell_sel_resel_param.cell_bar_qualify", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, cell_bar_qualify) },
+    { "gsm_rr_cell_sel_resel_param.cell_reselect_offset", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, cell_reselect_offset) },
+    { "gsm_rr_cell_sel_resel_param.temporary_offset", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, temporary_offset) },
+    { "gsm_rr_cell_sel_resel_param.penalty_time", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, penalty_time) },
+    { NULL, NNE_TYPE_NULL, 0 }
+};
+
+struct nne_radio_descr NNE_RADIO_GRR_CELL_RESEL_DESCR[] = {
+    { "grr_cell_resel.serving_bcch_arfcn", NNE_TYPE_UINT16, offsetof(struct md_radio_grr_cell_resel_event, serving_bcch_arfcn) },
+    { "grr_cell_resel.serving_pbcch_arfcn", NNE_TYPE_UINT16, offsetof(struct md_radio_grr_cell_resel_event, serving_pbcch_arfcn) },
+    { "grr_cell_resel.serving_c1", NNE_TYPE_UINT32, offsetof(struct md_radio_grr_cell_resel_event, serving_c1) },
+    { "grr_cell_resel.serving_c2", NNE_TYPE_UINT32, offsetof(struct md_radio_grr_cell_resel_event, serving_c2) },
+    { "grr_cell_resel.serving_c31", NNE_TYPE_UINT32, offsetof(struct md_radio_grr_cell_resel_event, serving_c31) },
+    { "grr_cell_resel.serving_c32", NNE_TYPE_UINT32, offsetof(struct md_radio_grr_cell_resel_event, serving_c32) },
+    { "grr_cell_resel.neighbors", NNE_TYPE_STRING, offsetof(struct md_radio_grr_cell_resel_event, neighbors) },
+    { "grr_cell_resel.serving_priority_class", NNE_TYPE_UINT8, offsetof(struct md_radio_grr_cell_resel_event, serving_priority_class) },
+    { "grr_cell_resel.serving_rxlev_avg", NNE_TYPE_UINT8, offsetof(struct md_radio_grr_cell_resel_event, serving_rxlev_avg) },
+    { "grr_cell_resel.serving_five_second_timer", NNE_TYPE_UINT8, offsetof(struct md_radio_grr_cell_resel_event, serving_five_second_timer) },
+    { "grr_cell_resel.cell_reselet_status", NNE_TYPE_UINT8, offsetof(struct md_radio_grr_cell_resel_event, cell_reselet_status) },
+    { "grr_cell_resel.recent_cell_selection", NNE_TYPE_UINT8, offsetof(struct md_radio_grr_cell_resel_event, recent_cell_selection) },
+    { NULL, NNE_TYPE_NULL, 0 }
+};
+
+static void md_nne_send_radio_message(struct md_writer_nne *mwn,
+                                      struct md_radio_event *mre,
+                                      struct nne_radio_descr *descr)
+{
+    struct nne_message msg;
+    uint32_t network_id;
+    int i;
+
+    network_id = 0; //TODO
+
+    msg.type = NNE_MESSAGE_TYPE_EVENT;
+    msg.tstamp = mre->tstamp;
+    msg.node = mwn->node_id;
+    msg.network_id = network_id;
+    msg.extra = NULL;
+    msg.source = NNE_MESSAGE_SOURCE_REPORT;
+    msg.delta = 0;
+
+    i = 0;
+    while (descr[i].key != NULL) {
+        msg.key = descr[i].key;
+        msg.value = nne_value_init(descr[i].type, mre, descr[i].offset);
+        md_nne_send_message(mwn, &msg);
+        i++;
+    }
+}
+
+static void md_nne_handle_radio(struct md_writer_nne *mwn,
+                                struct md_radio_event *mre)
+{
+    switch(mre->event_param) {
+    case RADIO_EVENT_GSM_RR_CIPHER_MODE:
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: RADIO_EVENT_GSM_RR_CIPHER_MODE\n");
+        md_nne_send_radio_message(mwn, mre, NNE_RADIO_GSM_RR_CIPHER_MODE_DESCR);
+        break;
+    case RADIO_EVENT_GSM_RR_CHANNEL_CONF:
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: RADIO_EVENT_GSM_RR_CHANNEL_CONF\n");
+        md_nne_send_radio_message(mwn, mre, NNE_RADIO_GSM_RR_CHANNEL_CONF_DESCR);
+        break;
+    case RADIO_EVENT_CELL_LOCATION_GERAN:
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: RADIO_EVENT_CELL_LOCATION_GERAN\n");
+        md_nne_send_radio_message(mwn, mre, NNE_RADIO_CELL_LOC_GERAN_DESCR);
+        break;
+    case RADIO_EVENT_GSM_RR_CELL_SEL_RESEL_PARAM:
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: RADIO_EVENT_GSM_RR_CELL_SEL_RESEL_PARAM\n");
+        md_nne_send_radio_message(mwn, mre, NNE_RADIO_GSM_RR_CELL_SEL_RESEL_PARAM_DESCR);
+        break;
+    case RADIO_EVENT_GRR_CELL_RESEL:
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: RADIO_EVENT_GRR_CELL_RESEL\n");
+        md_nne_send_radio_message(mwn, mre, NNE_RADIO_GRR_CELL_RESEL_DESCR);
+        break;
+    default:
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Unsupported radio event %u\n", mre->event_param);
+        break;
+    }
+}
+
 static int md_nne_format_fname_tm(char *s, int max, const char *format)
 {
     struct timeval tv;
@@ -1015,6 +1136,7 @@ static int32_t md_nne_init(void *ptr, json_object* config)
 static void md_nne_handle(struct md_writer *writer, struct md_event *event)
 {
     struct md_writer_nne *mwn = (struct md_writer_nne*) writer;
+    META_PRINT_SYSLOG(mwn->parent, LOG_INFO, "NNE writer: md_nne_handle: md_type %u\n", event->md_type);
 
     switch (event->md_type) {
         case META_TYPE_POS:
@@ -1022,6 +1144,9 @@ static void md_nne_handle(struct md_writer *writer, struct md_event *event)
             break;
         case META_TYPE_INTERFACE:
             md_nne_handle_iface_event(mwn, (struct md_iface_event*) event);
+            break;
+        case META_TYPE_RADIO:
+            md_nne_handle_radio(mwn, (struct md_radio_event*) event);
             break;
         default:
             return;
