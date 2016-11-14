@@ -814,16 +814,16 @@ struct nne_radio_descr NNE_RADIO_CELL_LOC_GERAN_DESCR[] = {
 };
 
 struct nne_radio_descr NNE_RADIO_GSM_RR_CELL_SEL_RESEL_PARAM_DESCR[] = {
-    { "gsm_rr_cell_sel_resel_param.cell_reselect_hysteresis", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, cell_reselect_hysteresis) }, 
+    { "gsm_rr_cell_sel_resel_param.cell_res_hyst", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, cell_reselect_hysteresis) }, 
     { "gsm_rr_cell_sel_resel_param.ms_txpwr_max_cch", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, ms_txpwr_max_cch) },
     { "gsm_rr_cell_sel_resel_param.rxlev_access_min", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, rxlev_access_min) },
-    { "gsm_rr_cell_sel_resel_param.power_offset_valid", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, power_offset_valid) },
-    { "gsm_rr_cell_sel_resel_param.power_offset", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, power_offset) },
+    { "gsm_rr_cell_sel_resel_param.pwr_offset_valid", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, power_offset_valid) },
+    { "gsm_rr_cell_sel_resel_param.pwr_offset", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, power_offset) },
     { "gsm_rr_cell_sel_resel_param.neci", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, neci) },
     { "gsm_rr_cell_sel_resel_param.acs", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, acs) },
-    { "gsm_rr_cell_sel_resel_param.opt_reselect_param_ind", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, opt_reselect_param_ind) },
+    { "gsm_rr_cell_sel_resel_param.opt_res_param_ind", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, opt_reselect_param_ind) },
     { "gsm_rr_cell_sel_resel_param.cell_bar_qualify", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, cell_bar_qualify) },
-    { "gsm_rr_cell_sel_resel_param.cell_reselect_offset", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, cell_reselect_offset) },
+    { "gsm_rr_cell_sel_resel_param.cell_res_offset", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, cell_reselect_offset) },
     { "gsm_rr_cell_sel_resel_param.temporary_offset", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, temporary_offset) },
     { "gsm_rr_cell_sel_resel_param.penalty_time", NNE_TYPE_UINT8, offsetof(struct md_radio_gsm_rr_cell_sel_reset_param_event, penalty_time) },
     { NULL, NNE_TYPE_NULL, 0 }
