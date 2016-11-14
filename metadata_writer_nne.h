@@ -29,7 +29,7 @@
 #include "metadata_exporter.h"
 
 #define NNE_DEFAULT_INTERVAL_MS 15000
-#define NNE_DEFAULT_DIRECTORY "/nne/data/"
+#define NNE_DEFAULT_DIRECTORY "/tmp/nne/"
 #define NNE_DEFAULT_GPS_PREFIX "gps_"
 #define NNE_DEFAULT_GPS_EXTENSION ".sdat"
 #define NNE_DEFAULT_METADATA_PREFIX "-metadatacollector-"
