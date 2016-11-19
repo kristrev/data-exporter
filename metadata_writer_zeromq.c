@@ -357,9 +357,10 @@ static const char* map_operator(const char* operator) {
         "3 SE", "op2",
         "SWE", "op2",
 
-        "460 99", "op0"
+        "460 99", "op0",
+        "C-OTE", "op0"
     };
-    int items = 20;
+    int items = 21;
     for (int i=0; i<items; i++)
         if (strcmp(lookup[i*2], operator)==0)
             return lookup[i*2+1];
