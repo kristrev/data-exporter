@@ -49,6 +49,7 @@
 #define META_TYPE_POS        0x04
 #define META_TYPE_MUNIN      0x05
 #define META_TYPE_SYSEVENT   0x06
+#define META_TYPE_RADIO      0x08
 
 enum iface_event {
     IFACE_EVENT_DEV_STATE=1,
@@ -82,6 +83,14 @@ enum interface_types {
     INTERFACE_USB_LAN,
     INTERFACE_WAN,
     INTERFACE_WIFI
+};
+
+enum radio_event {
+    RADIO_EVENT_GSM_RR_CIPHER_MODE = 1,
+    RADIO_EVENT_GSM_RR_CHANNEL_CONF,
+    RADIO_EVENT_CELL_LOCATION_GERAN,
+    RADIO_EVENT_GSM_RR_CELL_SEL_RESEL_PARAM,
+    RADIO_EVENT_GRR_CELL_RESEL
 };
 
 #define EVENT_STR_LEN 255
@@ -122,6 +131,13 @@ enum md_writers {
     uint64_t tstamp; \
     uint32_t md_type; \
     uint16_t sequence
+
+#define MD_RADIO_EVENT \
+    MD_EVENT; \
+    uint8_t event_param; \
+    const char *iccid; \
+    const char *imsi; \
+    const char *imei;
 
 struct mnl_socket;
 struct backend_event_loop;
@@ -203,6 +219,76 @@ struct md_munin_event {
     MD_EVENT;
     json_object* json_blob;
 };
+
+struct md_radio_event {
+    MD_RADIO_EVENT;
+};
+
+struct md_radio_cell_loc_geran_event {
+    MD_RADIO_EVENT;
+    uint32_t cell_id;
+    const char *plmn;
+    uint16_t lac;
+    uint16_t arfcn;
+    uint8_t bsic;
+    uint32_t timing_advance;
+    uint16_t rx_lev;
+    const char *cell_geran_info_nmr;
+};
+
+struct md_radio_grr_cell_resel_event {
+    MD_RADIO_EVENT;
+    uint16_t serving_bcch_arfcn;
+    uint16_t serving_pbcch_arfcn;
+    uint32_t serving_c1;
+    uint32_t serving_c2;
+    uint32_t serving_c31;
+    uint32_t serving_c32;
+    const char *neighbors;
+    uint8_t serving_priority_class;
+    uint8_t serving_rxlev_avg;
+    uint8_t serving_five_second_timer;
+    uint8_t cell_reselet_status;
+    uint8_t recent_cell_selection;
+};
+
+struct md_radio_gsm_rr_cell_sel_reset_param_event {
+    MD_RADIO_EVENT;
+    uint8_t cell_reselect_hysteresis;
+    uint8_t ms_txpwr_max_cch;
+    uint8_t rxlev_access_min;
+    uint8_t power_offset_valid;
+    uint8_t power_offset;
+    uint8_t neci;
+    uint8_t acs;
+    uint8_t opt_reselect_param_ind;
+    uint8_t cell_bar_qualify;
+    uint8_t cell_reselect_offset;
+    uint8_t temporary_offset;
+    uint8_t penalty_time;
+};
+
+struct md_radio_gsm_rr_cipher_mode_event {
+    MD_RADIO_EVENT;
+    uint8_t ciphering_state;
+    uint8_t ciphering_algorithm;
+};
+
+struct md_radio_gsm_rr_channel_conf_event {
+    MD_RADIO_EVENT;
+    uint8_t num_ded_chans;
+    uint8_t dtx_indicator;
+    uint8_t power_level;
+    uint8_t starting_time_valid;
+    uint16_t starting_time;
+    uint8_t cipher_flag;
+    uint8_t cipher_algorithm;
+    const char *after_channel_config;
+    const char *before_channel_config;
+    uint8_t channel_mode_1;
+    uint8_t channel_mode_2;
+};
+
 #define md_sysevent md_munin_event
 
 struct md_exporter {
