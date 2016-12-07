@@ -112,6 +112,7 @@ enum md_writers {
     MD_WRITER_SQLITE,
     MD_WRITER_ZEROMQ,
     MD_WRITER_NNE,
+    MD_WRITER_NEAT,
     __MD_WRITER_MAX
 };
 
