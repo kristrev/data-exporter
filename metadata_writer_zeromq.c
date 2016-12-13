@@ -333,7 +333,39 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
 }
 
 
-static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
+char imei_mapping [10][30];
+int   maplen=0;
+static int map_imei(const char* imei, struct md_writer_zeromq *mwz) {
+    for (int i=0;i<maplen;i++) {
+        META_PRINT(mwz->parent->logfile, "COMPARING '%s' and '%s' at index %i\n", imei, imei_mapping[i], i);
+        if (strcmp(imei_mapping[i], imei)==0) {
+            return i;
+        }
+    }
+    FILE *fp = fopen("/tmp/interfaces", "r");
+    if (fp==NULL) return -1;
+    char* line = NULL;
+    int nr=0;
+    int match=-1;
+    size_t len = 0;
+    ssize_t read;
+    while ((read = getline(&line, &len, fp)) != -1) {
+        if(len>29) len=29;
+        strncpy(imei_mapping[nr], line, len);
+        imei_mapping[nr][strlen(imei_mapping[nr])-1]='\0';
+
+        META_PRINT(mwz->parent->logfile, "COMPARING '%s' and '%s' at index %i.\n", imei, imei_mapping[nr], nr);
+
+        if (strcmp(imei_mapping[nr], imei)==0) match=nr;
+        if (++nr==10) break;
+    }
+    maplen=nr;
+    fclose(fp);
+    if (line) free(line);
+    return match;
+}
+
+static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie, struct md_writer_zeromq *mwz)
 {
     struct json_object *obj = NULL;
 
@@ -358,10 +390,14 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
     }
 
     if (mie->ifname && mie->imei && (strncmp(mie->ifname, "usb", 3) == 0)) {
-        const char *iifname=map_imei(mie->imei);
-        if (iifname && !md_zeromq_create_json_string(obj, ZMQ_KEY_IIF_NAME, iifname)) {
-            json_object_put(obj);
-            return NULL;
+        int iifindex=map_imei(mie->imei, mwz);
+        if (iifindex > -1) {
+            char iifname[4]="opX";
+            iifname[2]=iifindex + '0';
+            if (!md_zeromq_create_json_string(obj, ZMQ_KEY_IIF_NAME, iifname)) {
+                json_object_put(obj);
+                return NULL;
+            }
         }
     }
 
@@ -486,7 +522,7 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
 static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
                                    struct md_iface_event *mie)
 {
-    struct json_object *json_obj =  md_zeromq_create_iface_json(mie);
+    struct json_object *json_obj =  md_zeromq_create_iface_json(mie, mwz);
     char topic[8192] = {0};
     int retval = 0;
 
