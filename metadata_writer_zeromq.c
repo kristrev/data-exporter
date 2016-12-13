@@ -337,7 +337,6 @@ char imei_mapping [10][30];
 int   maplen=0;
 static int map_imei(const char* imei, struct md_writer_zeromq *mwz) {
     for (int i=0;i<maplen;i++) {
-        META_PRINT(mwz->parent->logfile, "COMPARING '%s' and '%s' at index %i\n", imei, imei_mapping[i], i);
         if (strcmp(imei_mapping[i], imei)==0) {
             return i;
         }
@@ -353,8 +352,6 @@ static int map_imei(const char* imei, struct md_writer_zeromq *mwz) {
         if(len>29) len=29;
         strncpy(imei_mapping[nr], line, len);
         imei_mapping[nr][strlen(imei_mapping[nr])-1]='\0';
-
-        META_PRINT(mwz->parent->logfile, "COMPARING '%s' and '%s' at index %i.\n", imei, imei_mapping[nr], nr);
 
         if (strcmp(imei_mapping[nr], imei)==0) match=nr;
         if (++nr==10) break;
