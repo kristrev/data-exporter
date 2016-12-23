@@ -111,9 +111,9 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
     strcat(topic, MONROE_ZMQ_DATA_ID_GPS);
     if (mge->nmea_raw) {
     	if (strncmp(mge->nmea_raw, "GPGGA", 5)==0) {
-    	    strcat(MONROE_ZMQ_DATA_ID_GPS, ".GPGGA");
+    	    strcat(topic, ".GPGGA");
     	} else if (strncmp(mge->nmea_raw, "GPRMC", 5)==0) {
-            strcat(MONROE_ZMQ_DATA_ID_GPS, ".GPRMC");
+            strcat(topic, ".GPRMC");
         }	
     } 
     md_zeromq_add_default_fields(obj, mge->sequence, mge->tstamp_tv.tv_sec, topic);
