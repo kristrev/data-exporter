@@ -107,7 +107,16 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
     if (!(obj = json_object_new_object()))
         return NULL;
 
-    md_zeromq_add_default_fields(obj, mge->sequence, mge->tstamp_tv.tv_sec, MONROE_ZMQ_DATA_ID_GPS);
+    char topic[256];
+    topic=MONROE_ZMQ_DATA_ID_GPS;
+    if (mge->nmea_raw) {
+    	if (strncmp(mge->nmea_raw, "GPGGA", 5)==0) {
+    	    topic=strcat(MONROE_ZMQ_DATA_ID_GPS, ".GPGGA"));
+    	} else if (strncmp(mge->nmea_raw, "GPRMC", 5)==0) {
+            topic=strcat(MONROE_ZMQ_DATA_ID_GPS, ".GPRMC"));
+    	} 
+    } 
+    md_zeromq_add_default_fields(obj, mge->sequence, mge->tstamp_tv.tv_sec, topic);
 
     if (!(obj_add = json_object_new_double(mge->latitude))) {
         json_object_put(obj);
