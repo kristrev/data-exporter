@@ -42,7 +42,7 @@
 static void md_input_gps_nsb_handle_event(void *ptr, int32_t fd, uint32_t events)
 {
     struct md_input_gps_nsb *mign = ptr;
-    char rcv_buf[4096];
+    char rcv_buf[4096] = {0};
     struct md_gps_event gps_event;
     int8_t sentence_id = 0;
     struct minmea_sentence_rmc rmc;
@@ -55,8 +55,10 @@ static void md_input_gps_nsb_handle_event(void *ptr, int32_t fd, uint32_t events
 
     sentence_id = minmea_sentence_id(rcv_buf, 0);
 
-    if (sentence_id <= 0)
+    if (sentence_id <= 0) {
+        META_PRINT_SYSLOG(mign->parent, LOG_ERR, "NSB sentence err. Sentence %s\n", rcv_buf);
         return;
+    }
 
     memset(&gps_event, 0, sizeof(struct md_gps_event));
     gettimeofday(&gps_event.tstamp_tv, NULL);
@@ -127,6 +129,7 @@ static uint8_t md_input_gps_nsb_config(struct md_input_gps_nsb *mign,
     backend_event_loop_update(mign->parent->event_loop, EPOLLIN, EPOLL_CTL_ADD,
         sockfd, mign->event_handle);
 
+    META_PRINT_SYSLOG(mign->parent, LOG_INFO, "NSB GPS socket %d\n", sockfd);
     return RETVAL_SUCCESS;
 }
 
@@ -146,7 +149,7 @@ static uint8_t md_input_gps_nsb_init(void *ptr, json_object* config)
     }
 
     if (address == NULL || port == NULL) {
-        META_PRINT_SYSLOG(mign->parent, LOG_ERR, "Missing required GPSD argument\n");
+        META_PRINT_SYSLOG(mign->parent, LOG_ERR, "Missing required NSB GPS argument\n");
         return RETVAL_FAILURE;
     }
 
