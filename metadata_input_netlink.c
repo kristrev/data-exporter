@@ -505,8 +505,6 @@ static void md_input_netlink_radio_gsm_rr_channel_conf(struct md_input_netlink *
 static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
-    //struct md_iface_event mie;
-    uint8_t retval = 0;
     json_object *event_param_json;
     uint8_t event_param;
 
