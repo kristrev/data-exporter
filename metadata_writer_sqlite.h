@@ -84,6 +84,8 @@
 
 #define CREATE_GPS_SQL      "CREATE TABLE IF NOT EXISTS GpsUpdate(" \
                             "NodeId INTEGER NOT NULL," \
+                            "BootCount INTEGER,"\
+                            "BootMultiplier INTEGER,"\
                             "Timestamp INTEGER NOT NULL," \
                             "Sequence INTEGER NOT NULL," \
                             "Latitude REAL NOT NULL," \
@@ -123,10 +125,11 @@
                             "InterfaceId,NetworkAddress,NetworkProvider) " \
                             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
 
-#define INSERT_GPS_EVENT    "INSERT INTO GpsUpdate(NodeId,Timestamp" \
+#define INSERT_GPS_EVENT    "INSERT INTO GpsUpdate(NodeId,BootCount" \
+                            ",BootMultiplier,Timestamp" \
                             ",Sequence,Latitude,Longitude,Altitude" \
                             ",GroundSpeed,NumOfSatelites) " \
-                            "VALUES (?,?,?,?,?,?,?,?)"
+                            "VALUES (?,?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_MONITOR_EVENT "INSERT INTO MonitorEvents(NodeId,Timestamp" \
                              ",Sequence,Boottime) " \
@@ -262,9 +265,11 @@
                             "FROM \"NetworkUpdates\" WHERE Timestamp>=? ORDER BY Timestamp;"
 
 #define DUMP_GPS            "SELECT \"REPLACE INTO GpsUpdates" \
-                            "(NodeId,Timestamp,Sequence,Latitude,Longitude" \
+                            "(NodeId,BootCount,BootMultiplier"\
+                            ",Timestamp,Sequence,Latitude,Longitude" \
                             ",Altitude,Speed,SatelliteCount) VALUES(\" "\
-                            "|| quote(\"NodeId\"), quote(\"Timestamp\"), "\
+                            "|| quote(\"NodeId\"), quote(\"BootCount\"), "\
+                            "quote(\"BootMultiplier\"), quote(\"Timestamp\"), "\
                             "quote(\"Sequence\"), quote(\"Latitude\"), "\
                             "quote(\"Longitude\"), quote(\"Altitude\"), "\
                             "quote(\"GroundSpeed\"), quote(\"NumOfSatelites\") "\

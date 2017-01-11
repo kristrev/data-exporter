@@ -616,6 +616,334 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
     json_object_put(json_obj);
 }
 
+static json_object *md_zeromq_handle_radio_cell_loc_gerant(
+        struct md_writer_zeromq *mwz,
+        struct md_radio_cell_loc_geran_event *event)
+{
+    struct json_object *obj, *geran_info;
+
+    if (!(obj = json_object_new_object()))
+        return NULL;
+
+    if (event->iccid &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imsi &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imei &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_CELL_ID, event->cell_id) ||
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_RADIO_PLMN, event->plmn) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_LAC, event->lac) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_ARFCN, event->arfcn) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_BSIC, event->bsic) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_TIMING_ADVANCE, event->timing_advance) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_RX_LEV, event->rx_lev)){
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->cell_geran_info_nmr) {
+        geran_info = json_tokener_parse(event->cell_geran_info_nmr);
+
+        if (geran_info) {
+            json_object_object_add(obj, ZMQ_KEY_RADIO_CELL_GERAN_INFO_NMR, geran_info);
+        } else {
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to parse geran obj\n");
+            json_object_put(obj);
+            return NULL;
+        }
+    }
+
+    return obj;
+}
+
+static json_object *md_zeromq_handle_radio_cell_resel_event(
+        struct md_writer_zeromq *mwz,
+        struct md_radio_grr_cell_resel_event *event)
+{
+    struct json_object *obj, *neighbors;
+
+    if (!(obj = json_object_new_object()))
+        return NULL;
+
+    if (event->iccid &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imsi &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imei &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_BCCH_ARFCN, event->serving_bcch_arfcn) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_PBCCH_ARFCN, event->serving_pbcch_arfcn) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C1, event->serving_c1) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C2, event->serving_c2) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C31, event->serving_c31) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C32, event->serving_c32) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_PRIORITY_CLASS, event->serving_priority_class) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_RXLEV_AVG, event->serving_rxlev_avg) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_FIVE_SECOND_TIMER, event->serving_five_second_timer) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELET_STATUS, event->cell_reselet_status) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_RECENT_CELL_SELECTION, event->recent_cell_selection)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->neighbors) {
+        neighbors = json_tokener_parse(event->neighbors);
+
+        if (neighbors) {
+            json_object_object_add(obj, ZMQ_KEY_RADIO_GRR_CELL_NEIGHBORS, neighbors);
+        } else {
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to parse neighbor obj\n");
+            json_object_put(obj);
+            return NULL;
+        }
+    }
+    return obj;
+}
+
+static json_object *md_zeromq_handle_radio_cipher_mode_event(
+        struct md_writer_zeromq *mwz,
+        struct md_radio_gsm_rr_cipher_mode_event *event)
+{
+    struct json_object *obj;
+
+    if (!(obj = json_object_new_object()))
+        return NULL;
+
+    if (event->iccid &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imsi &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imei &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_STATE, event->ciphering_state) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_ALGORITHM, event->ciphering_algorithm)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    return obj;
+}
+
+static json_object *md_zeromq_handle_cell_reset_param_event(
+        struct md_writer_zeromq *mwz,
+        struct md_radio_gsm_rr_cell_sel_reset_param_event *event)
+{
+    struct json_object *obj;
+
+    if (!(obj = json_object_new_object()))
+        return NULL;
+
+    if (event->iccid &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imsi &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imei &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELECT_HYSTERESIS, event->cell_reselect_hysteresis) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_MS_TXPWR_MAX_CCH, event->ms_txpwr_max_cch) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_RXLEV_ACCESS_MIN, event->rxlev_access_min) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_POWER_OFFSET_VALID, event->power_offset_valid) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_POWER_OFFSET, event->power_offset) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_NECI, event->neci) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_ACS, event->acs) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_OPT_RESELECT_PARAM_IND, event->opt_reselect_param_ind) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_BAR_QUALIFY, event->cell_bar_qualify) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELECT_OFFSET, event->cell_reselect_offset) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_TEMPORARY_OFFSET, event->temporary_offset) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_PENALTY_TIME, event->penalty_time)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    return obj;
+}
+
+static json_object *md_zeromq_handle_rr_channel_conf_event(
+        struct md_writer_zeromq *mwz,
+        struct md_radio_gsm_rr_channel_conf_event *event)
+{
+    struct json_object *obj, *obj_tmp;
+
+    if (!(obj = json_object_new_object()))
+        return NULL;
+
+    if (event->iccid &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imsi &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->imei &&
+        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_NUM_DED_CHANS, event->num_ded_chans) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_DTX_INDICATOR, event->dtx_indicator) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_POWER_LEVEL, event->power_level) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_STARTING_TIME_VALID, event->starting_time_valid) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_STARTING_TIME, event->starting_time) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHER_FLAG, event->cipher_flag) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHER_ALGORITHM, event->cipher_algorithm) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CHANNEL_MODE_1, event->channel_mode_1) ||
+        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CHANNEL_MODE_2, event->channel_mode_2)) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (event->after_channel_config) {
+        obj_tmp = json_tokener_parse(event->after_channel_config);
+
+        if (obj_tmp) {
+            json_object_object_add(obj, ZMQ_KEY_RADIO_AFTER_CHANNEL_CONFIG, obj_tmp);
+        } else {
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to parse after conf\n");
+            json_object_put(obj);
+            return NULL;
+        }
+    }
+
+    if (event->before_channel_config) {
+        obj_tmp = json_tokener_parse(event->before_channel_config);
+
+        if (obj_tmp) {
+            json_object_object_add(obj, ZMQ_KEY_RADIO_BEFORE_CHANNEL_CONFIG, obj_tmp);
+        } else {
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to parse before conf\n");
+            json_object_put(obj);
+            return NULL;
+        }
+    }
+
+    return obj;
+}
+
+static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz, 
+                                   struct md_radio_event *mre)
+{
+    char msg[8192] = {0};
+    struct json_object *obj = NULL;
+    const char *topic = NULL;
+    int32_t retval;
+
+    switch (mre->event_param) {
+    case RADIO_EVENT_GSM_RR_CIPHER_MODE:
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CIPHER_MODE\n");
+        topic = ZMQ_TOPIC_RADIO_GSM_RR_CIPHER_MODE;
+        obj = md_zeromq_handle_radio_cipher_mode_event(mwz,
+                (struct md_radio_gsm_rr_cipher_mode_event*) mre);
+        break;
+    case RADIO_EVENT_GSM_RR_CHANNEL_CONF:
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CHANNEL_CONF\n");
+        topic = ZMQ_TOPIC_RADIO_GSM_RR_CHANNEL_CONF;
+        obj = md_zeromq_handle_rr_channel_conf_event(mwz,
+                (struct md_radio_gsm_rr_channel_conf_event*) mre);
+        break;
+    case RADIO_EVENT_CELL_LOCATION_GERAN:
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "ZMQ CELL_LOCATION_GERAN\n");
+        topic = ZMQ_TOPIC_RADIO_CELL_LOCATION_GERAN;
+        obj = md_zeromq_handle_radio_cell_loc_gerant(mwz,
+                (struct md_radio_cell_loc_geran_event*) mre);
+        break;
+    case RADIO_EVENT_GSM_RR_CELL_SEL_RESEL_PARAM:
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CELL_SEL_RESEL_PARAM\n");
+        topic = ZMQ_TOPIC_RADIO_GSM_RR_CELL_SEL_RESEL_PARAM;
+        obj = md_zeromq_handle_cell_reset_param_event(mwz, 
+                (struct md_radio_gsm_rr_cell_sel_reset_param_event*) mre);
+        break;
+    case RADIO_EVENT_GRR_CELL_RESEL:
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GRR_CELL_RESEL\n");
+        topic = ZMQ_TOPIC_RADIO_GRR_CELL_RESEL;
+        obj = md_zeromq_handle_radio_cell_resel_event(mwz,
+                (struct md_radio_grr_cell_resel_event*) mre);
+        break;
+    default:
+        break;
+
+    }
+
+    if (!obj) {
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to create JSON\n");
+        return;
+    }
+
+    META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Will send %s %s\n", topic, msg);
+    retval = snprintf(msg, sizeof(msg), "%s %s", topic,
+            json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN));
+
+    if (retval >= sizeof(msg))
+        return;
+
+    retval = zmq_send(mwz->zmq_publisher, msg, strlen(msg), 0);
+    META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Sent %d %s\n", retval, msg);
+}
+
 static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
 {
     struct md_writer_zeromq *mwz = (struct md_writer_zeromq*) writer;
@@ -635,6 +963,9 @@ static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
         break;
     case META_TYPE_INTERFACE:
         md_zeromq_handle_iface(mwz, (struct md_iface_event*) event);
+        break;
+    case META_TYPE_RADIO:
+        md_zeromq_handle_radio(mwz, (struct md_radio_event*) event);
         break;
     default:
         break;

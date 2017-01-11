@@ -729,7 +729,7 @@ int main(int argc, char *argv[])
             num_inputs++;
         }
 #ifdef NSB_GPS
-        else if (!strcmp(key, "nsb_gps")) {
+        else if (!strcmp(key, "gps_nsb")) {
             mde->md_inputs[MD_INPUT_GPS_NSB] = calloc(sizeof(struct md_input_gps_nsb), 1);
 
             if (mde->md_inputs[MD_INPUT_GPS_NSB] == NULL) {
