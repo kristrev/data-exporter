@@ -36,9 +36,9 @@
 #include <sqlite3.h>
 
 #include "metadata_writer_sqlite.h"
-#include "metadata_writer_sqlite_conn.h"
+#include "metadata_writer_inventory_conn.h"
 #include "metadata_writer_sqlite_helpers.h"
-#include "metadata_writer_sqlite_gps.h"
+#include "metadata_writer_inventory_gps.h"
 #include "metadata_writer_sqlite_monitor.h"
 #include "netlink_helpers.h"
 #include "system_helpers.h"
@@ -82,14 +82,14 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
             mws->num_usage_events);
 
     if (mws->num_conn_events) {
-        retval = md_sqlite_conn_copy_db(mws);
+        retval = md_inventory_conn_copy_db(mws);
 
         if (retval == RETVAL_FAILURE)
             num_failed++;
     }
 
     if (mws->num_gps_events) {
-        retval = md_sqlite_gps_copy_db(mws);
+        retval = md_inventory_gps_copy_db(mws);
 
         if (retval == RETVAL_FAILURE)
             num_failed++;
@@ -103,7 +103,7 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
     }
 
     if (mws->num_usage_events) {
-        retval = md_sqlite_conn_usage_copy_db(mws);
+        retval = md_inventory_conn_usage_copy_db(mws);
 
         if (retval == RETVAL_FAILURE)
             num_failed++;
@@ -571,13 +571,13 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
         if (!mws->meta_prefix[0])
             return;
 
-        retval = md_sqlite_handle_conn_event(mws, (struct md_conn_event*) event);
+        retval = md_inventory_handle_conn_event(mws, (struct md_conn_event*) event);
         break;
     case META_TYPE_POS:
         if (!mws->gps_prefix[0])
             return;
 
-        retval = md_sqlite_handle_gps_event(mws, (struct md_gps_event*) event);
+        retval = md_inventory_handle_gps_event(mws, (struct md_gps_event*) event);
         if (!retval)
             mws->num_gps_events++;
         break;

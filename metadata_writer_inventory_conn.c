@@ -35,12 +35,12 @@
 
 #include "metadata_utils.h"
 #include "metadata_exporter.h"
-#include "metadata_writer_sqlite_conn.h"
+#include "metadata_writer_inventory_conn.h"
 #include "metadata_writer_sqlite_helpers.h"
 #include "metadata_exporter_log.h"
 #include "system_helpers.h"
 
-static int32_t md_sqlite_execute_insert_update(struct md_writer_sqlite *mws,
+static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
                                                struct md_conn_event *mce)
 {
     sqlite3_stmt *stmt = mws->insert_update;
@@ -84,7 +84,7 @@ static int32_t md_sqlite_execute_insert_update(struct md_writer_sqlite *mws,
     return sqlite3_step(stmt);
 }
 
-static int32_t md_sqlite_execute_insert(struct md_writer_sqlite *mws,
+static int32_t md_inventory_execute_insert(struct md_writer_sqlite *mws,
                                         struct md_conn_event *mce)
 {
     int32_t retval;
@@ -146,7 +146,7 @@ static int32_t md_sqlite_execute_insert(struct md_writer_sqlite *mws,
     return sqlite3_step(stmt);
 }
 
-static int32_t md_sqlite_update_event(struct md_writer_sqlite *mws,
+static int32_t md_inventory_update_event(struct md_writer_sqlite *mws,
                                       struct md_conn_event *mce)
 {
     sqlite3_stmt *stmt = mws->update_update;
@@ -178,7 +178,7 @@ static int32_t md_sqlite_update_event(struct md_writer_sqlite *mws,
     return sqlite3_step(stmt);
 }
 
-static int32_t md_sqlite_execute_insert_usage(struct md_writer_sqlite *mws,
+static int32_t md_inventory_execute_insert_usage(struct md_writer_sqlite *mws,
                                               struct md_conn_event *mce,
                                               uint64_t date_start)
 {
@@ -219,7 +219,7 @@ static int32_t md_sqlite_execute_insert_usage(struct md_writer_sqlite *mws,
     return sqlite3_step(stmt);
 }
 
-static int32_t md_sqlite_execute_update_usage(struct md_writer_sqlite *mws,
+static int32_t md_inventory_execute_update_usage(struct md_writer_sqlite *mws,
                                               struct md_conn_event *mce,
                                               uint64_t date_start)
 {
@@ -261,10 +261,10 @@ static int32_t md_sqlite_execute_update_usage(struct md_writer_sqlite *mws,
     return sqlite3_step(stmt);
 }
 
-static uint8_t md_sqlite_handle_insert_conn_event(struct md_writer_sqlite *mws,
+static uint8_t md_inventory_handle_insert_conn_event(struct md_writer_sqlite *mws,
                                                   struct md_conn_event *mce)
 {
-    int32_t retval = md_sqlite_execute_insert(mws, mce);
+    int32_t retval = md_inventory_execute_insert(mws, mce);
 
     if (retval != SQLITE_DONE) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "INSERT failed: %s\n", sqlite3_errstr(retval));
@@ -275,7 +275,7 @@ static uint8_t md_sqlite_handle_insert_conn_event(struct md_writer_sqlite *mws,
     return RETVAL_SUCCESS;
 }
 
-static int16_t md_sqlite_get_last_update(struct md_writer_sqlite *mws,
+static int16_t md_inventory_get_last_update(struct md_writer_sqlite *mws,
                                          struct md_conn_event *mce,
                                          int16_t *mode, int16_t *quality)
 {
@@ -329,7 +329,7 @@ static int16_t md_sqlite_get_last_update(struct md_writer_sqlite *mws,
     return retval;
 }
 
-static void md_sqlite_insert_fake_mode(struct md_writer_sqlite *mws,
+static void md_inventory_insert_fake_mode(struct md_writer_sqlite *mws,
                                        struct md_conn_event *mce,
                                        uint8_t mode)
 {
@@ -342,7 +342,7 @@ static void md_sqlite_insert_fake_mode(struct md_writer_sqlite *mws,
     mce->event_param = CONN_EVENT_META_MODE_UPDATE;
     mce->event_value_str = NULL;
     
-    retval = md_sqlite_execute_insert(mws, mce);
+    retval = md_inventory_execute_insert(mws, mce);
 
     if (retval == SQLITE_DONE)
         META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Inserted fake mode update\n");
@@ -355,7 +355,7 @@ static void md_sqlite_insert_fake_mode(struct md_writer_sqlite *mws,
     mce->event_value_str = event_value_str;
 }
 
-static void md_sqlite_insert_fake_quality(struct md_writer_sqlite *mws,
+static void md_inventory_insert_fake_quality(struct md_writer_sqlite *mws,
                                           struct md_conn_event *mce,
                                           uint8_t quality)
 {
@@ -367,7 +367,7 @@ static void md_sqlite_insert_fake_quality(struct md_writer_sqlite *mws,
     mce->event_param = CONN_EVENT_META_QUALITY_UPDATE;
     mce->event_value_str = NULL;
     
-    retval = md_sqlite_execute_insert(mws, mce);
+    retval = md_inventory_execute_insert(mws, mce);
 
     if (retval == SQLITE_DONE)
         META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Inserted fake quality update\n");
@@ -380,7 +380,7 @@ static void md_sqlite_insert_fake_quality(struct md_writer_sqlite *mws,
     mce->event_value_str = event_value_str;
 }
 
-static void md_sqlite_insert_fake_events(struct md_writer_sqlite *mws,
+static void md_inventory_insert_fake_events(struct md_writer_sqlite *mws,
                                          struct md_conn_event *mce,
                                          int32_t update_exists)
 {
@@ -422,33 +422,33 @@ static void md_sqlite_insert_fake_events(struct md_writer_sqlite *mws,
         //Always insert mode on the first update, for consistency (it should be
         //possible to follow the mode update messages exclusively)
         if (mode_in_update != -1)
-            md_sqlite_insert_fake_mode(mws, mce, mode_in_update);
+            md_inventory_insert_fake_mode(mws, mce, mode_in_update);
 
         if (quality_in_update != -1)
-            md_sqlite_insert_fake_quality(mws, mce, quality_in_update);
+            md_inventory_insert_fake_quality(mws, mce, quality_in_update);
 
         return;
     }
 
-    md_sqlite_get_last_update(mws, mce, &mode_in_table, &quality_in_table);
+    md_inventory_get_last_update(mws, mce, &mode_in_table, &quality_in_table);
 
     //Get mode from last update message. If we can read modem mode, then this
     //value will be 0 or larger
     if (mode_in_update != -1 && mode_in_update != mode_in_table)
-        md_sqlite_insert_fake_mode(mws, mce, mode_in_update);
+        md_inventory_insert_fake_mode(mws, mce, mode_in_update);
 
     if (quality_in_update != -1 && quality_in_update != quality_in_table)
-        md_sqlite_insert_fake_quality(mws, mce, quality_in_update);
+        md_inventory_insert_fake_quality(mws, mce, quality_in_update);
 }
 
-static uint8_t md_sqlite_handle_update_event(struct md_writer_sqlite *mws,
+static uint8_t md_inventory_handle_update_event(struct md_writer_sqlite *mws,
                                              struct md_conn_event *mce)
 {
     //Check if update is present in update table by doing an insert
-    int32_t retval = md_sqlite_execute_insert_update(mws, mce);
+    int32_t retval = md_inventory_execute_insert_update(mws, mce);
 
     if (mws->do_fake_updates)
-        md_sqlite_insert_fake_events(mws, mce, retval);
+        md_inventory_insert_fake_events(mws, mce, retval);
 
     //No need to do UPDATE if INSERT was successful
     if (retval == SQLITE_DONE) {
@@ -457,7 +457,7 @@ static uint8_t md_sqlite_handle_update_event(struct md_writer_sqlite *mws,
     }
 
     //Update in update table
-    retval = md_sqlite_update_event(mws, mce);
+    retval = md_inventory_update_event(mws, mce);
 
     if (retval != SQLITE_DONE) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "UPDATE failed: %s\n",
@@ -469,7 +469,7 @@ static uint8_t md_sqlite_handle_update_event(struct md_writer_sqlite *mws,
     return RETVAL_SUCCESS;
 }
 
-static uint8_t md_sqlite_handle_usage_update(struct md_writer_sqlite *mws,
+static uint8_t md_inventory_handle_usage_update(struct md_writer_sqlite *mws,
                                              struct md_conn_event *mce)
 {
     uint64_t date_start = 0;
@@ -487,14 +487,14 @@ static uint8_t md_sqlite_handle_usage_update(struct md_writer_sqlite *mws,
 
     date_start = (uint64_t) timegm(&tm_tmp);
 
-    retval = md_sqlite_execute_update_usage(mws, mce, date_start);
+    retval = md_inventory_execute_update_usage(mws, mce, date_start);
 
     if (retval == SQLITE_DONE && sqlite3_changes(mws->db_handle)) {
         mws->num_usage_events++;
         return RETVAL_SUCCESS;
     }
 
-    retval = md_sqlite_execute_insert_usage(mws, mce, date_start);
+    retval = md_inventory_execute_insert_usage(mws, mce, date_start);
 
     if (retval != SQLITE_DONE) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to update usage\n");
@@ -505,7 +505,7 @@ static uint8_t md_sqlite_handle_usage_update(struct md_writer_sqlite *mws,
     return RETVAL_SUCCESS;
 }
 
-uint8_t md_sqlite_handle_conn_event(struct md_writer_sqlite *mws,
+uint8_t md_inventory_handle_conn_event(struct md_writer_sqlite *mws,
                                            struct md_conn_event *mce)
 {
     uint8_t retval = RETVAL_SUCCESS;
@@ -515,18 +515,18 @@ uint8_t md_sqlite_handle_conn_event(struct md_writer_sqlite *mws,
         mws->last_msg_tstamp = mce->tstamp;
 
     if (mce->event_param == CONN_EVENT_META_UPDATE) {
-        retval = md_sqlite_handle_update_event(mws, mce);
+        retval = md_inventory_handle_update_event(mws, mce);
     } else if (mce->event_param == CONN_EVENT_DATA_USAGE_UPDATE) {
         if (mws->usage_prefix[0] && (mce->rx_bytes || mce->tx_bytes))
-            retval = md_sqlite_handle_usage_update(mws, mce);
+            retval = md_inventory_handle_usage_update(mws, mce);
     } else {
-        retval = md_sqlite_handle_insert_conn_event(mws, mce);
+        retval = md_inventory_handle_insert_conn_event(mws, mce);
     }
 
     return retval;
 }
 
-static uint8_t md_sqlite_conn_dump_db(struct md_writer_sqlite *mws, FILE *output)
+static uint8_t md_inventory_conn_dump_db(struct md_writer_sqlite *mws, FILE *output)
 {
     sqlite3_reset(mws->dump_table);
     sqlite3_reset(mws->dump_update);
@@ -541,7 +541,7 @@ static uint8_t md_sqlite_conn_dump_db(struct md_writer_sqlite *mws, FILE *output
         return RETVAL_SUCCESS;
 }
 
-static uint8_t md_sqlite_conn_delete_db(struct md_writer_sqlite *mws)
+static uint8_t md_inventory_conn_delete_db(struct md_writer_sqlite *mws)
 {
     int32_t retval;
     sqlite3_stmt *delete_update;
@@ -589,7 +589,7 @@ static uint8_t md_sqlite_conn_delete_db(struct md_writer_sqlite *mws)
     return RETVAL_SUCCESS;
 }
 
-static uint8_t md_sqlite_usage_dump_db(struct md_writer_sqlite *mws, FILE *output)
+static uint8_t md_inventory_usage_dump_db(struct md_writer_sqlite *mws, FILE *output)
 {
     sqlite3_reset(mws->dump_usage);
     
@@ -599,7 +599,7 @@ static uint8_t md_sqlite_usage_dump_db(struct md_writer_sqlite *mws, FILE *outpu
         return RETVAL_SUCCESS;
 }
 
-static uint8_t md_sqlite_usage_delete_db(struct md_writer_sqlite *mws)
+static uint8_t md_inventory_usage_delete_db(struct md_writer_sqlite *mws)
 {
     int32_t retval;
 
@@ -614,11 +614,11 @@ static uint8_t md_sqlite_usage_delete_db(struct md_writer_sqlite *mws)
     }
 }
 
-uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws)
+uint8_t md_inventory_conn_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = md_writer_helpers_copy_db(mws->meta_prefix,
-            mws->meta_prefix_len, md_sqlite_conn_dump_db, mws,
-            md_sqlite_conn_delete_db);
+            mws->meta_prefix_len, md_inventory_conn_dump_db, mws,
+            md_inventory_conn_delete_db);
   
     if (retval == RETVAL_SUCCESS) {
         mws->dump_tstamp = mws->last_msg_tstamp;
@@ -632,11 +632,11 @@ uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws)
     return retval;
 }
 
-uint8_t md_sqlite_conn_usage_copy_db(struct md_writer_sqlite *mws)
+uint8_t md_inventory_conn_usage_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = md_writer_helpers_copy_db(mws->usage_prefix,
-            mws->usage_prefix_len, md_sqlite_usage_dump_db, mws,
-            md_sqlite_usage_delete_db);
+            mws->usage_prefix_len, md_inventory_usage_dump_db, mws,
+            md_inventory_usage_delete_db);
    
     if (retval == RETVAL_SUCCESS)
         mws->num_usage_events = 0;

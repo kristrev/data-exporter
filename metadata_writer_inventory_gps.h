@@ -24,17 +24,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef METADATA_WRITER_SQLITE_GPS
-#define METADATA_WRITER_SQLITE_GPS
+#ifndef METADATA_WRITER_INVENTORY_GPS
+#define METADATA_WRITER_INVENTORY_GPS
 
 #include "metadata_exporter.h"
 #include "metadata_writer_sqlite.h"
 
 #define GPS_EVENT_INTVL 1
 
-uint8_t md_sqlite_handle_gps_event(struct md_writer_sqlite *mws,
+uint8_t md_inventory_handle_gps_event(struct md_writer_sqlite *mws,
                                    struct md_gps_event *mge);
-uint8_t md_sqlite_gps_copy_db(struct md_writer_sqlite *mws);
+uint8_t md_inventory_gps_copy_db(struct md_writer_sqlite *mws);
 
 #endif
 

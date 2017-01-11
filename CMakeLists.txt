@@ -37,8 +37,8 @@ if (SQLITE3)
     set(SOURCE ${SOURCE} 
         metadata_writer_sqlite.c
         metadata_writer_sqlite_helpers.c
-        metadata_writer_sqlite_conn.c
-        metadata_writer_sqlite_gps.c
+        metadata_writer_inventory_conn.c
+        metadata_writer_inventory_gps.c
         metadata_writer_sqlite_monitor.c)
     add_definitions("-DSQLITE_SUPPORT")
 endif()

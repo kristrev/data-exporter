@@ -29,11 +29,11 @@
 #include <sys/time.h>
 
 #include "metadata_exporter.h"
-#include "metadata_writer_sqlite_gps.h"
+#include "metadata_writer_inventory_gps.h"
 #include "metadata_writer_sqlite_helpers.h"
 #include "metadata_exporter_log.h"
 
-static uint8_t md_sqlite_gps_dump_db(struct md_writer_sqlite *mws, FILE *output)
+static uint8_t md_inventory_gps_dump_db(struct md_writer_sqlite *mws, FILE *output)
 {
     sqlite3_reset(mws->dump_gps);
     
@@ -43,10 +43,10 @@ static uint8_t md_sqlite_gps_dump_db(struct md_writer_sqlite *mws, FILE *output)
         return RETVAL_SUCCESS;
 }
 
-uint8_t md_sqlite_gps_copy_db(struct md_writer_sqlite *mws)
+uint8_t md_inventory_gps_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = md_writer_helpers_copy_db(mws->gps_prefix,
-            mws->gps_prefix_len, md_sqlite_gps_dump_db, mws,
+            mws->gps_prefix_len, md_inventory_gps_dump_db, mws,
             NULL);
 
     if (retval == RETVAL_SUCCESS)
@@ -55,7 +55,7 @@ uint8_t md_sqlite_gps_copy_db(struct md_writer_sqlite *mws)
     return retval;
 }
 
-uint8_t md_sqlite_handle_gps_event(struct md_writer_sqlite *mws,
+uint8_t md_inventory_handle_gps_event(struct md_writer_sqlite *mws,
                                    struct md_gps_event *mge)
 {
     if (mge->speed)
