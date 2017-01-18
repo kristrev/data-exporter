@@ -32,12 +32,13 @@
 #include "metadata_exporter.h"
 #include "metadata_writer_inventory_gps.h"
 #include "metadata_writer_sqlite_helpers.h"
+#include "metadata_writer_json_helpers.h"
 #include "metadata_exporter_log.h"
 
 static uint8_t md_inventory_gps_dump_db_sql(struct md_writer_sqlite *mws, FILE *output)
 {
     sqlite3_reset(mws->dump_gps);
-    
+
     if (md_sqlite_helpers_dump_write(mws->dump_gps, output))
         return RETVAL_FAILURE;
     else
@@ -46,7 +47,9 @@ static uint8_t md_inventory_gps_dump_db_sql(struct md_writer_sqlite *mws, FILE *
 
 static uint8_t md_inventory_gps_dump_db_json(struct md_writer_sqlite *mws, FILE *output)
 {
-    return RETVAL_SUCCESS;
+    sqlite3_reset(mws->dump_gps);
+
+    return md_json_helpers_dump_write(mws->dump_gps, output);
 }
 
 uint8_t md_inventory_gps_copy_db(struct md_writer_sqlite *mws)

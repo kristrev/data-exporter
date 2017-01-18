@@ -37,6 +37,7 @@
 #include "metadata_exporter.h"
 #include "metadata_writer_inventory_conn.h"
 #include "metadata_writer_sqlite_helpers.h"
+#include "metadata_writer_json_helpers.h"
 #include "metadata_exporter_log.h"
 #include "system_helpers.h"
 
@@ -44,7 +45,7 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
                                                struct md_conn_event *mce)
 {
     sqlite3_stmt *stmt = mws->insert_update;
-    
+
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
 
@@ -543,7 +544,17 @@ static uint8_t md_inventory_conn_dump_db_sql(struct md_writer_sqlite *mws, FILE 
 
 static uint8_t md_inventory_conn_dump_db_json(struct md_writer_sqlite *mws, FILE *output)
 {
-    return RETVAL_SUCCESS;
+    sqlite3_reset(mws->dump_table);
+    sqlite3_reset(mws->dump_update);
+
+    sqlite3_bind_int64(mws->dump_table, 1, mws->dump_tstamp);
+    sqlite3_bind_int64(mws->dump_update, 1, mws->dump_tstamp);
+
+    if (md_json_helpers_dump_write(mws->dump_table, output) ||
+        md_json_helpers_dump_write(mws->dump_update, output))
+        return RETVAL_FAILURE;
+    else
+        return RETVAL_SUCCESS;
 }
 
 static uint8_t md_inventory_conn_delete_db(struct md_writer_sqlite *mws)
@@ -606,7 +617,9 @@ static uint8_t md_inventory_usage_dump_db_sql(struct md_writer_sqlite *mws, FILE
 
 static uint8_t md_inventory_usage_dump_db_json(struct md_writer_sqlite *mws, FILE *output)
 {
-    return RETVAL_SUCCESS;
+    sqlite3_reset(mws->dump_usage);
+
+    return md_json_helpers_dump_write(mws->dump_usage, output);
 }
 
 static uint8_t md_inventory_usage_delete_db(struct md_writer_sqlite *mws)

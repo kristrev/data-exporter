@@ -25,22 +25,31 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 #include <sqlite3.h>
 #include <sys/time.h>
 
 #include "metadata_exporter.h"
 #include "metadata_writer_sqlite_monitor.h"
 #include "metadata_writer_sqlite_helpers.h"
+#include "metadata_writer_json_helpers.h"
 #include "metadata_exporter_log.h"
 
-static uint8_t md_sqlite_monitor_dump_db(struct md_writer_sqlite *mws, FILE *output)
+static uint8_t md_sqlite_monitor_dump_db_sql(struct md_writer_sqlite *mws, FILE *output)
 {
     sqlite3_reset(mws->dump_monitor);
-    
+
     if (md_sqlite_helpers_dump_write(mws->dump_monitor, output))
         return RETVAL_FAILURE;
     else
         return RETVAL_SUCCESS;
+}
+
+static uint8_t md_sqlite_monitor_dump_json(struct md_writer_sqlite *mws, FILE *output)
+{
+    sqlite3_reset(mws->dump_monitor);
+
+    return md_json_helpers_dump_write(mws->dump_monitor, output);
 }
 
 static uint8_t md_sqlite_monitor_delete_db(struct md_writer_sqlite *mws)
@@ -60,8 +69,16 @@ static uint8_t md_sqlite_monitor_delete_db(struct md_writer_sqlite *mws)
 
 uint8_t md_sqlite_monitor_copy_db(struct md_writer_sqlite *mws)
 {
+    dump_db_cb dump_cb = NULL;
+
+    if (!strcmp(mws->parent->output_format, "sql")) {
+        dump_cb = md_sqlite_monitor_dump_db_sql;
+    } else {
+        dump_cb = md_sqlite_monitor_dump_json;
+    }
+
     uint8_t retval = md_writer_helpers_copy_db(mws->monitor_prefix,
-            mws->monitor_prefix_len, md_sqlite_monitor_dump_db, mws,
+            mws->monitor_prefix_len, dump_cb, mws,
             md_sqlite_monitor_delete_db);
 
     if (retval == RETVAL_SUCCESS)

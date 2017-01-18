@@ -291,6 +291,17 @@
                             "|| quote(\"RxData\") || \", TxData=TxData+\"" \
                             "|| quote(\"TxData\") FROM \"DataUse\";"
 
+//Define statements for JSON export
+#define DUMP_EVENTS_JSON    "SELECT * FROM NetworkEvent WHERE Timestamp>=? ORDER BY TimeStamp"
+
+#define DUMP_UPDATES_JSON   "SELECT * FROM NetworkUpdates WHERE Timestamp>=? ORDER BY TimeStamp"
+
+#define DUMP_GPS_JSON       "SELECT * FROM GpsUpdate ORDER BY Timestamp"
+
+#define DUMP_MONITOR_JSON   "SELECT * FROM MonitorEvents ORDER BY Timestamp"
+
+#define DUMP_USAGE_JSON     "SELECT * FROM DataUse"
+
 struct md_event;
 struct md_writer;
 struct backend_timeout_handle;

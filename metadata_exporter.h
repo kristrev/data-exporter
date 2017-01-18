@@ -29,6 +29,7 @@
 
 #include <pthread.h>
 #include <stdint.h>
+#include <sys/time.h>
 
 #include JSON_LOC
 
