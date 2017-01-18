@@ -695,6 +695,7 @@ int main(int argc, char *argv[])
     uint8_t test_mode = 0, num_writers = 0, num_inputs = 0;
     const char *logfile_path = NULL;
     json_object *config = NULL;
+    const char *value = NULL;
 
     //Try to configure core before we set up the outputters
     if (configure_core(&mde))
@@ -835,7 +836,7 @@ int main(int argc, char *argv[])
             mde->use_syslog = json_object_get_int(val);
         }
         else if (!strcmp(key, "output_format")) {
-            char *value = json_object_get_string(val);
+            value = json_object_get_string(val);
             if (strcmp(value, "sql") || strcmp(value, "json")) {
                 strncpy(mde->output_format, value, OUTPUT_FORMAT_BUF_SIZE - 1);
             }

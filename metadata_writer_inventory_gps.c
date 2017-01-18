@@ -25,6 +25,7 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 #include <sqlite3.h>
 #include <sys/time.h>
 
@@ -33,7 +34,7 @@
 #include "metadata_writer_sqlite_helpers.h"
 #include "metadata_exporter_log.h"
 
-static uint8_t md_inventory_gps_dump_db(struct md_writer_sqlite *mws, FILE *output)
+static uint8_t md_inventory_gps_dump_db_sql(struct md_writer_sqlite *mws, FILE *output)
 {
     sqlite3_reset(mws->dump_gps);
     
@@ -43,10 +44,24 @@ static uint8_t md_inventory_gps_dump_db(struct md_writer_sqlite *mws, FILE *outp
         return RETVAL_SUCCESS;
 }
 
+static uint8_t md_inventory_gps_dump_db_json(struct md_writer_sqlite *mws, FILE *output)
+{
+    return RETVAL_SUCCESS;
+}
+
 uint8_t md_inventory_gps_copy_db(struct md_writer_sqlite *mws)
 {
-    uint8_t retval = md_writer_helpers_copy_db(mws->gps_prefix,
-            mws->gps_prefix_len, md_inventory_gps_dump_db, mws,
+    uint8_t retval = RETVAL_SUCCESS;
+    dump_db_cb dump_cb = NULL;
+
+    if (!strcmp(mws->parent->output_format, "sql")) {
+        dump_cb = md_inventory_gps_dump_db_sql;
+    } else {
+        dump_cb = md_inventory_gps_dump_db_json;
+    }
+
+    retval = md_writer_helpers_copy_db(mws->gps_prefix,
+            mws->gps_prefix_len, dump_cb, mws,
             NULL);
 
     if (retval == RETVAL_SUCCESS)
