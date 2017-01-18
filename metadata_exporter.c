@@ -146,7 +146,7 @@ static int configure_core(struct md_exporter **mde)
     }
 
     memset((*mde)->output_format, 0, OUTPUT_FORMAT_BUF_SIZE);
-    strcpy((*mde)->output_format, "json");
+    strcpy((*mde)->output_format, "sql");
 
     if(!((*mde)->event_loop = backend_event_loop_create()))
         return RETVAL_FAILURE;
@@ -835,7 +835,13 @@ int main(int argc, char *argv[])
             mde->use_syslog = json_object_get_int(val);
         }
         else if (!strcmp(key, "output_format")) {
-            strncpy(mde->output_format, json_object_get_string(val), OUTPUT_FORMAT_BUF_SIZE - 1);
+            char *value = json_object_get_string(val);
+            if (strcmp(value, "sql") || strcmp(value, "json")) {
+                strncpy(mde->output_format, value, OUTPUT_FORMAT_BUF_SIZE - 1);
+            }
+            else {
+                print_usage();
+            }
         }
     }
 
