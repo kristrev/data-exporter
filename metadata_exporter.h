@@ -149,7 +149,6 @@ struct backend_timeout_handle;
 struct md_input;
 struct md_writer;
 struct md_event;
-struct timeval;
 
 //TODO: Maybe moved this to some shared header file?
 struct md_iface_event {
@@ -202,7 +201,10 @@ struct md_conn_event {
     const char *interface_name;
     uint32_t network_provider;
     const char *network_address;
-    const char *event_value_str;
+    uint8_t has_ip;
+    uint8_t connectivity;
+    uint8_t connection_mode;
+    uint8_t quality;
 };
 
 struct md_gps_event {
