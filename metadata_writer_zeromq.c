@@ -386,7 +386,7 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie, stru
         return NULL;
     }
 
-    if (mie->ifname && mie->imei && (strncmp(mie->ifname, "usb", 3) == 0)) {
+    if (mie->ifname && mie->imei) {
         int iifindex=map_imei(mie->imei, mwz);
         if (iifindex > -1) {
             char iifname[4]="opX";
