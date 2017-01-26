@@ -30,6 +30,6 @@
 #include <stdint.h>
 #include <sqlite3.h>
 
-uint8_t md_json_helpers_dump_write(sqlite3_stmt *stmt, FILE *output);
+uint8_t md_json_helpers_dump_write(sqlite3_stmt *stmt, json_object *jarray);
 
 #endif

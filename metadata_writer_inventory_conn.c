@@ -535,11 +535,26 @@ static uint8_t md_inventory_conn_dump_db_json(struct md_writer_sqlite *mws, FILE
     sqlite3_bind_int64(mws->dump_table, 1, mws->dump_tstamp);
     sqlite3_bind_int64(mws->dump_update, 1, mws->dump_tstamp);
 
-    if (md_json_helpers_dump_write(mws->dump_table, output) ||
-        md_json_helpers_dump_write(mws->dump_update, output))
+    json_object *jarray = json_object_new_array();
+
+    if (md_json_helpers_dump_write(mws->dump_table, jarray) ||
+        json_object_array_length(jarray) == 0)
+    {
+        json_object_put(jarray);
         return RETVAL_FAILURE;
-    else
-        return RETVAL_SUCCESS;
+    }
+
+    if (md_json_helpers_dump_write(mws->dump_update, jarray) ||
+        json_object_array_length(jarray) == 0)
+    {
+        json_object_put(jarray);
+        return RETVAL_FAILURE;
+    }
+
+    const char *json_str = json_object_to_json_string_ext(jarray, JSON_C_TO_STRING_PLAIN);
+    fprintf(output, "%s", json_str);
+    json_object_put(jarray);
+    return RETVAL_SUCCESS;
 }
 
 static uint8_t md_inventory_conn_delete_db(struct md_writer_sqlite *mws)
@@ -604,7 +619,20 @@ static uint8_t md_inventory_usage_dump_db_json(struct md_writer_sqlite *mws, FIL
 {
     sqlite3_reset(mws->dump_usage);
 
-    return md_json_helpers_dump_write(mws->dump_usage, output);
+    json_object *jarray = json_object_new_array();
+
+    if (md_json_helpers_dump_write(mws->dump_usage, jarray) ||
+        json_object_array_length(jarray) == 0)
+    {
+        json_object_put(jarray);
+        return RETVAL_FAILURE;
+    }
+
+    const char *json_str = json_object_to_json_string_ext(jarray, JSON_C_TO_STRING_PLAIN);
+    fprintf(output, "%s", json_str);
+
+    json_object_put(jarray);
+    return RETVAL_SUCCESS;
 }
 
 static uint8_t md_inventory_usage_delete_db(struct md_writer_sqlite *mws)

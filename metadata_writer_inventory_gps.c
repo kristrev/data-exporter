@@ -49,7 +49,20 @@ static uint8_t md_inventory_gps_dump_db_json(struct md_writer_sqlite *mws, FILE 
 {
     sqlite3_reset(mws->dump_gps);
 
-    return md_json_helpers_dump_write(mws->dump_gps, output);
+    json_object *jarray = json_object_new_array();
+
+    if (md_json_helpers_dump_write(mws->dump_gps, jarray) ||
+        json_object_array_length(jarray) == 0)
+    {
+        json_object_put(jarray);
+        return RETVAL_FAILURE;
+    }
+
+    const char *json_str = json_object_to_json_string_ext(jarray, JSON_C_TO_STRING_PLAIN);
+    fprintf(output, "%s", json_str);
+
+    json_object_put(jarray);
+    return RETVAL_SUCCESS;
 }
 
 uint8_t md_inventory_gps_copy_db(struct md_writer_sqlite *mws)

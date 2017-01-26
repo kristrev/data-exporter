@@ -29,7 +29,7 @@
 
 #include "metadata_exporter.h"
 
-uint8_t md_json_helpers_dump_write(sqlite3_stmt *stmt, FILE *output)
+uint8_t md_json_helpers_dump_write(sqlite3_stmt *stmt, json_object *jarray)
 {
     int32_t retval;
     int32_t column_count, i = 0;
@@ -62,10 +62,10 @@ uint8_t md_json_helpers_dump_write(sqlite3_stmt *stmt, FILE *output)
              }
         }
 
-        const char *json_str = json_object_to_json_string_ext(json, JSON_C_TO_STRING_PLAIN);
-        fprintf(output, "%s\n", json_str);
-
-        json_object_put(json);
+        if (json_object_object_length(json) > 0)
+            json_object_array_add(jarray, json);
+        else
+            json_object_put(json);
     }
 
     if (retval != SQLITE_DONE)
