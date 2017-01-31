@@ -49,6 +49,12 @@ if (NNE)
     add_definitions("-DNNE_SUPPORT")
 endif()
 
+if (NEAT)
+    set(SOURCE ${SOURCE}
+        metadata_writer_neat.c)
+    add_definitions("-DNEAT_SUPPORT")
+endif()
+
 if (ZEROMQ)
     set(LIBS ${LIBS} zmq)
     set(SOURCE ${SOURCE}
