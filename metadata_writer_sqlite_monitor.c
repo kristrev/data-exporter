@@ -47,8 +47,8 @@ static uint8_t md_sqlite_monitor_dump_db_sql(struct md_writer_sqlite *mws, FILE 
 
 static uint8_t md_sqlite_monitor_dump_json(struct md_writer_sqlite *mws, FILE *output)
 {
+    const char *json_str;
     sqlite3_reset(mws->dump_monitor);
-
     json_object *jarray = json_object_new_array();
 
     if (md_json_helpers_dump_write(mws->dump_monitor, jarray) ||
@@ -58,7 +58,7 @@ static uint8_t md_sqlite_monitor_dump_json(struct md_writer_sqlite *mws, FILE *o
         return RETVAL_FAILURE;
     }
 
-    const char *json_str = json_object_to_json_string_ext(jarray, JSON_C_TO_STRING_PLAIN);
+    json_str = json_object_to_json_string_ext(jarray, JSON_C_TO_STRING_PLAIN);
     fprintf(output, "%s", json_str);
 
     json_object_put(jarray);

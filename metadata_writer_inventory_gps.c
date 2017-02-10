@@ -47,6 +47,7 @@ static uint8_t md_inventory_gps_dump_db_sql(struct md_writer_sqlite *mws, FILE *
 
 static uint8_t md_inventory_gps_dump_db_json(struct md_writer_sqlite *mws, FILE *output)
 {
+    const char *json_str;
     sqlite3_reset(mws->dump_gps);
 
     json_object *jarray = json_object_new_array();
@@ -58,7 +59,7 @@ static uint8_t md_inventory_gps_dump_db_json(struct md_writer_sqlite *mws, FILE 
         return RETVAL_FAILURE;
     }
 
-    const char *json_str = json_object_to_json_string_ext(jarray, JSON_C_TO_STRING_PLAIN);
+    json_str = json_object_to_json_string_ext(jarray, JSON_C_TO_STRING_PLAIN);
     fprintf(output, "%s", json_str);
 
     json_object_put(jarray);

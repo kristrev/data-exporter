@@ -34,9 +34,11 @@ uint8_t md_json_helpers_dump_write(sqlite3_stmt *stmt, json_object *jarray)
     int32_t retval;
     int32_t column_count, i = 0;
 
-    while ((retval = sqlite3_step(stmt)) == SQLITE_ROW)
-    {
+    while ((retval = sqlite3_step(stmt)) == SQLITE_ROW) {
         json_object *json = json_object_new_object();
+        if (json == NULL)
+            return RETVAL_FAILURE;
+
         column_count = sqlite3_column_count(stmt);
 
         for (i = 0; i < column_count; i++)
@@ -47,19 +49,23 @@ uint8_t md_json_helpers_dump_write(sqlite3_stmt *stmt, json_object *jarray)
             {
                 case SQLITE_INTEGER:
                     object = json_object_new_int64(sqlite3_column_int64(stmt, i));
-                    json_object_object_add(json, sqlite3_column_name(stmt, i),object);
                     break;
 
                 case SQLITE_TEXT:
                     object = json_object_new_string((const char *)sqlite3_column_text(stmt, i));
-                    json_object_object_add(json, sqlite3_column_name(stmt, i),object);
                     break;
 
                 case SQLITE_FLOAT:
                     object = json_object_new_double(sqlite3_column_double(stmt, i));
-                    json_object_object_add(json, sqlite3_column_name(stmt, i),object);
                     break;
-             }
+            }
+
+            if (object == NULL) {
+                json_object_put(json);
+                return RETVAL_FAILURE;
+            }
+
+            json_object_object_add(json, sqlite3_column_name(stmt, i),object);
         }
 
         if (json_object_object_length(json) > 0)
