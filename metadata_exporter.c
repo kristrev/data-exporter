@@ -146,7 +146,6 @@ static int configure_core(struct md_exporter **mde)
     }
 
     memset((*mde)->output_format, 0, OUTPUT_FORMAT_BUF_SIZE);
-    strcpy((*mde)->output_format, "sql");
 
     if(!((*mde)->event_loop = backend_event_loop_create()))
         return RETVAL_FAILURE;
@@ -646,7 +645,7 @@ static void print_usage()
 #ifdef ZEROMQ_SUPPORT
     md_zeromq_usage();
 #endif
-    fprintf(stderr, "\"output_format\":\t desired output format [sql - default, json]\n");
+    fprintf(stderr, "\"output_format\":\t desired output format [1 - sql (default), 2 - json]\n");
 }
 
 void read_config(char* config_file, json_object** config_obj)
@@ -685,7 +684,7 @@ void read_config(char* config_file, json_object** config_obj)
     json_tokener_free(tok);
 
     *config_obj = parsed;
-}          
+}
 
 int main(int argc, char *argv[])
 {
@@ -695,7 +694,7 @@ int main(int argc, char *argv[])
     uint8_t test_mode = 0, num_writers = 0, num_inputs = 0;
     const char *logfile_path = NULL;
     json_object *config = NULL;
-    const char *value = NULL;
+    int value;
 
     //Try to configure core before we set up the outputters
     if (configure_core(&mde))
@@ -836,12 +835,18 @@ int main(int argc, char *argv[])
             mde->use_syslog = json_object_get_int(val);
         }
         else if (!strcmp(key, "output_format")) {
-            value = json_object_get_string(val);
-            if (strcmp(value, "sql") || strcmp(value, "json")) {
-                strncpy(mde->output_format, value, OUTPUT_FORMAT_BUF_SIZE - 1);
-            }
-            else {
-                print_usage();
+            value = json_object_get_int(val);
+            switch (value) {
+                case FORMAT_SQL:
+                    strncpy(mde->output_format, "sql", OUTPUT_FORMAT_BUF_SIZE - 1);
+                    break;
+
+                case FORMAT_JSON:
+                    strncpy(mde->output_format, "json", OUTPUT_FORMAT_BUF_SIZE - 1);
+                    break;
+
+                default:
+                    print_usage();
             }
         }
     }

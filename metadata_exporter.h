@@ -118,6 +118,12 @@ enum md_writers {
     __MD_WRITER_MAX
 };
 
+enum output_format
+{
+    FORMAT_SQL = 1,
+    FORMAT_JSON
+};
+
 #define MD_INPUT \
     struct md_exporter *parent; \
     uint8_t (*init)(void *ptr, json_object* config); \
