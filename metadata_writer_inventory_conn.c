@@ -658,7 +658,7 @@ uint8_t md_inventory_conn_copy_db(struct md_writer_sqlite *mws)
     uint8_t retval = 0;
     dump_db_cb dump_cb = NULL;
 
-    if (!strcmp(mws->parent->output_format, "sql")) {
+    if (mws->output_format == FORMAT_SQL) {
         dump_cb = md_inventory_conn_dump_db_sql;
     } else {
         dump_cb = md_inventory_conn_dump_db_json;
@@ -685,7 +685,7 @@ uint8_t md_inventory_conn_usage_copy_db(struct md_writer_sqlite *mws)
     uint8_t retval = 0;
     dump_db_cb dump_cb = NULL;
 
-    if (!strcmp(mws->parent->output_format, "sql")) {
+    if (mws->output_format == FORMAT_SQL) {
         dump_cb = md_inventory_usage_dump_db_sql;
     } else {
         dump_cb = md_inventory_usage_dump_db_json;

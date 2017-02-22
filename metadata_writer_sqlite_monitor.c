@@ -84,7 +84,7 @@ uint8_t md_sqlite_monitor_copy_db(struct md_writer_sqlite *mws)
 {
     dump_db_cb dump_cb = NULL;
 
-    if (!strcmp(mws->parent->output_format, "sql")) {
+    if (mws->output_format == FORMAT_SQL) {
         dump_cb = md_sqlite_monitor_dump_db_sql;
     } else {
         dump_cb = md_sqlite_monitor_dump_json;

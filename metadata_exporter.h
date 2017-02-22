@@ -317,7 +317,6 @@ struct md_exporter {
     //could also be a per-app sequence number
     uint16_t seq;
     uint8_t use_syslog;
-    char output_format[OUTPUT_FORMAT_BUF_SIZE];
 };
 
 struct md_input {

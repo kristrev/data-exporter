@@ -148,8 +148,6 @@ static int configure_core(struct md_exporter **mde)
         return RETVAL_FAILURE;
     }
 
-    memset((*mde)->output_format, 0, OUTPUT_FORMAT_BUF_SIZE);
-
     if(!((*mde)->event_loop = backend_event_loop_create()))
         return RETVAL_FAILURE;
 
@@ -651,7 +649,6 @@ static void print_usage()
 #ifdef ZEROMQ_SUPPORT
     md_zeromq_usage();
 #endif
-    fprintf(stderr, "\"output_format\":\t desired output format [1 - sql (default), 2 - json]\n");
 }
 
 void read_config(char* config_file, json_object** config_obj)
@@ -852,21 +849,6 @@ int main(int argc, char *argv[])
         } 
         else if (!strcmp(key, "syslog")) {
             mde->use_syslog = json_object_get_int(val);
-        }
-        else if (!strcmp(key, "output_format")) {
-            value = json_object_get_int(val);
-            switch (value) {
-                case FORMAT_SQL:
-                    strncpy(mde->output_format, "sql", OUTPUT_FORMAT_BUF_SIZE - 1);
-                    break;
-
-                case FORMAT_JSON:
-                    strncpy(mde->output_format, "json", OUTPUT_FORMAT_BUF_SIZE - 1);
-                    break;
-
-                default:
-                    print_usage();
-            }
         }
     }
 

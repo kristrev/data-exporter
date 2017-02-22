@@ -78,7 +78,10 @@ uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
 
     //Length check has already been made when we received command line argument,
     //so I know there is room
-    snprintf(dst_filename, 128, "%s_%d.%s", prefix, mws->node_id, mws->parent->output_format);
+    if (mws->output_format == FORMAT_SQL)
+        snprintf(dst_filename, 128, "%s_%d.sql", prefix, mws->node_id);
+    else
+        snprintf(dst_filename, 128, "%s_%d.json", prefix, mws->node_id);
 
     if (output_fd == -1) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not create temporary filename. Error: %s\n", strerror(errno));

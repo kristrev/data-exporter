@@ -286,7 +286,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
 #endif
     }
 
-    if (!strcmp(mws->parent->output_format,"sql")) {
+    if (mws->output_format == FORMAT_SQL) {
         if (mws->api_version == 2) {
             dump_events = DUMP_EVENTS_V2;
             dump_updates = DUMP_UPDATES_V2;
@@ -434,6 +434,7 @@ void md_sqlite_usage()
     fprintf(stderr, "  \"session_id\":\t\tpath to session id file\n");
     fprintf(stderr, "  \"api_version\":\tbackend API version (default: 1)\n");
     fprintf(stderr, "  \"last_conn_tstamp_path\":\toptional path to file where we read/store timestamp of last conn dump\n");
+    fprintf(stderr, "  \"output_format\":\tJSON/SQL (default SQL)\n");
     fprintf(stderr, "}\n");
 }
 
@@ -442,7 +443,8 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
     struct md_writer_sqlite *mws = ptr;
     uint32_t node_id = 0, interval = DEFAULT_TIMEOUT, num_events = EVENT_LIMIT;
     const char *db_filename = NULL, *meta_prefix = NULL, *gps_prefix = NULL,
-               *monitor_prefix = NULL, *nodeid_file = NULL, *usage_prefix = NULL;
+               *monitor_prefix = NULL, *nodeid_file = NULL, *usage_prefix = NULL,
+               *output_format = NULL;
 
     json_object* subconfig;
     if (json_object_object_get_ex(config, "sqlite", &subconfig)) {
@@ -471,6 +473,8 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
                 mws->api_version = (uint32_t) json_object_get_int(val);
             else if (!strcmp(key, "last_conn_tstamp_path"))
                 mws->last_conn_tstamp_path = strdup(json_object_get_string(val));
+            else if (!strcmp(key, "output_format"))
+                output_format = json_object_get_string(val);    
         }
     }
 
@@ -507,6 +511,17 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
     if (!mws->api_version || mws->api_version > 2) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Unknown backend API version\n");
         return RETVAL_FAILURE;
+    }
+
+    if (output_format) {
+        if (!strcasecmp(output_format, "sql")) {
+            mws->output_format = FORMAT_SQL;
+        } else if (!strcasecmp(output_format, "json")) {
+            mws->output_format = FORMAT_JSON;
+        } else {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Unknown output format\n");
+            return RETVAL_FAILURE;
+        }
     }
 
     META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Done configuring SQLite handle\n");
@@ -714,5 +729,6 @@ void md_sqlite_setup(struct md_exporter *mde, struct md_writer_sqlite* mws) {
     mws->itr_cb = md_sqlite_itr_cb;
     mws->usage = md_sqlite_usage;
     mws->api_version = 1;
+    mws->output_format = FORMAT_SQL;
 }
 

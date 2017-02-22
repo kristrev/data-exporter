@@ -71,7 +71,7 @@ uint8_t md_inventory_gps_copy_db(struct md_writer_sqlite *mws)
     uint8_t retval = RETVAL_SUCCESS;
     dump_db_cb dump_cb = NULL;
 
-    if (!strcmp(mws->parent->output_format, "sql")) {
+    if (mws->output_format == FORMAT_SQL) {
         dump_cb = md_inventory_gps_dump_db_sql;
     } else {
         dump_cb = md_inventory_gps_dump_db_json;
