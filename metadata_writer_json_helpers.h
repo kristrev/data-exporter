@@ -24,15 +24,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef METADATA_WRITER_SQLITE_CONN
-#define METADATA_WRITER_SQLITE_CONN
+#ifndef METADATA_WRITER_JSON_HELPERS_H
+#define METADATA_WRITER_JSON_HELPERS_H
 
-#include "metadata_exporter.h"
-#include "metadata_writer_sqlite.h"
+#include <stdint.h>
+#include <sqlite3.h>
 
-uint8_t md_sqlite_handle_conn_event(struct md_writer_sqlite *mws,
-                                    struct md_conn_event *mce);
-uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws);
-uint8_t md_sqlite_conn_usage_copy_db(struct md_writer_sqlite *mws);
+uint8_t md_json_helpers_dump_write(sqlite3_stmt *stmt, json_object *jarray);
 
 #endif
