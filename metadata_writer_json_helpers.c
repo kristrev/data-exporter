@@ -58,6 +58,9 @@ uint8_t md_json_helpers_dump_write(sqlite3_stmt *stmt, json_object *jarray)
                 case SQLITE_FLOAT:
                     object = json_object_new_double(sqlite3_column_double(stmt, i));
                     break;
+
+                case SQLITE_NULL:
+                    continue;
             }
 
             if (object == NULL) {
