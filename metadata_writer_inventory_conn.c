@@ -390,6 +390,7 @@ static void md_inventory_insert_fake_events(struct md_writer_sqlite *mws,
     if (mws->first_fake_update.tv_sec != 0) {
         gettimeofday(&t_now, NULL);
 
+        fprintf(stderr, "Fake update set to %zu %zu\n", t_now.tv_sec, mws->first_fake_update.tv_sec);
         if (t_now.tv_sec > mws->first_fake_update.tv_sec &&
             t_now.tv_sec - mws->first_fake_update.tv_sec > FAKE_UPDATE_LIMIT) {
             mws->do_fake_updates = 0;
@@ -539,15 +540,13 @@ static uint8_t md_inventory_conn_dump_db_json(struct md_writer_sqlite *mws, FILE
 
     json_object *jarray = json_object_new_array();
 
-    if (md_json_helpers_dump_write(mws->dump_table, jarray) ||
-        json_object_array_length(jarray) == 0)
+    if (md_json_helpers_dump_write(mws->dump_table, jarray))
     {
         json_object_put(jarray);
         return RETVAL_FAILURE;
     }
 
-    if (md_json_helpers_dump_write(mws->dump_update, jarray) ||
-        json_object_array_length(jarray) == 0)
+    if (md_json_helpers_dump_write(mws->dump_update, jarray))
     {
         json_object_put(jarray);
         return RETVAL_FAILURE;
@@ -624,8 +623,7 @@ static uint8_t md_inventory_usage_dump_db_json(struct md_writer_sqlite *mws, FIL
 
     json_object *jarray = json_object_new_array();
 
-    if (md_json_helpers_dump_write(mws->dump_usage, jarray) ||
-        json_object_array_length(jarray) == 0)
+    if (md_json_helpers_dump_write(mws->dump_usage, jarray))
     {
         json_object_put(jarray);
         return RETVAL_FAILURE;

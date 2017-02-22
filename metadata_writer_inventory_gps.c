@@ -52,8 +52,7 @@ static uint8_t md_inventory_gps_dump_db_json(struct md_writer_sqlite *mws, FILE 
 
     json_object *jarray = json_object_new_array();
 
-    if (md_json_helpers_dump_write(mws->dump_gps, jarray) ||
-        json_object_array_length(jarray) == 0)
+    if (md_json_helpers_dump_write(mws->dump_gps, jarray))
     {
         json_object_put(jarray);
         return RETVAL_FAILURE;
