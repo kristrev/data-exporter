@@ -58,7 +58,6 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 7, mce->l4_session_id) ||
         sqlite3_bind_int(stmt, 8, mce->has_ip) ||
         sqlite3_bind_int(stmt, 9, mce->connectivity) ||
-        sqlite3_bind_int(stmt, 10, mce->connection_mode) ||
         sqlite3_bind_int(stmt, 11, mce->quality) ||
         sqlite3_bind_int(stmt, 12, mce->interface_type) ||
         sqlite3_bind_text(stmt, 14, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)){
@@ -76,6 +75,12 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
             return SQLITE_ERROR;
         }
+    }
+
+    if (mce->connection_mode &&
+        sqlite3_bind_int(stmt, 10, mce->connection_mode)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind connection mode\n");
+        return SQLITE_ERROR;
     }
 
     if (mce->network_provider &&
@@ -107,7 +112,6 @@ static int32_t md_inventory_execute_insert(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 9, mce->event_param) ||
         sqlite3_bind_int(stmt, 11, mce->has_ip) ||
         sqlite3_bind_int(stmt, 12, mce->connectivity) ||
-        sqlite3_bind_int(stmt, 13, mce->connection_mode) ||
         sqlite3_bind_int(stmt, 14, mce->quality) ||
         sqlite3_bind_int(stmt, 15, mce->interface_type) ||
         sqlite3_bind_int(stmt, 16, mce->interface_id_type) ||
@@ -127,6 +131,12 @@ static int32_t md_inventory_execute_insert(struct md_writer_sqlite *mws,
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
             return SQLITE_ERROR;
         }
+    }
+
+    if (mce->connection_mode &&
+        sqlite3_bind_int(stmt, 13, mce->connection_mode)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed bind event value (int)\n");
+        return SQLITE_ERROR;
     }
 
     if (mce->event_value != UINT8_MAX &&
@@ -158,7 +168,6 @@ static int32_t md_inventory_update_event(struct md_writer_sqlite *mws,
     if (sqlite3_bind_int64(stmt, 1, mce->tstamp) ||
         sqlite3_bind_int(stmt, 2, mce->has_ip) ||
         sqlite3_bind_int(stmt, 3, mce->connectivity) ||
-        sqlite3_bind_int(stmt, 4, mce->connection_mode) ||
         sqlite3_bind_int(stmt, 5, mce->quality) ||
         sqlite3_bind_int(stmt, 6, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 7, mce->l4_session_id) ||
@@ -177,6 +186,12 @@ static int32_t md_inventory_update_event(struct md_writer_sqlite *mws,
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
             return SQLITE_ERROR;
         }
+    }
+
+    if (mce->connection_mode &&
+        sqlite3_bind_int(stmt, 4, mce->connection_mode)) {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind connection mode\n");
+            return SQLITE_ERROR;
     }
 
     return sqlite3_step(stmt);
@@ -390,7 +405,6 @@ static void md_inventory_insert_fake_events(struct md_writer_sqlite *mws,
     if (mws->first_fake_update.tv_sec != 0) {
         gettimeofday(&t_now, NULL);
 
-        fprintf(stderr, "Fake update set to %zu %zu\n", t_now.tv_sec, mws->first_fake_update.tv_sec);
         if (t_now.tv_sec > mws->first_fake_update.tv_sec &&
             t_now.tv_sec - mws->first_fake_update.tv_sec > FAKE_UPDATE_LIMIT) {
             mws->do_fake_updates = 0;
@@ -408,10 +422,10 @@ static void md_inventory_insert_fake_events(struct md_writer_sqlite *mws,
     if (update_exists == SQLITE_DONE) {
         //Always insert mode on the first update, for consistency (it should be
         //possible to follow the mode update messages exclusively)
-        if (mode_in_update != -1)
+        if (mode_in_update)
             md_inventory_insert_fake_mode(mws, mce, mode_in_update);
 
-        if (quality_in_update != -1)
+        if (quality_in_update)
             md_inventory_insert_fake_quality(mws, mce, quality_in_update);
 
         return;
@@ -421,10 +435,10 @@ static void md_inventory_insert_fake_events(struct md_writer_sqlite *mws,
 
     //Get mode from last update message. If we can read modem mode, then this
     //value will be 0 or larger
-    if (mode_in_update != -1 && mode_in_update != mode_in_table)
+    if (mode_in_update && mode_in_update != mode_in_table)
         md_inventory_insert_fake_mode(mws, mce, mode_in_update);
 
-    if (quality_in_update != -1 && quality_in_update != quality_in_table)
+    if (quality_in_update && quality_in_update != quality_in_table)
         md_inventory_insert_fake_quality(mws, mce, quality_in_update);
 }
 
