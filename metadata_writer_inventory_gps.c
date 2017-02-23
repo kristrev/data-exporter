@@ -110,26 +110,28 @@ uint8_t md_inventory_handle_gps_event(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 3, mws->session_id_multip) ||   // BootMultiplier
         sqlite3_bind_int(stmt, 4, mge->tstamp_tv.tv_sec) ||
         sqlite3_bind_int(stmt, 5, mge->sequence) ||
-        sqlite3_bind_double(stmt, 6, mge->latitude) ||
-        sqlite3_bind_double(stmt, 7, mge->longitude)) {
+        sqlite3_bind_int(stmt, 6, mge->md_type) ||
+        sqlite3_bind_int(stmt, 7, 0) ||
+        sqlite3_bind_double(stmt, 8, mge->latitude) ||
+        sqlite3_bind_double(stmt, 9, mge->longitude)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT query (GPS)\n");
         return RETVAL_FAILURE;
     }
 
     if (mge->altitude &&
-        sqlite3_bind_double(stmt, 8, mge->altitude)) {
+        sqlite3_bind_double(stmt, 10, mge->altitude)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind altitude\n");
         return RETVAL_FAILURE;
     }
 
     if (mws->gps_speed &&
-        sqlite3_bind_double(stmt, 9, mws->gps_speed)) {
+        sqlite3_bind_double(stmt, 11, mws->gps_speed)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind speed\n");
         return RETVAL_FAILURE;
     }
 
     if (mge->satellites_tracked &&
-        sqlite3_bind_int(stmt, 10, mge->satellites_tracked)) {
+        sqlite3_bind_int(stmt, 12, mge->satellites_tracked)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind num. satelites\n");
         return RETVAL_FAILURE;
     }

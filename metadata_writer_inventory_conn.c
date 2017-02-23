@@ -56,35 +56,37 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 5, mce->sequence) ||
         sqlite3_bind_int(stmt, 6, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 7, mce->l4_session_id) ||
-        sqlite3_bind_int(stmt, 8, mce->has_ip) ||
-        sqlite3_bind_int(stmt, 9, mce->connectivity) ||
-        sqlite3_bind_int(stmt, 11, mce->quality) ||
-        sqlite3_bind_int(stmt, 12, mce->interface_type) ||
-        sqlite3_bind_text(stmt, 14, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)){
+        sqlite3_bind_int(stmt, 8, mce->event_type) ||
+        sqlite3_bind_int(stmt, 9, mce->event_param) ||
+        sqlite3_bind_int(stmt, 10, mce->has_ip) ||
+        sqlite3_bind_int(stmt, 11, mce->connectivity) ||
+        sqlite3_bind_int(stmt, 13, mce->quality) ||
+        sqlite3_bind_int(stmt, 14, mce->interface_type) ||
+        sqlite3_bind_text(stmt, 16, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)){
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
     }
 
     if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
-        if (sqlite3_bind_text(stmt, 13, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 15, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
             return SQLITE_ERROR;
         }
     } else {
-        if (sqlite3_bind_text(stmt, 13, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 15, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
             return SQLITE_ERROR;
         }
     }
 
     if (mce->connection_mode &&
-        sqlite3_bind_int(stmt, 10, mce->connection_mode)) {
+        sqlite3_bind_int(stmt, 12, mce->connection_mode)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind connection mode\n");
         return SQLITE_ERROR;
     }
 
     if (mce->network_provider &&
-        sqlite3_bind_int(stmt, 15, mce->network_provider)) {
+        sqlite3_bind_int(stmt, 17, mce->network_provider)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind network provider\n");
         return SQLITE_ERROR;
     }
@@ -212,15 +214,15 @@ static int32_t md_inventory_execute_insert_usage(struct md_writer_sqlite *mws,
     //interface_id variable, so some special handling is needed for now
     if (mce->imei) {
         if (sqlite3_bind_text(stmt, 1, mce->imei, strlen(mce->imei), SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 3, mce->imsi, strlen(mce->imsi), SQLITE_STATIC)) {
+            sqlite3_bind_text(stmt, 5, mce->imsi, strlen(mce->imsi), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI/IMSI\n");
             return SQLITE_ERROR;
         }
 
-        interface_id_idx = 2;
+        interface_id_idx = 4;
     } else {
-        if (sqlite3_bind_text(stmt, 2, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 3, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 4, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 5, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind empty IMEI/IMSI\n");
             return SQLITE_ERROR;
         }
@@ -228,9 +230,11 @@ static int32_t md_inventory_execute_insert_usage(struct md_writer_sqlite *mws,
 
     if (sqlite3_bind_text(stmt, interface_id_idx, mce->interface_id,
             strlen(mce->interface_id), SQLITE_STATIC) ||
-        sqlite3_bind_int64(stmt, 4, date_start) ||
-        sqlite3_bind_int64(stmt, 5, mce->rx_bytes) ||
-        sqlite3_bind_int64(stmt, 6, mce->tx_bytes)) {
+        sqlite3_bind_int(stmt, 2, mce->event_type) ||
+        sqlite3_bind_int(stmt, 3, mce->event_param) ||
+        sqlite3_bind_int64(stmt, 6, date_start) ||
+        sqlite3_bind_int64(stmt, 7, mce->rx_bytes) ||
+        sqlite3_bind_int64(stmt, 8, mce->tx_bytes)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT usage query\n");
         return SQLITE_ERROR;
     }

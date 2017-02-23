@@ -65,7 +65,6 @@
                             "NetworkProvider INT," \
                             "NetworkAddressFamily INTEGER NOT NULL," \
                             "NetworkAddress TEXT NOT NULL," \
-                            "Type INTEGER NOT NULL," \
                             "PRIMARY KEY(SessionId,SessionIdMultip,Timestamp,"\
                             "Sequence))"
 
@@ -77,6 +76,8 @@
                             "Sequence INTEGER NOT NULL," \
                             "L3SessionId INTEGER NOT NULL," \
                             "L4SessionId INTEGER NOT NULL DEFAULT 0," \
+                            "EventType INTEGER NOT NULL," \
+                            "EventParam INTEGER NOT NULL," \
                             "HasIp INTEGER," \
                             "Connectivity INTEGER," \
                             "ConnectionMode INTEGER," \
@@ -85,7 +86,6 @@
                             "InterfaceId TEXT NOT NULL," \
                             "NetworkAddress TEXT NOT NULL," \
                             "NetworkProvider INT," \
-                            "Type INTEGER NOT NULL," \
                             "PRIMARY KEY(SessionId,SessionIdMultip,"\
                             "L3SessionId,L4SessionId,InterfaceId,"\
                             "NetworkAddress))"
@@ -96,12 +96,13 @@
                             "BootMultiplier INTEGER,"\
                             "Timestamp INTEGER NOT NULL," \
                             "Sequence INTEGER NOT NULL," \
+                            "EventType INTEGER NOT NULL," \
+                            "EventParam INTEGER NOT NULL," \
                             "Latitude REAL NOT NULL," \
                             "Longitude REAL NOT NULL," \
                             "Altitude REAL," \
                             "GroundSpeed REAL," \
                             "NumOfSatelites INTEGER," \
-                            "Type INTEGER NOT NULL," \
                             "PRIMARY KEY(NodeId) ON CONFLICT REPLACE)"
 
 #define CREATE_MONITOR_SQL  "CREATE TABLE IF NOT EXISTS MonitorEvents(" \
@@ -109,11 +110,12 @@
                             "Timestamp   INTEGER NOT NULL," \
                             "Sequence    INTEGER NOT NULL," \
                             "Boottime    INTEGER NOT NULL," \
-                            "Type    INTEGER NOT NULL," \
                             "PRIMARY KEY(NodeId,Timestamp,Sequence))"
 
 #define CREATE_USAGE_SQL    "CREATE TABLE IF NOT EXISTS DataUse(" \
                             "DeviceId TEXT NOT NULL," \
+                            "EventType INTEGER NOT NULL," \
+                            "EventParam INTEGER NOT NULL," \
                             "SimCardIccid TEXT NOT NULL," \
                             "SimCardImsi TEXT NOT NULL," \
                             "Timestamp INTEGER NOT NULL," \
@@ -126,28 +128,29 @@
                             "L4SessionId,EventType,EventParam,EventValue,"\
                             "HasIp,Connectivity,ConnectionMode,Quality,InterfaceType,"\
                             "InterfaceIdType,InterfaceId,NetworkProvider,NetworkAddressFamily,"\
-                            "NetworkAddress,Type) " \
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)"
+                            "NetworkAddress) " \
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_UPDATE       "INSERT INTO NetworkUpdates(NodeId,SessionId,"\
                             "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
-                            "L4SessionId,HasIp,Connectivity,ConnectionMode,Quality"\
-                            ",InterfaceType,InterfaceId,NetworkAddress,NetworkProvider,Type) " \
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,2)"
+                            "L4SessionId,EventType,EventParam,HasIp,Connectivity,ConnectionMode,Quality"\
+                            ",InterfaceType,InterfaceId,NetworkAddress,NetworkProvider) " \
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_GPS_EVENT    "INSERT INTO GpsUpdate(NodeId,BootCount" \
                             ",BootMultiplier,Timestamp" \
-                            ",Sequence,Latitude,Longitude,Altitude" \
-                            ",GroundSpeed,NumOfSatelites,Type) " \
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,2)"
+                            ",Sequence,EventType,EventParam,Latitude,Longitude" \
+                            ",Altitude,GroundSpeed,NumOfSatelites) " \
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_MONITOR_EVENT "INSERT INTO MonitorEvents(NodeId,Timestamp" \
-                             ",Sequence,Boottime,Type) " \
-                             "VALUES (?,?,?,?,1)"
+                             ",Sequence,Boottime) " \
+                             "VALUES (?,?,?,?,?)"
 
-#define INSERT_USAGE        "INSERT INTO DataUse(DeviceId,SimCardIccid" \
-                            ",SimCardImsi,Timestamp,RxData,TxData) " \
-                            "VALUES (?,?,?,?,?,?)"
+#define INSERT_USAGE        "INSERT INTO DataUse(DeviceId,EventType,EventParam" \
+                            ",SimCardIccid" \
+                            ",SimCardImsi,Timestamp,RxData,TxData,Type) " \
+                            "VALUES (?,?,?,?,?,?,?,?)"
 
 #define SELECT_LAST_UPDATE  "SELECT HasIp,Connectivity,ConnectionMode,Quality "\
                             " FROM NetworkUpdates WHERE "\
