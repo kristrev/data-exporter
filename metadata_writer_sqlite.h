@@ -149,7 +149,7 @@
 
 #define INSERT_USAGE        "INSERT INTO DataUse(DeviceId,EventType,EventParam" \
                             ",SimCardIccid" \
-                            ",SimCardImsi,Timestamp,RxData,TxData,Type) " \
+                            ",SimCardImsi,Timestamp,RxData,TxData) " \
                             "VALUES (?,?,?,?,?,?,?,?)"
 
 #define SELECT_LAST_UPDATE  "SELECT HasIp,Connectivity,ConnectionMode,Quality "\
