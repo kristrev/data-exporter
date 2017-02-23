@@ -145,7 +145,7 @@
 
 #define INSERT_MONITOR_EVENT "INSERT INTO MonitorEvents(NodeId,Timestamp" \
                              ",Sequence,Boottime) " \
-                             "VALUES (?,?,?,?,?)"
+                             "VALUES (?,?,?,?)"
 
 #define INSERT_USAGE        "INSERT INTO DataUse(DeviceId,EventType,EventParam" \
                             ",SimCardIccid" \
