@@ -30,6 +30,7 @@
 #include <zmq.h>
 #include JSON_LOC
 #include <getopt.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -43,13 +44,22 @@
 #include "metadata_utils.h"
 #include "metadata_exporter_log.h"
 
+static int64_t override_tstamp() {
+    /* return a current export timestamp with us precision, as the 
+       event timestamp with sec resolution is not deemed useful.   */
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    return 1000000 * tv.tv_sec + tv.tv_usec; 
+}
+
 static void md_zeromq_add_default_fields(json_object* obj, int seq, int64_t tstamp, char* dataid) {
     json_object* obj_add = NULL;
 
     if (!(obj_add = json_object_new_int(seq))) return;
     json_object_object_add(obj, ZMQ_KEY_SEQ, obj_add);
 
-    if (!(obj_add = json_object_new_int64(tstamp))) return;
+    if (!(obj_add = json_object_new_int64(override_tstamp()))) return;
     json_object_object_add(obj, ZMQ_KEY_TSTAMP, obj_add);
 
 #ifdef MONROE
@@ -381,7 +391,7 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie, stru
     md_zeromq_add_default_fields(obj, mie->sequence, mie->tstamp, MONROE_ZMQ_DATA_ID_MODEM);
 
     if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, mie->sequence) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, mie->tstamp) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, override_tstamp()) ||
         !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, mie->iccid) ||
         !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, mie->imsi) ||
         !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, mie->imei)) {
@@ -643,7 +653,7 @@ static json_object *md_zeromq_handle_radio_cell_loc_gerant(
     }
 
     if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, override_tstamp()) ||
         !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_CELL_ID, event->cell_id) ||
         !md_zeromq_create_json_string(obj, ZMQ_KEY_RADIO_PLMN, event->plmn) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_LAC, event->lac) ||
@@ -698,7 +708,7 @@ static json_object *md_zeromq_handle_radio_cell_resel_event(
     }
 
     if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, override_tstamp()) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_BCCH_ARFCN, event->serving_bcch_arfcn) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_PBCCH_ARFCN, event->serving_pbcch_arfcn) ||
         !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C1, event->serving_c1) ||
@@ -756,7 +766,7 @@ static json_object *md_zeromq_handle_radio_cipher_mode_event(
     }
 
     if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, override_tstamp()) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_STATE, event->ciphering_state) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_ALGORITHM, event->ciphering_algorithm)) {
         json_object_put(obj);
@@ -794,7 +804,7 @@ static json_object *md_zeromq_handle_cell_reset_param_event(
     }
 
     if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, override_tstamp()) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELECT_HYSTERESIS, event->cell_reselect_hysteresis) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_MS_TXPWR_MAX_CCH, event->ms_txpwr_max_cch) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_RXLEV_ACCESS_MIN, event->rxlev_access_min) ||
@@ -842,7 +852,7 @@ static json_object *md_zeromq_handle_rr_channel_conf_event(
     }
 
     if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, override_tstamp()) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_NUM_DED_CHANS, event->num_ded_chans) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_DTX_INDICATOR, event->dtx_indicator) ||
         !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_POWER_LEVEL, event->power_level) ||
