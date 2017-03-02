@@ -132,9 +132,9 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
     char topic[256] = ""; 
     strcat(topic, MONROE_ZMQ_DATA_ID_GPS);
     if (mge->nmea_raw) {
-    	if (strncmp(mge->nmea_raw, "GPGGA", 5)==0) {
+    	if (strncmp(mge->nmea_raw, "$GPGGA", 6)==0) {
     	    strcat(topic, ".GPGGA");
-    	} else if (strncmp(mge->nmea_raw, "GPRMC", 5)==0) {
+    	} else if (strncmp(mge->nmea_raw, "$GPRMC", 6)==0) {
             strcat(topic, ".GPRMC");
         }	
     } 
