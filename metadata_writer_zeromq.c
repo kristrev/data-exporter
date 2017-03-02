@@ -129,7 +129,7 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
     if (!(obj = json_object_new_object()))
         return NULL;
 
-    char topic[256];
+    char topic[256] = ""; 
     strcat(topic, MONROE_ZMQ_DATA_ID_GPS);
     if (mge->nmea_raw) {
     	if (strncmp(mge->nmea_raw, "GPGGA", 5)==0) {
