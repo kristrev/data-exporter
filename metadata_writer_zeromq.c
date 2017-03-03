@@ -129,16 +129,7 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
     if (!(obj = json_object_new_object()))
         return NULL;
 
-    char topic[256] = ""; 
-    strcat(topic, MONROE_ZMQ_DATA_ID_GPS);
-    if (mge->nmea_raw) {
-    	if (strncmp(mge->nmea_raw, "$GPGGA", 6)==0) {
-    	    strcat(topic, ".GPGGA");
-    	} else if (strncmp(mge->nmea_raw, "$GPRMC", 6)==0) {
-            strcat(topic, ".GPRMC");
-        }	
-    } 
-    md_zeromq_add_default_fields(obj, mge->sequence, mge->tstamp_tv.tv_sec, topic);
+    md_zeromq_add_default_fields(obj, mge->sequence, mge->tstamp_tv.tv_sec, MONROE_ZMQ_DATA_ID_GPS);
 
     if (!(obj_add = json_object_new_double(mge->latitude))) {
         json_object_put(obj);
@@ -228,7 +219,16 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
         return;
     }
 
-    retval = snprintf(topic, sizeof(topic), "%s %s", MONROE_ZMQ_TOPIC_GPS, json_object_to_json_string_ext(gps_obj, JSON_C_TO_STRING_PLAIN));
+    char suffix[10]="";
+    if (mge->nmea_raw) {
+    	if (strncmp(mge->nmea_raw, "$GPGGA", 6)==0) {
+    	    suffix = ".GPGGA";
+    	} else if (strncmp(mge->nmea_raw, "$GPRMC", 6)==0) {
+          suffix = ".GPRMC";
+      }
+    }
+
+    retval = snprintf(topic, sizeof(topic), "%s%s %s", MONROE_ZMQ_TOPIC_GPS, suffix, json_object_to_json_string_ext(gps_obj, JSON_C_TO_STRING_PLAIN));
 
     if (retval < sizeof(topic)) {
         md_zeromq_send(mwz, topic, strlen(topic), 0);
