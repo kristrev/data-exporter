@@ -219,7 +219,7 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
         return;
     }
 
-    char suffix[10]="";
+    char* suffix="";
     if (mge->nmea_raw) {
     	if (strncmp(mge->nmea_raw, "$GPGGA", 6)==0) {
     	    suffix = ".GPGGA";
