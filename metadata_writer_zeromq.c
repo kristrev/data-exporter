@@ -43,7 +43,7 @@
 #include "metadata_utils.h"
 #include "metadata_exporter_log.h"
 
-static void md_zeromq_add_default_fields(json_object* obj, int seq, int64_t tstamp, char* dataid) {
+static void md_zeromq_writer_add_default_fields(json_object* obj, int seq, int64_t tstamp, char* dataid) {
     json_object* obj_add = NULL;
 
     if (!(obj_add = json_object_new_int(seq))) return;
@@ -61,7 +61,7 @@ static void md_zeromq_add_default_fields(json_object* obj, int seq, int64_t tsta
 #endif
 }
 
-static json_object *md_zeromq_create_json_string(json_object *obj,
+static json_object *md_zeromq_writer_create_json_string(json_object *obj,
         const char *key, const char *value)
 {
     if (value == NULL) return NULL;
@@ -75,39 +75,39 @@ static json_object *md_zeromq_create_json_string(json_object *obj,
     return obj;
 }
 
-static json_object *md_zeromq_create_json_int(json_object *obj, const char *key,
+static json_object *md_zeromq_writer_create_json_int(json_object *obj, const char *key,
         int value)
 {
     struct json_object *obj_add = json_object_new_int(value);
 
     if (!obj_add)
         return NULL;
-    
+
     json_object_object_add(obj, key, obj_add);
     return obj;
 }
 
-static json_object *md_zeromq_create_json_int64(json_object *obj,
+static json_object *md_zeromq_writer_create_json_int64(json_object *obj,
         const char *key, int64_t value)
 {
     struct json_object *obj_add = json_object_new_int64(value);
 
     if (!obj_add)
         return NULL;
-    
+
     json_object_object_add(obj, key, obj_add);
     return obj;
 }
 
-static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
+static json_object* md_zeromq_writer_create_json_gps(struct md_writer_zeromq *mwz,
                                               struct md_gps_event *mge)
 {
     struct json_object *obj = NULL, *obj_add = NULL;
 
     if (!(obj = json_object_new_object()))
         return NULL;
-    
-    md_zeromq_add_default_fields(obj, mge->sequence, mge->tstamp_tv.tv_sec, MONROE_ZMQ_DATA_ID_GPS);
+
+    md_zeromq_writer_add_default_fields(obj, mge->sequence, mge->tstamp_tv.tv_sec, MONROE_ZMQ_DATA_ID_GPS);
 
     if (!(obj_add = json_object_new_double(mge->latitude))) {
         json_object_put(obj);
@@ -158,15 +158,15 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
         }
         json_object_object_add(obj, ZMQ_KEY_NMEA, obj_add);
     }
-    
+
     return obj;
 }
 
-static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
+static void md_zeromq_writer_handle_gps(struct md_writer_zeromq *mwz,
                                  struct md_gps_event *mge)
 {
     char topic[8192];
-    struct json_object *gps_obj = md_zeromq_create_json_gps(mwz, mge);
+    struct json_object *gps_obj = md_zeromq_writer_create_json_gps(mwz, mge);
     int retval;
 
     if (gps_obj == NULL) {
@@ -182,7 +182,7 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
     json_object_put(gps_obj);
 }
 
-static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
+static void md_zeromq_writer_handle_munin(struct md_writer_zeromq *mwz,
                                    struct md_munin_event *mge)
 {
     char topic[8192];
@@ -194,7 +194,7 @@ static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
         retval = snprintf(dataid, sizeof(dataid), "%s.%s", MONROE_ZMQ_DATA_ID_SENSOR, key);
         if (retval >= sizeof(dataid)) continue;
 
-        md_zeromq_add_default_fields(val, mge->sequence, mge->tstamp, dataid);
+        md_zeromq_writer_add_default_fields(val, mge->sequence, mge->tstamp, dataid);
 
         retval = snprintf(topic, sizeof(topic), "%s.%s %s", MONROE_ZMQ_TOPIC_SENSOR, key, json_object_to_json_string_ext(val, JSON_C_TO_STRING_PLAIN));
         if (retval < sizeof(topic)) {
@@ -204,13 +204,13 @@ static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
 }
 
 
-static void md_zeromq_handle_sysevent(struct md_writer_zeromq *mwz,
+static void md_zeromq_writer_handle_sysevent(struct md_writer_zeromq *mwz,
                                    struct md_sysevent *mge)
 {
     char topic[8192];
     int retval;
 
-    md_zeromq_add_default_fields(mge->json_blob, mge->sequence, mge->tstamp, MONROE_ZMQ_DATA_ID_SYSEVENT);
+    md_zeromq_writer_add_default_fields(mge->json_blob, mge->sequence, mge->tstamp, MONROE_ZMQ_DATA_ID_SYSEVENT);
     retval = snprintf(topic, sizeof(topic), "%s %s", MONROE_ZMQ_TOPIC_SYSEVENT, json_object_to_json_string_ext(mge->json_blob, JSON_C_TO_STRING_PLAIN));
     if (retval < sizeof(topic)) {
         zmq_send(mwz->zmq_publisher , topic, strlen(topic), 0);
@@ -218,7 +218,7 @@ static void md_zeromq_handle_sysevent(struct md_writer_zeromq *mwz,
 }
 
 
-static json_object* md_zeromq_create_json_modem_default(struct md_writer_zeromq *mwz,
+static json_object* md_zeromq_writer_create_json_modem_default(struct md_writer_zeromq *mwz,
                                                         struct md_conn_event *mce)
 {
     struct json_object *obj = NULL, *obj_add = NULL;
@@ -226,7 +226,7 @@ static json_object* md_zeromq_create_json_modem_default(struct md_writer_zeromq 
     if (!(obj = json_object_new_object()))
         return NULL;
 
-    md_zeromq_add_default_fields(obj, mce->sequence, mce->tstamp, MONROE_ZMQ_DATA_ID_CONNECTIVITY);
+    md_zeromq_writer_add_default_fields(obj, mce->sequence, mce->tstamp, MONROE_ZMQ_DATA_ID_CONNECTIVITY);
 
     if (!(obj_add = json_object_new_string(mce->interface_id))) {
         json_object_put(obj);
@@ -249,7 +249,7 @@ static json_object* md_zeromq_create_json_modem_default(struct md_writer_zeromq 
     return obj;
 }
 
-static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
+static void md_zeromq_writer_handle_conn(struct md_writer_zeromq *mwz,
                                    struct md_conn_event *mce)
 {
     struct json_object *json_obj, *obj_add;
@@ -268,7 +268,7 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
         mode = mce->connection_mode;
     }
     
-    json_obj = md_zeromq_create_json_modem_default(mwz, mce);
+    json_obj = md_zeromq_writer_create_json_modem_default(mwz, mce);
 
     if (!(obj_add = json_object_new_int(mode))) {
         json_object_put(json_obj);
@@ -302,141 +302,141 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
     json_object_put(json_obj);
 }
 
-static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
+static json_object *md_zeromq_writer_create_iface_json(struct md_iface_event *mie)
 {
     struct json_object *obj = NULL;
 
     if (!(obj = json_object_new_object()))
         return NULL;
 
-    md_zeromq_add_default_fields(obj, mie->sequence, mie->tstamp, MONROE_ZMQ_DATA_ID_MODEM);
+    md_zeromq_writer_add_default_fields(obj, mie->sequence, mie->tstamp, MONROE_ZMQ_DATA_ID_MODEM);
 
-    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, mie->sequence) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, mie->tstamp) ||
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, mie->iccid) ||
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, mie->imsi) ||
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, mie->imei)) {
+    if (!md_zeromq_writer_create_json_int(obj, ZMQ_KEY_SEQ, mie->sequence) ||
+        !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_TSTAMP, mie->tstamp) ||
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_ICCID, mie->iccid) ||
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IMSI, mie->imsi) ||
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IMEI, mie->imei)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->isp_name && !md_zeromq_create_json_string(obj, ZMQ_KEY_ISP_NAME,
+    if (mie->isp_name && !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_ISP_NAME,
                 mie->isp_name)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->ip_addr && !md_zeromq_create_json_string(obj, ZMQ_KEY_IP_ADDR,
+    if (mie->ip_addr && !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IP_ADDR,
                 mie->ip_addr)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->internal_ip_addr && !md_zeromq_create_json_string(obj,
+    if (mie->internal_ip_addr && !md_zeromq_writer_create_json_string(obj,
                 ZMQ_KEY_INTERNAL_IP_ADDR, mie->internal_ip_addr)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->ifname && !md_zeromq_create_json_string(obj, ZMQ_KEY_IF_NAME,
+    if (mie->ifname && !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IF_NAME,
                 mie->ifname)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->imsi_mccmnc &&
-            !md_zeromq_create_json_int64(obj, ZMQ_KEY_IMSI_MCCMNC, mie->imsi_mccmnc)) {
+            !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_IMSI_MCCMNC, mie->imsi_mccmnc)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->nw_mccmnc &&
-            !md_zeromq_create_json_int64(obj, ZMQ_KEY_NW_MCCMNC, mie->nw_mccmnc)) {
+            !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_NW_MCCMNC, mie->nw_mccmnc)) {
         json_object_put(obj);
         return NULL;
     }
 
     if ((mie->cid > -1 && mie->lac > -1) &&
-            (!md_zeromq_create_json_int(obj, ZMQ_KEY_LAC, mie->lac) ||
-             !md_zeromq_create_json_int(obj, ZMQ_KEY_CID, mie->cid))) {
+            (!md_zeromq_writer_create_json_int(obj, ZMQ_KEY_LAC, mie->lac) ||
+             !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_CID, mie->cid))) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->rscp != (int16_t) META_IFACE_INVALID &&
-            !md_zeromq_create_json_int(obj, ZMQ_KEY_RSCP, mie->rscp)) {
+            !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RSCP, mie->rscp)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->lte_rsrp != (int16_t) META_IFACE_INVALID &&
-            !md_zeromq_create_json_int(obj, ZMQ_KEY_LTE_RSRP, mie->lte_rsrp)) {
+            !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_LTE_RSRP, mie->lte_rsrp)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->lte_freq &&
-            !md_zeromq_create_json_int(obj, ZMQ_KEY_LTE_FREQ, mie->lte_freq)) {
+            !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_LTE_FREQ, mie->lte_freq)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->rssi != (int8_t) META_IFACE_INVALID &&
-            !md_zeromq_create_json_int(obj, ZMQ_KEY_RSSI, mie->rssi)) {
+            !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RSSI, mie->rssi)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->ecio != (int8_t) META_IFACE_INVALID &&
-            !md_zeromq_create_json_int(obj, ZMQ_KEY_ECIO, mie->ecio)) {
+            !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_ECIO, mie->ecio)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->lte_rssi != (int8_t) META_IFACE_INVALID &&
-            !md_zeromq_create_json_int(obj, ZMQ_KEY_LTE_RSSI, mie->lte_rssi)) {
+            !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_LTE_RSSI, mie->lte_rssi)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->lte_rsrq != (int8_t) META_IFACE_INVALID &&
-            !md_zeromq_create_json_int(obj, ZMQ_KEY_LTE_RSRQ, mie->lte_rsrq)) {
+            !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_LTE_RSRQ, mie->lte_rsrq)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->device_mode && !md_zeromq_create_json_int(obj, ZMQ_KEY_DEVICE_MODE,
+    if (mie->device_mode && !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_DEVICE_MODE,
                 mie->device_mode)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->device_submode && !md_zeromq_create_json_int(obj, ZMQ_KEY_DEVICE_SUBMODE,
+    if (mie->device_submode && !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_DEVICE_SUBMODE,
                 mie->device_submode)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->lte_band && !md_zeromq_create_json_int(obj, ZMQ_KEY_LTE_BAND,
+    if (mie->lte_band && !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_LTE_BAND,
                 mie->lte_band)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (mie->device_state && !md_zeromq_create_json_int(obj, ZMQ_KEY_DEVICE_STATE,
+    if (mie->device_state && !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_DEVICE_STATE,
                 mie->device_state)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->lte_pci != 0xFFFF &&
-            !md_zeromq_create_json_int(obj, ZMQ_KEY_LTE_PCI, mie->lte_pci)) {
+            !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_LTE_PCI, mie->lte_pci)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (mie->enodeb_id >= 0 &&
-            !md_zeromq_create_json_int(obj, ZMQ_KEY_ENODEB_ID, mie->enodeb_id)) {
+            !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_ENODEB_ID, mie->enodeb_id)) {
         json_object_put(obj);
         return NULL;
     }
@@ -444,10 +444,10 @@ static json_object *md_zeromq_create_iface_json(struct md_iface_event *mie)
     return obj;
 }
 
-static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
+static void md_zeromq_writer_handle_iface(struct md_writer_zeromq *mwz,
                                    struct md_iface_event *mie)
 {
-    struct json_object *json_obj =  md_zeromq_create_iface_json(mie);
+    struct json_object *json_obj =  md_zeromq_writer_create_iface_json(mie);
     char topic[8192] = {0};
     int retval = 0;
 
@@ -534,7 +534,7 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
     json_object_put(json_obj);
 }
 
-static json_object *md_zeromq_handle_radio_cell_loc_gerant(
+static json_object *md_zeromq_writer_handle_radio_cell_loc_gerant(
         struct md_writer_zeromq *mwz,
         struct md_radio_cell_loc_geran_event *event)
 {
@@ -544,32 +544,32 @@ static json_object *md_zeromq_handle_radio_cell_loc_gerant(
         return NULL;
 
     if (event->iccid &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (event->imsi &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (event->imei &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_CELL_ID, event->cell_id) ||
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_RADIO_PLMN, event->plmn) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_LAC, event->lac) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_ARFCN, event->arfcn) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_BSIC, event->bsic) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_TIMING_ADVANCE, event->timing_advance) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_RX_LEV, event->rx_lev)){
+    if (!md_zeromq_writer_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_RADIO_CELL_ID, event->cell_id) ||
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_RADIO_PLMN, event->plmn) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_LAC, event->lac) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_ARFCN, event->arfcn) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_BSIC, event->bsic) ||
+        !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_RADIO_TIMING_ADVANCE, event->timing_advance) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_RX_LEV, event->rx_lev)){
         json_object_put(obj);
         return NULL;
     }
@@ -589,7 +589,7 @@ static json_object *md_zeromq_handle_radio_cell_loc_gerant(
     return obj;
 }
 
-static json_object *md_zeromq_handle_radio_cell_resel_event(
+static json_object *md_zeromq_writer_handle_radio_cell_resel_event(
         struct md_writer_zeromq *mwz,
         struct md_radio_grr_cell_resel_event *event)
 {
@@ -599,36 +599,36 @@ static json_object *md_zeromq_handle_radio_cell_resel_event(
         return NULL;
 
     if (event->iccid &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (event->imsi &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (event->imei &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_BCCH_ARFCN, event->serving_bcch_arfcn) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_PBCCH_ARFCN, event->serving_pbcch_arfcn) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C1, event->serving_c1) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C2, event->serving_c2) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C31, event->serving_c31) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C32, event->serving_c32) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_PRIORITY_CLASS, event->serving_priority_class) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_RXLEV_AVG, event->serving_rxlev_avg) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_FIVE_SECOND_TIMER, event->serving_five_second_timer) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELET_STATUS, event->cell_reselet_status) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_RECENT_CELL_SELECTION, event->recent_cell_selection)) {
+    if (!md_zeromq_writer_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_BCCH_ARFCN, event->serving_bcch_arfcn) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_PBCCH_ARFCN, event->serving_pbcch_arfcn) ||
+        !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C1, event->serving_c1) ||
+        !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C2, event->serving_c2) ||
+        !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C31, event->serving_c31) ||
+        !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_RADIO_SERVING_C32, event->serving_c32) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_PRIORITY_CLASS, event->serving_priority_class) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_RXLEV_AVG, event->serving_rxlev_avg) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_SERVING_FIVE_SECOND_TIMER, event->serving_five_second_timer) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELET_STATUS, event->cell_reselet_status) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_RECENT_CELL_SELECTION, event->recent_cell_selection)) {
         json_object_put(obj);
         return NULL;
     }
@@ -647,7 +647,7 @@ static json_object *md_zeromq_handle_radio_cell_resel_event(
     return obj;
 }
 
-static json_object *md_zeromq_handle_radio_cipher_mode_event(
+static json_object *md_zeromq_writer_handle_radio_cipher_mode_event(
         struct md_writer_zeromq *mwz,
         struct md_radio_gsm_rr_cipher_mode_event *event)
 {
@@ -657,27 +657,27 @@ static json_object *md_zeromq_handle_radio_cipher_mode_event(
         return NULL;
 
     if (event->iccid &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (event->imsi &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (event->imei &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_STATE, event->ciphering_state) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_ALGORITHM, event->ciphering_algorithm)) {
+    if (!md_zeromq_writer_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_STATE, event->ciphering_state) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_CIPHERING_ALGORITHM, event->ciphering_algorithm)) {
         json_object_put(obj);
         return NULL;
     }
@@ -685,7 +685,7 @@ static json_object *md_zeromq_handle_radio_cipher_mode_event(
     return obj;
 }
 
-static json_object *md_zeromq_handle_cell_reset_param_event(
+static json_object *md_zeromq_writer_handle_cell_reset_param_event(
         struct md_writer_zeromq *mwz,
         struct md_radio_gsm_rr_cell_sel_reset_param_event *event)
 {
@@ -695,37 +695,37 @@ static json_object *md_zeromq_handle_cell_reset_param_event(
         return NULL;
 
     if (event->iccid &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (event->imsi &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (event->imei &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELECT_HYSTERESIS, event->cell_reselect_hysteresis) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_MS_TXPWR_MAX_CCH, event->ms_txpwr_max_cch) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_RXLEV_ACCESS_MIN, event->rxlev_access_min) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_POWER_OFFSET_VALID, event->power_offset_valid) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_POWER_OFFSET, event->power_offset) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_NECI, event->neci) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_ACS, event->acs) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_OPT_RESELECT_PARAM_IND, event->opt_reselect_param_ind) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_BAR_QUALIFY, event->cell_bar_qualify) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELECT_OFFSET, event->cell_reselect_offset) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_TEMPORARY_OFFSET, event->temporary_offset) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_PENALTY_TIME, event->penalty_time)) {
+    if (!md_zeromq_writer_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELECT_HYSTERESIS, event->cell_reselect_hysteresis) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_MS_TXPWR_MAX_CCH, event->ms_txpwr_max_cch) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_RXLEV_ACCESS_MIN, event->rxlev_access_min) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_POWER_OFFSET_VALID, event->power_offset_valid) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_POWER_OFFSET, event->power_offset) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_NECI, event->neci) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_ACS, event->acs) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_OPT_RESELECT_PARAM_IND, event->opt_reselect_param_ind) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_CELL_BAR_QUALIFY, event->cell_bar_qualify) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_CELL_RESELECT_OFFSET, event->cell_reselect_offset) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_TEMPORARY_OFFSET, event->temporary_offset) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_PENALTY_TIME, event->penalty_time)) {
         json_object_put(obj);
         return NULL;
     }
@@ -733,7 +733,7 @@ static json_object *md_zeromq_handle_cell_reset_param_event(
     return obj;
 }
 
-static json_object *md_zeromq_handle_rr_channel_conf_event(
+static json_object *md_zeromq_writer_handle_rr_channel_conf_event(
         struct md_writer_zeromq *mwz,
         struct md_radio_gsm_rr_channel_conf_event *event)
 {
@@ -743,34 +743,34 @@ static json_object *md_zeromq_handle_rr_channel_conf_event(
         return NULL;
 
     if (event->iccid &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_ICCID, event->iccid)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (event->imsi &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IMSI, event->imsi)) {
         json_object_put(obj);
         return NULL;
     }
 
     if (event->imei &&
-        !md_zeromq_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
+        !md_zeromq_writer_create_json_string(obj, ZMQ_KEY_IMEI, event->imei)) {
         json_object_put(obj);
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
-        !md_zeromq_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_NUM_DED_CHANS, event->num_ded_chans) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_DTX_INDICATOR, event->dtx_indicator) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_POWER_LEVEL, event->power_level) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_STARTING_TIME_VALID, event->starting_time_valid) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_STARTING_TIME, event->starting_time) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHER_FLAG, event->cipher_flag) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CIPHER_ALGORITHM, event->cipher_algorithm) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CHANNEL_MODE_1, event->channel_mode_1) ||
-        !md_zeromq_create_json_int(obj, ZMQ_KEY_RADIO_CHANNEL_MODE_2, event->channel_mode_2)) {
+    if (!md_zeromq_writer_create_json_int(obj, ZMQ_KEY_SEQ, event->sequence) ||
+        !md_zeromq_writer_create_json_int64(obj, ZMQ_KEY_TSTAMP, event->tstamp) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_NUM_DED_CHANS, event->num_ded_chans) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_DTX_INDICATOR, event->dtx_indicator) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_POWER_LEVEL, event->power_level) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_STARTING_TIME_VALID, event->starting_time_valid) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_STARTING_TIME, event->starting_time) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_CIPHER_FLAG, event->cipher_flag) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_CIPHER_ALGORITHM, event->cipher_algorithm) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_CHANNEL_MODE_1, event->channel_mode_1) ||
+        !md_zeromq_writer_create_json_int(obj, ZMQ_KEY_RADIO_CHANNEL_MODE_2, event->channel_mode_2)) {
         json_object_put(obj);
         return NULL;
     }
@@ -802,7 +802,7 @@ static json_object *md_zeromq_handle_rr_channel_conf_event(
     return obj;
 }
 
-static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz, 
+static void md_zeromq_writer_handle_radio(struct md_writer_zeromq *mwz,
                                    struct md_radio_event *mre)
 {
     char msg[8192] = {0};
@@ -814,31 +814,31 @@ static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz,
     case RADIO_EVENT_GSM_RR_CIPHER_MODE:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CIPHER_MODE\n");
         topic = ZMQ_TOPIC_RADIO_GSM_RR_CIPHER_MODE;
-        obj = md_zeromq_handle_radio_cipher_mode_event(mwz,
+        obj = md_zeromq_writer_handle_radio_cipher_mode_event(mwz,
                 (struct md_radio_gsm_rr_cipher_mode_event*) mre);
         break;
     case RADIO_EVENT_GSM_RR_CHANNEL_CONF:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CHANNEL_CONF\n");
         topic = ZMQ_TOPIC_RADIO_GSM_RR_CHANNEL_CONF;
-        obj = md_zeromq_handle_rr_channel_conf_event(mwz,
+        obj = md_zeromq_writer_handle_rr_channel_conf_event(mwz,
                 (struct md_radio_gsm_rr_channel_conf_event*) mre);
         break;
     case RADIO_EVENT_CELL_LOCATION_GERAN:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "ZMQ CELL_LOCATION_GERAN\n");
         topic = ZMQ_TOPIC_RADIO_CELL_LOCATION_GERAN;
-        obj = md_zeromq_handle_radio_cell_loc_gerant(mwz,
+        obj = md_zeromq_writer_handle_radio_cell_loc_gerant(mwz,
                 (struct md_radio_cell_loc_geran_event*) mre);
         break;
     case RADIO_EVENT_GSM_RR_CELL_SEL_RESEL_PARAM:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GSM_RR_CELL_SEL_RESEL_PARAM\n");
         topic = ZMQ_TOPIC_RADIO_GSM_RR_CELL_SEL_RESEL_PARAM;
-        obj = md_zeromq_handle_cell_reset_param_event(mwz, 
+        obj = md_zeromq_writer_handle_cell_reset_param_event(mwz,
                 (struct md_radio_gsm_rr_cell_sel_reset_param_event*) mre);
         break;
     case RADIO_EVENT_GRR_CELL_RESEL:
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "GRR_CELL_RESEL\n");
         topic = ZMQ_TOPIC_RADIO_GRR_CELL_RESEL;
-        obj = md_zeromq_handle_radio_cell_resel_event(mwz,
+        obj = md_zeromq_writer_handle_radio_cell_resel_event(mwz,
                 (struct md_radio_grr_cell_resel_event*) mre);
         break;
     default:
@@ -862,35 +862,35 @@ static void md_zeromq_handle_radio(struct md_writer_zeromq *mwz,
     META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Sent %d %s\n", retval, msg);
 }
 
-static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
+static void md_zeromq_writer_handle(struct md_writer *writer, struct md_event *event)
 {
     struct md_writer_zeromq *mwz = (struct md_writer_zeromq*) writer;
 
     switch (event->md_type) {
     case META_TYPE_POS:
-        md_zeromq_handle_gps(mwz, (struct md_gps_event*) event);
+        md_zeromq_writer_handle_gps(mwz, (struct md_gps_event*) event);
         break;
     case META_TYPE_CONNECTION:
-        md_zeromq_handle_conn(mwz, (struct md_conn_event*) event);
+        md_zeromq_writer_handle_conn(mwz, (struct md_conn_event*) event);
         break;
     case META_TYPE_MUNIN:
-        md_zeromq_handle_munin(mwz, (struct md_munin_event*) event);
+        md_zeromq_writer_handle_munin(mwz, (struct md_munin_event*) event);
         break;
     case META_TYPE_SYSEVENT:
-        md_zeromq_handle_sysevent(mwz, (struct md_sysevent*) event);
+        md_zeromq_writer_handle_sysevent(mwz, (struct md_sysevent*) event);
         break;
     case META_TYPE_INTERFACE:
-        md_zeromq_handle_iface(mwz, (struct md_iface_event*) event);
+        md_zeromq_writer_handle_iface(mwz, (struct md_iface_event*) event);
         break;
     case META_TYPE_RADIO:
-        md_zeromq_handle_radio(mwz, (struct md_radio_event*) event);
+        md_zeromq_writer_handle_radio(mwz, (struct md_radio_event*) event);
         break;
     default:
         break;
     }
 }
 
-static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
+static uint8_t md_zeromq_writer_config(struct md_writer_zeromq *mwz,
                                 const char *address,
                                 uint16_t port)
 {
@@ -918,7 +918,7 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
     return RETVAL_SUCCESS;
 }
 
-static int32_t md_zeromq_init(void *ptr, json_object* config)
+static int32_t md_zeromq_writer_init(void *ptr, json_object* config)
 {
     struct md_writer_zeromq *mwz = ptr;
     const char *address = NULL;
@@ -944,10 +944,10 @@ static int32_t md_zeromq_init(void *ptr, json_object* config)
         return RETVAL_FAILURE;
     }
 
-    return md_zeromq_config(mwz, address, port);
+    return md_zeromq_writer_config(mwz, address, port);
 }
 
-void md_zeromq_usage()
+void md_zeromq_writer_usage()
 {
     fprintf(stderr, "\"zmq\": {\t\tZeroMQ writer\n");
     fprintf(stderr, "  \"address\":\t\taddress used by publisher\n");
@@ -955,9 +955,8 @@ void md_zeromq_usage()
     fprintf(stderr, "},\n");
 }
 
-void md_zeromq_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz) {
+void md_zeromq_writer_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz) {
     mwz->parent = mde;
-    mwz->init = md_zeromq_init;
-    mwz->handle = md_zeromq_handle;
+    mwz->init = md_zeromq_writer_init;
+    mwz->handle = md_zeromq_writer_handle;
 }
-

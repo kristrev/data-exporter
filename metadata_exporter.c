@@ -834,7 +834,7 @@ int main(int argc, char *argv[])
                 exit(EXIT_FAILURE);
             }
 
-            md_zeromq_setup(mde, (struct md_writer_zeromq*) mde->md_writers[MD_WRITER_ZEROMQ]);
+            md_zeromq_writer_setup(mde, (struct md_writer_zeromq*) mde->md_writers[MD_WRITER_ZEROMQ]);
             num_writers++;
         }
 #endif
