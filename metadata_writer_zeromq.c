@@ -925,7 +925,7 @@ static int32_t md_zeromq_writer_init(void *ptr, json_object* config)
     uint16_t port = 0;
 
     json_object* subconfig;
-    if (json_object_object_get_ex(config, "zmq", &subconfig)) {
+    if (json_object_object_get_ex(config, "zmq_writer", &subconfig)) {
         json_object_object_foreach(subconfig, key, val) {
             if (!strcmp(key, "address"))
                 address = json_object_get_string(val);
@@ -949,7 +949,7 @@ static int32_t md_zeromq_writer_init(void *ptr, json_object* config)
 
 void md_zeromq_writer_usage()
 {
-    fprintf(stderr, "\"zmq\": {\t\tZeroMQ writer\n");
+    fprintf(stderr, "\"zmq_writer\": {\t\tZeroMQ writer\n");
     fprintf(stderr, "  \"address\":\t\taddress used by publisher\n");
     fprintf(stderr, "  \"port\":\t\tport used by publisher\n");
     fprintf(stderr, "},\n");

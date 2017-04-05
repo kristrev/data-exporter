@@ -108,6 +108,7 @@ enum md_inputs {
     MD_INPUT_GPS_NSB,
     MD_INPUT_MUNIN,
     MD_INPUT_SYSEVENT,
+    MD_INPUT_ZEROMQ,
     __MD_INPUT_MAX
 };
 

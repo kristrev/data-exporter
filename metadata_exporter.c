@@ -58,7 +58,7 @@
 #ifdef SQLITE_SUPPORT
     #include "metadata_writer_sqlite.h"
 #endif
-#ifdef ZEROMQ_SUPPORT
+#ifdef ZEROMQ_SUPPORT_WRITER
     #include "metadata_writer_zeromq.h"
 #endif
 #ifdef NNE_SUPPORT
@@ -646,8 +646,8 @@ static void print_usage()
 #ifdef SQLITE_SUPPORT
     md_sqlite_usage();
 #endif
-#ifdef ZEROMQ_SUPPORT
-    md_zeromq_usage();
+#ifdef ZEROMQ_SUPPORT_WRITER
+    md_zeromq_writer_usage();
 #endif
 }
 
@@ -825,7 +825,7 @@ int main(int argc, char *argv[])
             num_writers++;
         }
 #endif
-#ifdef ZEROMQ_SUPPORT
+#ifdef ZEROMQ_SUPPORT_WRITER
         else if (!strcmp(key, "zmq")) {
             mde->md_writers[MD_WRITER_ZEROMQ] = calloc(sizeof(struct md_writer_zeromq), 1);
 

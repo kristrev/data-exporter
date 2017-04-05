@@ -56,11 +56,18 @@ if (NEAT)
     add_definitions("-DNEAT_SUPPORT")
 endif()
 
-if (ZEROMQ)
+if (ZEROMQ_WRITER)
     set(LIBS ${LIBS} zmq)
     set(SOURCE ${SOURCE}
         metadata_writer_zeromq.c)
-    add_definitions("-DZEROMQ_SUPPORT")
+    add_definitions("-DZEROMQ_SUPPORT_WRITER")
+endif()
+
+if (ZEROMQ_INPUT)
+    set(LIBS ${LIBS} zmq)
+    set(SOURCE ${SOURCE}
+        metadata_input_zeromq.c)
+    add_definitions("-DZEROMQ_SUPPORT_INPUT")
 endif()
 
 if (GPSD)
