@@ -41,4 +41,5 @@ struct md_writer_zeromq {
     void *zmq_publisher;
 };
 
+void md_zeromq_writer_usage();
 void md_zeromq_writer_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz);

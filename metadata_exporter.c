@@ -44,6 +44,9 @@
 #ifdef GPSD_SUPPORT
     #include "metadata_input_gpsd.h"
 #endif
+#ifdef ZEROMQ_SUPPORT_INPUT
+    #include "metadata_input_zeromq.h"
+#endif
 #ifdef MUNIN_SUPPORT
     #include "metadata_input_munin.h"
 #endif
@@ -224,16 +227,16 @@ static struct json_object *create_fake_gps_rmc_obj()
 static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
         uint8_t event_param, char *event_value_str, uint64_t tstamp)
 {
-	struct json_object *obj = NULL, *obj_add = NULL;
+    struct json_object *obj = NULL, *obj_add = NULL;
     uint8_t rand_value = 0;
     uint64_t rand_value_64 = 0;
     struct timeval tv;
 
-	if (!(obj = json_object_new_object()))
-		return NULL;
+    if (!(obj = json_object_new_object()))
+        return NULL;
 
     gettimeofday(&tv, NULL);
-	if (!(obj_add = json_object_new_int64(tv.tv_sec))) {
+    if (!(obj_add = json_object_new_int64(tv.tv_sec))) {
         json_object_put(obj);
         return NULL;
     }
@@ -320,7 +323,6 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
     }
     json_object_object_add(obj, "interface_id", obj_add);
 
-    
     if (!(obj_add = json_object_new_string("1234567"))) {
         json_object_put(obj);
         return NULL;
@@ -542,7 +544,7 @@ static void test_netlink(uint32_t packets)
     //
     //When testing, there is no need to multicast. We can just send to the PID
     netlink_addr.nl_pid = getpid();
-    
+
     srand(time(NULL));
 
     //TODO: Specify number of packets from command line
@@ -697,7 +699,6 @@ int main(int argc, char *argv[])
     uint8_t test_mode = 0, num_writers = 0, num_inputs = 0;
     const char *logfile_path = NULL;
     json_object *config = NULL;
-    int value;
 
     //Try to configure core before we set up the outputters
     if (configure_core(&mde))
@@ -744,6 +745,19 @@ int main(int argc, char *argv[])
             }
 
             md_gps_nsb_setup(mde, (struct md_input_gps_nsb*) mde->md_inputs[MD_INPUT_GPS_NSB]);
+            num_inputs++;
+        }
+#endif
+#ifdef ZEROMQ_SUPPORT_INPUT
+        else if (!strcmp(key, "zmq_input")) {
+            mde->md_inputs[MD_INPUT_ZEROMQ] = calloc(sizeof(struct md_input_zeromq), 1);
+
+            if (mde->md_inputs[MD_INPUT_ZEROMQ] == NULL) {
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate ZeroMQ input\n");
+                exit(EXIT_FAILURE);
+            }
+
+            md_zeromq_input_setup(mde, (struct md_input_zeromq*) mde->md_inputs[MD_INPUT_ZEROMQ]);
             num_inputs++;
         }
 #endif
