@@ -70,7 +70,7 @@ static json_object *md_zeromq_writer_create_json_string(json_object *obj,
 
     if (!obj_add)
         return NULL;
-    
+
     json_object_object_add(obj, key, obj_add);
     return obj;
 }

@@ -27,12 +27,29 @@
 #pragma once
 #include "metadata_exporter.h"
 
+#define ZMQ_NL_INTERFACE_TOPIC "CELERWAY.NL.INTERFACE"
+
+#define ZMQ_NL_RADIOEVENT_TOPIC "CELERWAY.NL.RADIOEVENT"
+
+#define ZMQ_NL_GPS_TOPIC "CELERWAY.NL.GPS"
+
+#define ZMQ_DLB_METADATA_TOPIC "CELERWAY.DLB.METADATA"
+
+#define ZMQ_DLB_DATAUSAGE_TOPIC "CELERWAY.DLB.DATAUSAGE"
+
+#define ZMQ_NL_PUBLISHER_PORT "5555"
+
+#define ZMQ_DLB_PUBLISHER_PORT "5557"
+
 struct backend_epoll_handle;
 
 struct md_input_zeromq {
     MD_INPUT;
     struct backend_epoll_handle *event_handle;
     uint32_t md_nl_mask;
+    void* zmq_ctx;
+    void* zmq_socket;
+    int zmq_fd;
     struct md_conn_event *mce;
     struct md_iface_event *mie;
     struct md_radio_event *mre;

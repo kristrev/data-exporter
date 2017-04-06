@@ -32,6 +32,7 @@
 #include JSON_LOC
 #include <getopt.h>
 #include <sys/time.h>
+#include <zmq.h>
 
 #include "metadata_exporter.h"
 #include "metadata_input_zeromq.h"
@@ -40,36 +41,103 @@
 #include "lib/minmea.h"
 #include "metadata_exporter_log.h"
 
+static int subscribe_for_topic(const char* topic, struct md_input_zeromq *miz)
+{
+    size_t len = strlen(topic);
+    return zmq_setsockopt(miz->zmq_socket, ZMQ_SUBSCRIBE, topic, len);
+}
+
+static void md_input_zeromq_handle_event(void *ptr, int32_t fd, uint32_t events)
+{
+}
+
 static uint8_t md_input_zeromq_config(struct md_input_zeromq *miz)
 {
+    int zmq_fd = -1;
+    size_t len = 0;
+
+    // Create ZMQ publisher
+    miz->zmq_ctx = zmq_ctx_new();
+    if (miz->zmq_ctx == NULL) {
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't create ZMQ context\n");
+        return RETVAL_FAILURE;
+    }
+
+    miz->zmq_socket = zmq_socket(miz->zmq_ctx, ZMQ_SUB);
+    if (miz->zmq_socket == NULL) {
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't create ZMQ socket\n");
+        return RETVAL_FAILURE;
+    }
+
+    if (((miz->md_nl_mask & META_TYPE_INTERFACE) ||
+        (miz->md_nl_mask & META_TYPE_POS) ||
+        (miz->md_nl_mask & META_TYPE_RADIO)) &&
+        zmq_connect(miz->zmq_socket, "tcp://localhost:" ZMQ_NL_PUBLISHER_PORT) == -1)
+    {
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't connect to NL ZMQ publisher\n");
+        return RETVAL_FAILURE;
+    }
+
+    if ((miz->md_nl_mask & META_TYPE_INTERFACE) &&
+        zmq_connect(miz->zmq_socket, "tcp://localhost:" ZMQ_DLB_PUBLISHER_PORT) == -1)
+    {
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't connect to DLB ZMQ publisher\n");
+        return RETVAL_FAILURE;
+    }
+
+    if (miz->md_nl_mask & META_TYPE_INTERFACE)
+        subscribe_for_topic(ZMQ_NL_INTERFACE_TOPIC, miz);
+
+    if (miz->md_nl_mask & META_TYPE_RADIO)
+        subscribe_for_topic(ZMQ_NL_RADIOEVENT_TOPIC, miz);
+
+    if (miz->md_nl_mask & META_TYPE_POS)
+        subscribe_for_topic(ZMQ_NL_GPS_TOPIC, miz);
+
+    if (miz->md_nl_mask & META_TYPE_CONNECTION) {
+        subscribe_for_topic(ZMQ_DLB_METADATA_TOPIC, miz);
+        subscribe_for_topic(ZMQ_DLB_DATAUSAGE_TOPIC, miz);
+    }
+
+    len = sizeof(zmq_fd);
+    if (zmq_getsockopt(miz->zmq_socket, ZMQ_FD, &zmq_fd, &len) == -1) {
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't get ZMQ file descriptor\n");
+        return RETVAL_FAILURE;
+    }
+
+    if(!(miz->event_handle = backend_create_epoll_handle(miz,
+                    zmq_fd, md_input_zeromq_handle_event)))
+        return RETVAL_FAILURE;
+
+    backend_event_loop_update(miz->parent->event_loop, EPOLLIN, EPOLL_CTL_ADD,
+        zmq_fd, miz->event_handle);
+
     return RETVAL_SUCCESS;
 }
 
 static uint8_t md_input_zeromq_init(void *ptr, json_object* config)
 {
     struct md_input_zeromq *miz = ptr;
-    uint32_t md_nl_mask = 0;
+    miz->md_nl_mask = 0;
 
     json_object* subconfig;
     if (json_object_object_get_ex(config, "zmq_input", &subconfig)) {
         json_object_object_foreach(subconfig, key, val) {
             if (!strcmp(key, "conn")) 
-                md_nl_mask |= META_TYPE_CONNECTION;
+                miz->md_nl_mask |= META_TYPE_CONNECTION;
             else if (!strcmp(key, "pos")) 
-                md_nl_mask |= META_TYPE_POS;
+                miz->md_nl_mask |= META_TYPE_POS;
             else if (!strcmp(key, "iface")) 
-                md_nl_mask |= META_TYPE_INTERFACE;
+                miz->md_nl_mask |= META_TYPE_INTERFACE;
             else if (!strcmp(key, "radio"))
-                md_nl_mask |= META_TYPE_RADIO;
+                miz->md_nl_mask |= META_TYPE_RADIO;
         }
     }
 
-    if (!md_nl_mask) {
+    if (!miz->md_nl_mask) {
         META_PRINT_SYSLOG(miz->parent, LOG_ERR, "At least one netlink event type must be present\n");
         return RETVAL_FAILURE;
     }
-
-    miz->md_nl_mask = md_nl_mask;
 
     return md_input_zeromq_config(miz);
 }
