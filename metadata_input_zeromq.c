@@ -49,6 +49,21 @@ static int subscribe_for_topic(const char* topic, struct md_input_zeromq *miz)
 
 static void md_input_zeromq_handle_event(void *ptr, int32_t fd, uint32_t events)
 {
+    struct md_input_zeromq *miz = ptr;
+    int zmq_events = 0;
+    size_t events_len = sizeof(zmq_events);
+
+    zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
+
+    while (zmq_events & ZMQ_POLLIN)
+    {
+        char buf[2048] = {0};
+        zmq_recv(miz->zmq_socket, buf, 2048, 0);
+
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Received message: %s\n", buf);
+
+        zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
+    }
 }
 
 static uint8_t md_input_zeromq_config(struct md_input_zeromq *miz)
@@ -78,7 +93,7 @@ static uint8_t md_input_zeromq_config(struct md_input_zeromq *miz)
         return RETVAL_FAILURE;
     }
 
-    if ((miz->md_nl_mask & META_TYPE_INTERFACE) &&
+    if ((miz->md_nl_mask & META_TYPE_CONNECTION) &&
         zmq_connect(miz->zmq_socket, "tcp://localhost:" ZMQ_DLB_PUBLISHER_PORT) == -1)
     {
         META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't connect to DLB ZMQ publisher\n");
