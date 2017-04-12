@@ -60,7 +60,7 @@ static void md_input_zeromq_handle_event(void *ptr, int32_t fd, uint32_t events)
         char buf[2048] = {0};
         zmq_recv(miz->zmq_socket, buf, 2048, 0);
 
-        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Received message: %s\n", buf);
+        META_PRINT_SYSLOG(miz->parent, LOG_DEBUG, "Received message: %s\n", buf);
 
         zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
     }
