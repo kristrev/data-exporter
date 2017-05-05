@@ -34,7 +34,7 @@
 
 uint32_t system_helpers_get_nodeid();
 #else
-uint32_t system_helpers_get_nodeid(const char *nodeid_file);
+uint32_t system_helpers_get_nodeid_from_file(const char *nodeid_file);
 #endif
 
 uint8_t system_helpers_check_address(const char *addr);

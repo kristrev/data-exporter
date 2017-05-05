@@ -279,10 +279,8 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
 
     if (node_id > 0) {
         mws->node_id = node_id;
-    } else {
-#ifdef MONROE
-        mws->node_id = system_helpers_get_nodeid(nodeid_file);
-#endif
+    } else if (nodeid_file != NULL) {
+        mws->node_id = system_helpers_get_nodeid_from_file(nodeid_file);
     }
 
     //Only set variables that are not 0
