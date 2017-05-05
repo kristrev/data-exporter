@@ -64,6 +64,9 @@
 #ifdef NNE_SUPPORT
     #include "metadata_writer_nne.h"
 #endif
+#ifdef NEAT_SUPPORT
+    #include "metadata_writer_neat.h"
+#endif
 
 #include "netlink_helpers.h"
 #include "backend_event_loop.h"
@@ -634,6 +637,9 @@ static void print_usage()
     md_sysevent_usage();
 #endif
     fprintf(stderr, "WRITERS:\n");
+#ifdef NEAT_SUPPORT
+    md_neat_usage();
+#endif
 #ifdef NNE_SUPPORT
     md_nne_usage();
 #endif
@@ -643,7 +649,6 @@ static void print_usage()
 #ifdef ZEROMQ_SUPPORT
     md_zeromq_usage();
 #endif
-
 }
 
 void read_config(char* config_file, json_object** config_obj)
@@ -682,7 +687,7 @@ void read_config(char* config_file, json_object** config_obj)
     json_tokener_free(tok);
 
     *config_obj = parsed;
-}          
+}
 
 int main(int argc, char *argv[])
 {
@@ -692,6 +697,7 @@ int main(int argc, char *argv[])
     uint8_t test_mode = 0, num_writers = 0, num_inputs = 0;
     const char *logfile_path = NULL;
     json_object *config = NULL;
+    int value;
 
     //Try to configure core before we set up the outputters
     if (configure_core(&mde))
@@ -751,6 +757,19 @@ int main(int argc, char *argv[])
             }
 
             md_nne_setup(mde, (struct md_writer_nne*) mde->md_writers[MD_WRITER_NNE]);
+            num_writers++;
+        }
+#endif
+#ifdef NEAT_SUPPORT
+        else if (!strcmp(key, "neat")) {
+            mde->md_writers[MD_WRITER_NEAT] = calloc(sizeof(struct md_writer_neat), 1);
+
+            if (mde->md_writers[MD_WRITER_NEAT] == NULL) {
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate NEAT writer\n");
+                exit(EXIT_FAILURE);
+            }
+
+            md_neat_setup(mde, (struct md_writer_neat *)mde->md_writers[MD_WRITER_NEAT]);
             num_writers++;
         }
 #endif

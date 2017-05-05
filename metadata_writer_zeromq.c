@@ -309,8 +309,6 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
                                    struct md_conn_event *mce)
 {
     struct json_object *json_obj, *obj_add;
-    char event_str_cpy[EVENT_STR_LEN];
-    size_t event_str_len;
     uint8_t mode;
     char topic[8192];
     int retval;
@@ -323,16 +321,7 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
     if (mce->event_param == CONN_EVENT_MODE_CHANGE) {
         mode = mce->event_value;
     } else {
-        event_str_len = strlen(mce->event_value_str);
-
-        if (event_str_len >= EVENT_STR_LEN) {
-            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Event string too long\n");
-            return;
-        }
-
-        memcpy(event_str_cpy, mce->event_value_str, event_str_len);
-        event_str_cpy[event_str_len] = '\0';
-        mode = metadata_utils_get_csv_pos(event_str_cpy, 2);
+        mode = mce->connection_mode;
     }
 
     json_obj = md_zeromq_create_json_modem_default(mwz, mce);
