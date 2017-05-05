@@ -27,12 +27,11 @@
 #pragma once
 
 #include "metadata_exporter.h"
+#include "zmq_format.h" 
 
-#ifdef MONROE
-#include "monroe_zmq_format.h"
-#else
-#include "compact_zmq_format.h"
-#endif
+#define ZMQ_STYLE_COMPACT 0
+#define ZMQ_STYLE_MONROE  1
+
 
 struct md_writer_zeromq {
     MD_WRITER;
@@ -41,6 +40,8 @@ struct md_writer_zeromq {
     void *zmq_publisher;
     char *zmq_addr;      // to retry connection if zmq_send failed
     int  connected;
+    int  style;
+    char **fields;
 };
 
 void md_zeromq_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz);
