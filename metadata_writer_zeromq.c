@@ -43,27 +43,6 @@
 #include "metadata_utils.h"
 #include "metadata_exporter_log.h"
 
-static void md_zeromq_add_default_fields(const struct md_writer_zeromq *mwz,
-        struct json_object* obj, int seq, int64_t tstamp, const char* dataid) {
-    json_object* obj_add = NULL;
-
-    if (!(obj_add = json_object_new_int(seq))) return;
-    json_object_object_add(obj, mwz->keys[MD_ZMQ_KEY_SEQ], obj_add);
-
-    if (!(obj_add = json_object_new_int64(tstamp))) return;
-    json_object_object_add(obj, mwz->keys[MD_ZMQ_KEY_TSTAMP], obj_add);
-
-    if (mwz->keys[MD_ZMQ_KEY_DATAVERSION] != NULL) {
-        if (!(obj_add = json_object_new_int(MD_ZMQ_DATA_VERSION))) return;
-        json_object_object_add(obj, mwz->keys[MD_ZMQ_KEY_DATAVERSION], obj_add);
-    }
-
-    if (mwz->keys[MD_ZMQ_KEY_DATAID]) {
-        if (!(obj_add = json_object_new_string(dataid))) return;
-        json_object_object_add(obj, mwz->keys[MD_ZMQ_KEY_DATAID], obj_add);
-    }
-}
-
 static json_object *md_zeromq_create_json_string(json_object *obj,
         const char *key, const char *value)
 {
@@ -102,67 +81,66 @@ static json_object *md_zeromq_create_json_int64(json_object *obj,
     return obj;
 }
 
+static json_object *md_zeromq_create_json_double(json_object *obj,
+        const char *key, double value)
+{
+    struct json_object *obj_add = json_object_new_double(value);
+
+    if (!obj_add)
+        return NULL;
+
+    json_object_object_add(obj, key, obj_add);
+    return obj;
+}
+
+static uint8_t md_zeromq_add_default_fields(const struct md_writer_zeromq *mwz,
+        struct json_object* obj, int seq, int64_t tstamp, const char* dataid) {
+    if (!md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_SEQ],
+            seq) ||
+        !md_zeromq_create_json_int64(obj, mwz->keys[MD_ZMQ_KEY_TSTAMP],
+            tstamp) ||
+        (mwz->keys[MD_ZMQ_KEY_DATAVERSION] &&
+         !md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_DATAVERSION],
+            MD_ZMQ_DATA_VERSION)) ||
+        (mwz->keys[MD_ZMQ_KEY_DATAID] &&
+         !md_zeromq_create_json_string(obj, mwz->keys[MD_ZMQ_KEY_DATAID],
+             dataid))){
+        return 0;
+    }
+
+    return 1;
+}
+
 static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
                                               struct md_gps_event *mge)
 {
-    struct json_object *obj = NULL, *obj_add = NULL;
+    struct json_object *obj = NULL;
 
     if (!(obj = json_object_new_object()))
         return NULL;
-    
-    md_zeromq_add_default_fields(mwz, obj, mge->sequence,
-            mge->tstamp_tv.tv_sec, mwz->topics[MD_ZMQ_TOPIC_GPS]);
 
-    if (!(obj_add = json_object_new_double(mge->latitude))) {
+    if (!md_zeromq_add_default_fields(mwz, obj, mge->sequence,
+            mge->tstamp_tv.tv_sec, mwz->topics[MD_ZMQ_TOPIC_GPS])) {
         json_object_put(obj);
         return NULL;
     }
-    json_object_object_add(obj, mwz->keys[MD_ZMQ_KEY_LATITUDE], obj_add);
 
-    if (!(obj_add = json_object_new_double(mge->longitude))) {
+    if (!md_zeromq_create_json_double(obj, mwz->keys[MD_ZMQ_KEY_LATITUDE],
+            mge->latitude) ||
+        !md_zeromq_create_json_double(obj, mwz->keys[MD_ZMQ_KEY_LONGITUDE],
+            mge->longitude) ||
+        (mge->speed && !md_zeromq_create_json_double(obj,
+            mwz->keys[MD_ZMQ_KEY_SPEED], mge->speed)) ||
+        (mge->altitude && !md_zeromq_create_json_double(obj,
+            mwz->keys[MD_ZMQ_KEY_ALTITUDE], mge->altitude)) ||
+        (mge->satellites_tracked && !md_zeromq_create_json_int(obj,
+            mwz->keys[MD_ZMQ_KEY_NUMSAT], mge->satellites_tracked)) ||
+        (mge->nmea_raw && !md_zeromq_create_json_string(obj,
+            mwz->keys[MD_ZMQ_KEY_NMEA], mge->nmea_raw))) {
         json_object_put(obj);
         return NULL;
     }
-    json_object_object_add(obj, mwz->keys[MD_ZMQ_KEY_LONGITUDE], obj_add);
 
-    if (mge->speed) {
-        obj_add = json_object_new_double(mge->speed);
-
-        if (obj_add == NULL) {
-            json_object_put(obj);
-            return NULL;
-        }
-        json_object_object_add(obj, mwz->keys[MD_ZMQ_KEY_SPEED], obj_add);
-    }
-
-    if (mge->altitude) {
-        obj_add = json_object_new_double(mge->altitude);
-
-        if (obj_add == NULL) {
-            json_object_put(obj);
-            return NULL;
-        }
-        json_object_object_add(obj, mwz->keys[MD_ZMQ_KEY_ALTITUDE], obj_add);
-    }
-
-    if (mge->satellites_tracked) {
-        obj_add = json_object_new_int(mge->satellites_tracked);
-
-        if (obj_add == NULL) {
-            json_object_put(obj);
-            return NULL;
-        }
-        json_object_object_add(obj, mwz->keys[MD_ZMQ_KEY_NUMSAT], obj_add);
-    }
-
-    if (mge->nmea_raw) {
-        if (!(obj_add = json_object_new_string(mge->nmea_raw))) {
-            json_object_put(obj);
-            return NULL;
-        }
-        json_object_object_add(obj, mwz->keys[MD_ZMQ_KEY_NMEA], obj_add);
-    }
-    
     return obj;
 }
 
@@ -240,8 +218,11 @@ static json_object* md_zeromq_create_json_modem_default(struct md_writer_zeromq 
     if (!(obj = json_object_new_object()))
         return NULL;
 
-    md_zeromq_add_default_fields(mwz, obj, mce->sequence, mce->tstamp,
-            mwz->topics[MD_ZMQ_TOPIC_CONNECTIVITY]);
+    if (!md_zeromq_add_default_fields(mwz, obj, mce->sequence, mce->tstamp,
+            mwz->topics[MD_ZMQ_TOPIC_CONNECTIVITY])) {
+        json_object_put(obj);
+        return NULL;
+    }
 
     if (!(obj_add = json_object_new_string(mce->interface_id))) {
         json_object_put(obj);
@@ -268,8 +249,6 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
                                    struct md_conn_event *mce)
 {
     struct json_object *json_obj, *obj_add;
-    char event_str_cpy[EVENT_STR_LEN];
-    size_t event_str_len;
     uint8_t mode;
     char topic[8192];
     int retval;
@@ -328,8 +307,11 @@ static json_object *md_zeromq_create_iface_json(const struct md_writer_zeromq *m
     if (!(obj = json_object_new_object()))
         return NULL;
 
-    md_zeromq_add_default_fields(mwz, obj, mie->sequence, mie->tstamp,
-            mwz->topics[MD_ZMQ_TOPIC_MODEM]);
+    if (!md_zeromq_add_default_fields(mwz, obj, mie->sequence, mie->tstamp,
+            mwz->topics[MD_ZMQ_TOPIC_MODEM])) {
+        json_object_put(obj);
+        return NULL;
+    }
 
     if (!md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_SEQ],
                 mie->sequence) ||
@@ -340,142 +322,62 @@ static json_object *md_zeromq_create_iface_json(const struct md_writer_zeromq *m
         !md_zeromq_create_json_string(obj, mwz->keys[MD_ZMQ_KEY_IMSI],
             mie->imsi) ||
         !md_zeromq_create_json_string(obj, mwz->keys[MD_ZMQ_KEY_IMEI],
-            mie->imei)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->isp_name && !md_zeromq_create_json_string(obj,
-                mwz->keys[MD_ZMQ_KEY_ISP_NAME], mie->isp_name)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->ip_addr && !md_zeromq_create_json_string(obj,
-                mwz->keys[MD_ZMQ_KEY_IP_ADDR], mie->ip_addr)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->internal_ip_addr && !md_zeromq_create_json_string(obj,
+            mie->imei) ||
+        (mie->isp_name && !md_zeromq_create_json_string(obj,
+                mwz->keys[MD_ZMQ_KEY_ISP_NAME], mie->isp_name)) ||
+        (mie->ip_addr && !md_zeromq_create_json_string(obj,
+                mwz->keys[MD_ZMQ_KEY_IP_ADDR], mie->ip_addr)) ||
+        (mie->internal_ip_addr && !md_zeromq_create_json_string(obj,
                 mwz->keys[MD_ZMQ_KEY_INTERNAL_IP_ADDR],
-                mie->internal_ip_addr)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->ifname && !md_zeromq_create_json_string(obj,
-                mwz->keys[MD_ZMQ_KEY_IF_NAME], mie->ifname)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->imsi_mccmnc &&
+                mie->internal_ip_addr)) ||
+        (mie->ifname && !md_zeromq_create_json_string(obj,
+                mwz->keys[MD_ZMQ_KEY_IF_NAME], mie->ifname)) ||
+        (mie->imsi_mccmnc &&
             !md_zeromq_create_json_int64(obj, mwz->keys[MD_ZMQ_KEY_IMSI_MCCMNC],
-                mie->imsi_mccmnc)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->nw_mccmnc &&
+                mie->imsi_mccmnc)) ||
+        (mie->nw_mccmnc &&
             !md_zeromq_create_json_int64(obj, mwz->keys[MD_ZMQ_KEY_NW_MCCMNC],
-                mie->nw_mccmnc)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if ((mie->cid > -1 && mie->lac > -1) &&
+                mie->nw_mccmnc)) ||
+        ((mie->cid > -1 && mie->lac > -1) &&
             (!md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_LAC],
                                         mie->lac) ||
              !md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_CID],
-                 mie->cid))) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->rscp != (int16_t) META_IFACE_INVALID &&
+                 mie->cid))) ||
+        (mie->rscp != (int16_t) META_IFACE_INVALID &&
             !md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_RSCP],
-                mie->rscp)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->lte_rsrp != (int16_t) META_IFACE_INVALID &&
+                mie->rscp)) ||
+        (mie->lte_rsrp != (int16_t) META_IFACE_INVALID &&
             !md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_LTE_RSRP],
-                mie->lte_rsrp)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->lte_freq &&
+                mie->lte_rsrp)) ||
+        (mie->lte_freq &&
             !md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_LTE_FREQ],
-                mie->lte_freq)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->rssi != (int8_t) META_IFACE_INVALID &&
+                mie->lte_freq)) ||
+        (mie->rssi != (int8_t) META_IFACE_INVALID &&
             !md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_RSSI],
-                mie->rssi)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->ecio != (int8_t) META_IFACE_INVALID &&
+                mie->rssi)) ||
+        (mie->ecio != (int8_t) META_IFACE_INVALID &&
             !md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_ECIO],
-                mie->ecio)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->lte_rssi != (int8_t) META_IFACE_INVALID &&
+                mie->ecio)) ||
+        (mie->lte_rssi != (int8_t) META_IFACE_INVALID &&
             !md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_LTE_RSSI],
-                mie->lte_rssi)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->lte_rsrq != (int8_t) META_IFACE_INVALID &&
+                mie->lte_rssi)) ||
+        (mie->lte_rsrq != (int8_t) META_IFACE_INVALID &&
             !md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_LTE_RSRQ],
-                mie->lte_rsrq)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->device_mode && !md_zeromq_create_json_int(obj,
-                mwz->keys[MD_ZMQ_KEY_DEVICE_MODE], mie->device_mode)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->device_submode && !md_zeromq_create_json_int(obj,
-                mwz->keys[MD_ZMQ_KEY_DEVICE_SUBMODE], mie->device_submode)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->lte_band && !md_zeromq_create_json_int(obj,
-                mwz->keys[MD_ZMQ_KEY_LTE_BAND], mie->lte_band)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->device_state && !md_zeromq_create_json_int(obj,
-                mwz->keys[MD_ZMQ_KEY_DEVICE_STATE], mie->device_state)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->lte_pci != 0xFFFF &&
+                mie->lte_rsrq)) ||
+        (mie->device_mode && !md_zeromq_create_json_int(obj,
+                mwz->keys[MD_ZMQ_KEY_DEVICE_MODE], mie->device_mode)) ||
+        (mie->device_submode && !md_zeromq_create_json_int(obj,
+                mwz->keys[MD_ZMQ_KEY_DEVICE_SUBMODE], mie->device_submode)) ||
+        (mie->lte_band && !md_zeromq_create_json_int(obj,
+                mwz->keys[MD_ZMQ_KEY_LTE_BAND], mie->lte_band)) ||
+        (mie->device_state && !md_zeromq_create_json_int(obj,
+                mwz->keys[MD_ZMQ_KEY_DEVICE_STATE], mie->device_state)) ||
+        (mie->lte_pci != 0xFFFF &&
             !md_zeromq_create_json_int(obj,
-                mwz->keys[MD_ZMQ_KEY_LTE_PCI], mie->lte_pci)) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    if (mie->enodeb_id >= 0 &&
+                mwz->keys[MD_ZMQ_KEY_LTE_PCI], mie->lte_pci)) ||
+        (mie->enodeb_id >= 0 &&
             !md_zeromq_create_json_int(obj,
-                mwz->keys[MD_ZMQ_KEY_ENODEB_ID], mie->enodeb_id)) {
+                mwz->keys[MD_ZMQ_KEY_ENODEB_ID], mie->enodeb_id))) {
         json_object_put(obj);
         return NULL;
     }
