@@ -86,6 +86,7 @@
                             "InterfaceId TEXT NOT NULL," \
                             "NetworkAddress TEXT NOT NULL," \
                             "NetworkProvider INT," \
+                            "EventValueStr TEXT, " \
                             "PRIMARY KEY(SessionId,SessionIdMultip,"\
                             "L3SessionId,L4SessionId,InterfaceId,"\
                             "NetworkAddress))"
@@ -134,8 +135,8 @@
 #define INSERT_UPDATE       "INSERT INTO NetworkUpdates(NodeId,SessionId,"\
                             "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
                             "L4SessionId,EventType,EventParam,HasIp,Connectivity,ConnectionMode,Quality"\
-                            ",InterfaceType,InterfaceId,NetworkAddress,NetworkProvider) " \
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                            ",InterfaceType,InterfaceId,NetworkAddress,NetworkProvider,EventValueStr) " \
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_GPS_EVENT    "INSERT INTO GpsUpdate(NodeId,BootCount" \
                             ",BootMultiplier,Timestamp" \
@@ -167,7 +168,8 @@
 //address can have multiple L3/L4 IDs (two mf823 for example). However, same
 //address (+prefix) and same interface is guaranteed to have unique L3/L4
 #define UPDATE_UPDATE       "UPDATE NetworkUpdates SET " \
-                            "Timestamp=?,HasIp=?,Connectivity=?,ConnectionMode=?,Quality=? " \
+                            "Timestamp=?,HasIp=?,Connectivity=?,ConnectionMode=?," \
+                            "Quality=?,EventValueStr=? " \
                             "WHERE "\
                             "L3SessionId=? AND L4SessionId=? " \
                             "AND NetworkAddress=? AND InterfaceId=?"
@@ -218,48 +220,11 @@
 //do here. quote() gives a quoted string of the row content, suitable for
 //inclusion in another SQL query. The || is string concation. So, the query
 //queries for all columns, and each row is prefixed with some string
-#define DUMP_EVENTS         "SELECT \"INSERT IGNORE INTO NetworkEventV2"\
-                            "(NodeId,SessionId,SessionIdMultip,Timestamp,"\
-                            "Sequence,L3SessionId,L4SessionId,EventType,"\
-                            "EventParam,EventValue,HasIp,Connectivity,"\
-                            "ConnectionMode,Quality,"\
-                            "InterfaceType,InterfaceIdType,InterfaceId,"\
-                            "NetworkProvider,NetworkAddressFamily,"\
-                            "NetworkAddress) VALUES(\" "\
-                            "|| quote(\"NodeId\"), quote(\"SessionId\"),"\
-                            "quote(\"SessionIdMultip\"),quote(\"Timestamp\"), "\
-                            "quote(\"Sequence\"), quote(\"L3SessionId\"), "\
-                            "quote(\"L4SessionId\"), quote(\"EventType\"), "\
-                            "quote(\"EventParam\"), quote(\"EventValue\"), "\
-                            "quote(\"HasIp\"), "\
-                            "quote(\"Connectivity\"), "\
-                            "quote(\"ConnectionMode\"), "\
-                            "quote(\"Quality\"), "\
-                            "quote(\"InterfaceType\"), quote(\"InterfaceIdType\"), "\
-                            "quote(\"InterfaceId\"),"\
-                            "quote(\"NetworkProvider\"), quote(\"NetworkAddressFamily\"), "\
-                            "quote(\"NetworkAddress\") || \")\" FROM  \"NetworkEvent\" WHERE Timestamp>=? ORDER BY Timestamp;"
-
-#define DUMP_UPDATES        "SELECT \"REPLACE INTO NetworkUpdateV2"\
-                            "(NodeId,SessionId,SessionIdMultip,Timestamp,"\
-                            "Sequence,L3SessionId,L4SessionId,HasIp,Connectivity,"\
-                            "ConnectionMode,Quality,InterfaceType, InterfaceId,NetworkAddress,"\
-                            "NetworkProvider,ServerTimestamp) VALUES(\" "\
-                            "|| quote(\"NodeId\"), quote(\"SessionId\"),"\
-                            "quote(\"SessionIdMultip\"),quote(\"Timestamp\"), "\
-                            "quote(\"Sequence\"), quote(\"L3SessionId\"), "\
-                            "quote(\"L4SessionId\"),quote(\"HasIp\"), "\
-                            "quote(\"Connectivity\"), quote(\"ConnectionMode\"), "\
-                            "quote(\"Quality\"), quote(\"InterfaceType\"), quote(\"InterfaceId\"),"\
-                            "quote(\"NetworkAddress\"),quote(\"NetworkProvider\") || \",Now())\""\
-                            "FROM \"NetworkUpdates\" WHERE Timestamp>=? ORDER BY Timestamp;"
-
-#define DUMP_EVENTS_V2      "SELECT \"INSERT IGNORE INTO NetworkEvent"\
+#define DUMP_EVENTS      "SELECT \"INSERT IGNORE INTO NetworkEvent"\
                             "(NodeId,BootCount,BootMultiplier,Timestamp,"\
                             "Sequence,L3SessionId,L4SessionId,DeviceId,"\
                             "DeviceTypeId,NetworkAddress,NetworkAddressFamily,"\
-                            "EventType,EventParam,EventValue,HasIp,Connectivity,"\
-                            "ConnectionMode,Quality,Operator) "\
+                            "EventType,EventParam,EventValue) "\
                             "VALUES(\" "\
                             "|| quote(\"NodeId\"), quote(\"SessionId\"),"\
                             "quote(\"SessionIdMultip\"),quote(\"Timestamp\"), "\
@@ -267,26 +232,22 @@
                             "quote(\"L4SessionId\"), quote(\"InterfaceId\"), "\
                             "quote(\"InterfaceType\"), quote(\"NetworkAddress\"), "\
                             "quote(\"NetworkAddressFamily\"), quote(\"EventType\"), "\
-                            "quote(\"EventParam\"), quote(\"EventValue\"), "\
-                            "quote(\"HasIp\"), quote(\"Connectivity\"), "\
-                            "quote(\"ConnectionMode\"), quote(\"Quality\"), "\
-                            "quote(\"NetworkProvider\") "\
+                            "quote(\"EventParam\"), quote(\"EventValue\") "\
                             "|| \")\" FROM  \"NetworkEvent\" WHERE Timestamp>=? ORDER BY Timestamp;"
 
-#define DUMP_UPDATES_V2     "SELECT \"REPLACE INTO NetworkUpdate"\
-                            "(NodeId,BootCount,BootMultiplier,Timestamp,"\
-                            "Sequence,L3SessionId,L4SessionId,HasIp,Connectivity,"\
-                            "ConnectionMode,Quality,DeviceTypeId,DeviceId,NetworkAddress,"\
-                            "Operator,ServerTimestamp) VALUES(\" "\
-                            "|| quote(\"NodeId\"), quote(\"SessionId\"),"\
-                            "quote(\"SessionIdMultip\"),quote(\"Timestamp\"), "\
-                            "quote(\"Sequence\"), quote(\"L3SessionId\"), "\
-                            "quote(\"L4SessionId\")"\
-                            "quote(\"HasIp\"), quote(\"Connectivity\"), "\
-                            "quote(\"ConnectionMode\"), quote(\"Quality\"), "\
-                            "quote(\"InterfaceType\"), quote(\"InterfaceId\"),"\
-                            "quote(\"NetworkAddress\"),quote(\"NetworkProvider\") || \",Now())\""\
-                            "FROM \"NetworkUpdates\" WHERE Timestamp>=? ORDER BY Timestamp;"
+#define DUMP_UPDATES     "SELECT \"REPLACE INTO NetworkUpdate"\
+                            "(NodeId,BootCount,BootMultiplier,L3SessionId,"\
+                            "L4SessionId,DeviceId,NetworkAddress,DeviceTypeId,"\
+                            "Timestamp,Sequence,EventValueStr,"\
+                            "ServerTimestamp) VALUES(\" ||"\
+                            "quote(\"NodeId\"), quote(\"SessionId\"),"\
+                            "quote(\"SessionIdMultip\"), quote(\"L3SessionId\"),"\
+                            "quote(\"L4SessionId\"), quote(\"InterfaceId\"),"\
+                            "quote(\"NetworkAddress\"), quote(\"InterfaceType\"),"\
+                            "quote(\"Timestamp\"), quote(\"Sequence\"), "\
+                            "quote(\"EventValueStr\") ||"\
+                            "\", Now())\" FROM \"NetworkUpdates\" WHERE "\
+                            "Timestamp>=? ORDER BY Timestamp;"
 
 #define DUMP_GPS            "SELECT \"REPLACE INTO GpsUpdates" \
                             "(NodeId,BootCount,BootMultiplier"\

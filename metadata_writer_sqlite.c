@@ -287,14 +287,8 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
     }
 
     if (mws->output_format == FORMAT_SQL) {
-        if (mws->api_version == 2) {
-            dump_events = DUMP_EVENTS_V2;
-            dump_updates = DUMP_UPDATES_V2;
-        } else {
-            dump_events = DUMP_EVENTS;
-            dump_updates = DUMP_UPDATES;
-        }
-
+        dump_events = DUMP_EVENTS;
+        dump_updates = DUMP_UPDATES;
         dump_gps = DUMP_GPS;
         dump_monitor = DUMP_MONITOR;
         dump_usage = DUMP_USAGE;
