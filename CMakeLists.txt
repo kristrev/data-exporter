@@ -59,7 +59,9 @@ endif()
 if (ZEROMQ)
     set(LIBS ${LIBS} zmq)
     set(SOURCE ${SOURCE}
-        metadata_writer_zeromq.c)
+        metadata_writer_zeromq.c
+        metadata_writer_zeromq_monroe.c
+        metadata_writer_zeromq_nne.c)
     add_definitions("-DZEROMQ_SUPPORT")
 endif()
 
