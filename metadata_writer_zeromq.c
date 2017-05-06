@@ -1062,11 +1062,21 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
         return RETVAL_FAILURE;
     }
 
-    mwz->topics = monroe_topics;
-    mwz->topics_limit = sizeof(monroe_topics) / sizeof(char *);
-
-    mwz->keys = monroe_keys;
-    mwz->keys_limit = sizeof(monroe_keys) / sizeof(char *);
+    if (mwz->metadata_project == MD_PROJECT_NNE) {
+        mwz->topics = nne_topics;
+        mwz->topics_limit = sizeof(nne_topics) / sizeof(char *);
+        mwz->keys = nne_keys;
+        mwz->keys_limit = sizeof(nne_keys) / sizeof(char *);
+    } else if (mwz->metadata_project == MD_PROJECT_MNR) {
+        mwz->topics = monroe_topics;
+        mwz->topics_limit = sizeof(monroe_topics) / sizeof(char *);
+        mwz->keys = monroe_keys;
+        mwz->keys_limit = sizeof(monroe_keys) / sizeof(char *);
+    } else {
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Unknown project (%u)\n",
+                mwz->metadata_project);
+        return RETVAL_FAILURE;
+    }
 
     META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "ZeroMQ init done. Topics limit %u\n", mwz->topics_limit);
 
@@ -1082,10 +1092,13 @@ static int32_t md_zeromq_init(void *ptr, json_object* config)
     json_object* subconfig;
     if (json_object_object_get_ex(config, "zmq", &subconfig)) {
         json_object_object_foreach(subconfig, key, val) {
-            if (!strcmp(key, "address"))
+            if (!strcmp(key, "address")) {
                 address = json_object_get_string(val);
-            if (!strcmp(key, "port"))
+            } else if (!strcmp(key, "port")) {
                 port = (uint16_t) json_object_get_int(val);
+            } else if (!strcmp(key, "project")) {
+                mwz->metadata_project = (uint8_t) json_object_get_int(val);
+            }
         }
     }
 
@@ -1107,6 +1120,7 @@ void md_zeromq_usage()
     fprintf(stderr, "\"zmq\": {\t\tZeroMQ writer\n");
     fprintf(stderr, "  \"address\":\t\taddress used by publisher\n");
     fprintf(stderr, "  \"port\":\t\tport used by publisher\n");
+    fprintf(stderr, "  \"project\":\t\tproject to use (0 for NNE, 1 for MNR)\n");
     fprintf(stderr, "},\n");
 }
 
@@ -1114,5 +1128,6 @@ void md_zeromq_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz) {
     mwz->parent = mde;
     mwz->init = md_zeromq_init;
     mwz->handle = md_zeromq_handle;
+    mwz->metadata_project = MD_PROJECT_NNE;
 }
 

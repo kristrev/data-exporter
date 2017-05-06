@@ -148,6 +148,11 @@ enum md_zmq_keys {
 };
 #define MD_ZMQ_KEYS_MAX (__MD_ZMQ_KEYS_MAX - 1)
 
+enum md_project_ids {
+    MD_PROJECT_NNE = 0,
+    MD_PROJECT_MNR
+};
+
 extern const char *monroe_topics[MD_ZMQ_TOPICS_MAX + 1];
 extern const char *monroe_keys[MD_ZMQ_KEYS_MAX + 1];
 extern const char *nne_topics[MD_ZMQ_TOPICS_MAX + 1];
@@ -163,6 +168,7 @@ struct md_writer_zeromq {
     const char **keys;
     uint8_t topics_limit;
     uint8_t keys_limit;
+    uint8_t metadata_project;
 };
 
 void md_zeromq_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz);
