@@ -26,8 +26,11 @@
 
 #pragma once
 
+#include <netinet/in.h>
+
 #include "metadata_exporter.h"
 
+#define MD_ZMQ_BIND_INTVL   1000
 #define MD_ZMQ_DATA_VERSION 1
 
 enum md_zmq_topics {
@@ -158,17 +161,27 @@ extern const char *monroe_keys[MD_ZMQ_KEYS_MAX + 1];
 extern const char *nne_topics[MD_ZMQ_TOPICS_MAX + 1];
 extern const char *nne_keys[MD_ZMQ_KEYS_MAX + 1];
 
+struct backend_timeout_handle;
+
 struct md_writer_zeromq {
     MD_WRITER;
 
     void *zmq_context;
     void *zmq_publisher;
+    struct backend_timeout_handle *bind_timeout_handle;
 
     const char **topics;
     const char **keys;
     uint8_t topics_limit;
     uint8_t keys_limit;
     uint8_t metadata_project;
+    uint8_t socket_bound;
+
+    //INET6_ADDRSTRLEN is 46 (max length of ipv6 + trailing 0), 5 is port, 6 is
+    //protocol (we right now only support TCP)
+    //todo: carrying this around is not so elegant
+    char zmq_addr[INET6_ADDRSTRLEN + 5 + 6];
 };
 
 void md_zeromq_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz);
+void md_zeromq_usage();

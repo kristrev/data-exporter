@@ -152,12 +152,11 @@ static void backend_event_loop_run_timers(struct backend_event_loop *del)
             cur_timeout->cb(cur_timeout->data);
             backend_remove_timeout(cur_timeout);
 
-            //Rearm timer or free memory if we are done
+            //Rearm timer if needed
             if (cur_timeout->intvl) {
                 cur_timeout->timeout_clock = cur_time + cur_timeout->intvl;
                 backend_insert_timeout(del, cur_timeout);
             }
-
         } else {
             break;
         }

@@ -42,6 +42,7 @@
 #include "system_helpers.h"
 #include "metadata_utils.h"
 #include "metadata_exporter_log.h"
+#include "backend_event_loop.h"
 
 static json_object *md_zeromq_create_json_string(json_object *obj,
         const char *key, const char *value)
@@ -917,6 +918,14 @@ static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
 {
     struct md_writer_zeromq *mwz = (struct md_writer_zeromq*) writer;
 
+    if (!mwz->socket_bound) {
+        return;
+    } else if (mwz->bind_timeout_handle != NULL) {
+        //todo: stop doing this check on every iteration, add proper callback
+        free(mwz->bind_timeout_handle);
+        mwz->bind_timeout_handle = NULL;
+    }
+
     switch (event->md_type) {
     case META_TYPE_POS:
         md_zeromq_handle_gps(mwz, (struct md_gps_event*) event);
@@ -941,16 +950,32 @@ static void md_zeromq_handle(struct md_writer *writer, struct md_event *event)
     }
 }
 
+static void md_zeromq_bind_timeout(void *ptr)
+{
+    struct md_writer_zeromq *mwz = ptr;
+    int32_t retval = 0;
+
+    if ((retval = zmq_bind(mwz->zmq_publisher, mwz->zmq_addr)) != 0) {
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "zmq_bind failed (%d): %s, "
+                "stating timer\n", errno, zmq_strerror(errno));
+        mwz->bind_timeout_handle->intvl = MD_ZMQ_BIND_INTVL;
+    } else {
+        META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "zmq_bind succeeded after "
+                "timeout\n");
+        mwz->bind_timeout_handle->intvl = 0;
+        mwz->socket_bound = 1;
+    }
+
+}
+
 static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
                                 const char *address,
                                 uint16_t port)
 {
-    //INET6_ADDRSTRLEN is 46 (max length of ipv6 + trailing 0), 5 is port, 6 is
-    //protocol (we right now only support TCP)
-    char zmq_addr[INET6_ADDRSTRLEN + 5 + 6];
     int32_t retval;
 
-    snprintf(zmq_addr, sizeof(zmq_addr), "tcp://%s:%d", address, port);
+    snprintf(mwz->zmq_addr, sizeof(mwz->zmq_addr), "tcp://%s:%d", address,
+            port);
 
     if ((mwz->zmq_context = zmq_ctx_new()) == NULL)
         return RETVAL_FAILURE;
@@ -958,10 +983,21 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
     if ((mwz->zmq_publisher = zmq_socket(mwz->zmq_context, ZMQ_PUB)) == NULL)
         return RETVAL_FAILURE;
 
-    if ((retval = zmq_bind(mwz->zmq_publisher, zmq_addr)) != 0) {
-        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "zmq_bind failed (%d): %s\n", errno,
-                zmq_strerror(errno));
-        return RETVAL_FAILURE;
+
+    if ((retval = zmq_bind(mwz->zmq_publisher, mwz->zmq_addr)) != 0) {
+        META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "zmq_bind failed (%d): %s, "
+                "stating timer\n", errno, zmq_strerror(errno));
+        if(!(mwz->bind_timeout_handle = backend_event_loop_create_timeout(0,
+                        md_zeromq_bind_timeout, mwz, 0))) {
+            META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "Failed to create ZMQ bind "
+                    "timer\n");
+            return RETVAL_FAILURE;
+        }
+
+        mde_start_timer(mwz->parent->event_loop, mwz->bind_timeout_handle,
+                MD_ZMQ_BIND_INTVL);
+    } else {
+        mwz->socket_bound = 1;
     }
 
     if (mwz->metadata_project == MD_PROJECT_NNE) {

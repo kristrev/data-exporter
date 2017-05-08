@@ -159,6 +159,7 @@ static int configure_core(struct md_exporter **mde)
     return RETVAL_SUCCESS;
 }
 
+#if 0
 static struct json_object *create_fake_gps_gga_obj()
 {
     struct json_object *obj = NULL, *obj_add = NULL;
@@ -220,6 +221,7 @@ static struct json_object *create_fake_gps_rmc_obj()
 
     return obj;
 }
+#endif
 
 static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
         uint8_t event_param, char *event_value_str, uint64_t tstamp)
@@ -388,6 +390,7 @@ static ssize_t send_netlink_json(uint8_t *snd_buf,
             netlink_addrlen);
 }
 
+#if 0
 static void test_modem_metadata(uint8_t *snd_buf, int32_t sock_fd,
         struct sockaddr *netlink_addr)
 {
@@ -506,7 +509,7 @@ static void test_modem_metadata(uint8_t *snd_buf, int32_t sock_fd,
     }
 
 }
-
+#endif
 //Test function which just generates some netlink messages that are sent to our
 //group
 static void test_netlink(uint32_t packets)
@@ -697,7 +700,6 @@ int main(int argc, char *argv[])
     uint8_t test_mode = 0, num_writers = 0, num_inputs = 0;
     const char *logfile_path = NULL;
     json_object *config = NULL;
-    int value;
 
     //Try to configure core before we set up the outputters
     if (configure_core(&mde))
