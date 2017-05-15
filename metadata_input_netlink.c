@@ -508,6 +508,8 @@ static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
         return;
     }
 
+    memset(min->mre, 0, sizeof(struct md_radio_event));
+    min->mre->md_type = META_TYPE_RADIO;
     event_param = (uint8_t) json_object_get_int(event_param_json);
 
     switch (event_param) {
