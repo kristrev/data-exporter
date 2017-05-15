@@ -462,7 +462,21 @@ static void md_input_netlink_radio_wcdma_rrc_state(struct md_input_netlink *min,
         return;
 
     json_object_object_foreach(obj, key, val) {
-        if (!strcmp(key, "rrc_state"))
+        if (!strcmp(key, "md_seq"))
+            event->sequence = (uint16_t) json_object_get_int(val);
+        else if (!strcmp(key, "timestamp"))
+            event->tstamp = json_object_get_int64(val);
+        else if (!strcmp(key, "event_param"))
+            event->event_param = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "event_type"))
+            event->md_type = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "iccid"))
+            event->iccid = json_object_get_string(val);
+        else if (!strcmp(key, "imsi"))
+            event->imsi = json_object_get_string(val);
+        else if (!strcmp(key, "imei"))
+            event->imei = json_object_get_string(val);
+        else if (!strcmp(key, "rrc_state"))
             event->rrc_state = (uint8_t) json_object_get_int(val);
     }
 
@@ -479,7 +493,21 @@ static void md_input_netlink_radio_wcdma_cell_id(struct md_input_netlink *min,
         return;
 
     json_object_object_foreach(obj, key, val) {
-        if (!strcmp(key, "ul_uarfcn"))
+        if (!strcmp(key, "md_seq"))
+            event->sequence = (uint16_t) json_object_get_int(val);
+        else if (!strcmp(key, "timestamp"))
+            event->tstamp = json_object_get_int64(val);
+        else if (!strcmp(key, "event_param"))
+            event->event_param = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "event_type"))
+            event->md_type = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "iccid"))
+            event->iccid = json_object_get_string(val);
+        else if (!strcmp(key, "imsi"))
+            event->imsi = json_object_get_string(val);
+        else if (!strcmp(key, "imei"))
+            event->imei = json_object_get_string(val);
+        else if (!strcmp(key, "ul_uarfcn"))
             event->ul_uarfcn = (uint32_t) json_object_get_int(val);
         else if (!strcmp(key, "dl_uarfcn"))
             event->dl_uarfcn = (uint32_t) json_object_get_int(val);
