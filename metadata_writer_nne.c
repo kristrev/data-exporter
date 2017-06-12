@@ -840,7 +840,7 @@ struct nne_radio_descr NNE_RADIO_GRR_CELL_RESEL_DESCR[] = {
     { "grr_cell_resel.serving_priority_class", NNE_TYPE_UINT8, offsetof(struct md_radio_grr_cell_resel_event, serving_priority_class) },
     { "grr_cell_resel.serving_rxlev_avg", NNE_TYPE_UINT8, offsetof(struct md_radio_grr_cell_resel_event, serving_rxlev_avg) },
     { "grr_cell_resel.serving_five_second_timer", NNE_TYPE_UINT8, offsetof(struct md_radio_grr_cell_resel_event, serving_five_second_timer) },
-    { "grr_cell_resel.cell_reselet_status", NNE_TYPE_UINT8, offsetof(struct md_radio_grr_cell_resel_event, cell_reselet_status) },
+    { "grr_cell_resel.cell_reselect_status", NNE_TYPE_UINT8, offsetof(struct md_radio_grr_cell_resel_event, cell_reselect_status) },
     { "grr_cell_resel.recent_cell_selection", NNE_TYPE_UINT8, offsetof(struct md_radio_grr_cell_resel_event, recent_cell_selection) },
     { NULL, NNE_TYPE_NULL, 0 }
 };

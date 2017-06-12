@@ -81,7 +81,7 @@ const char *nne_keys[MD_ZMQ_KEYS_MAX + 1] = {
     "serving_c31",
     "serving_c32",
     "serving_five_second_timer",
-    "cell_reselet_status",
+    "cell_reselect_status",
     "recent_cell_selection",
     "grr_cell_neighbors",
 

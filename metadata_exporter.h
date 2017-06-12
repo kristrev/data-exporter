@@ -260,7 +260,7 @@ struct md_radio_grr_cell_resel_event {
     uint8_t serving_priority_class;
     uint8_t serving_rxlev_avg;
     uint8_t serving_five_second_timer;
-    uint8_t cell_reselet_status;
+    uint8_t cell_reselect_status;
     uint8_t recent_cell_selection;
 };
 

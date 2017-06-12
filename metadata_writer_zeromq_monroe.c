@@ -75,7 +75,7 @@ const char *monroe_keys[MD_ZMQ_KEYS_MAX + 1] = {
     "ServingC31",
     "ServingC32",
     "ServingFiveSecondTimer",
-    "CellReseletStatus",
+    "CellReselectStatus",
     "RecentCellSelection",
     "GRRCellNeighbors",
 

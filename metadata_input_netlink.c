@@ -294,8 +294,8 @@ static void md_input_netlink_radio_grr_cell_resel(struct md_input_netlink *min,
             event->serving_c32 = (uint32_t) json_object_get_int(val);
         else if (!strcmp(key, "serving_five_second_timer"))
             event->serving_five_second_timer = (uint8_t) json_object_get_int(val);
-        else if (!strcmp(key, "cell_reselet_status"))
-            event->cell_reselet_status = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "cell_reselect_status"))
+            event->cell_reselect_status = (uint8_t) json_object_get_int(val);
         else if (!strcmp(key, "recent_cell_selection"))
             event->recent_cell_selection = (uint8_t) json_object_get_int(val);
     }

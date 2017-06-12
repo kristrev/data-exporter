@@ -684,8 +684,8 @@ static json_object *md_zeromq_handle_radio_cell_resel_event(
             mwz->keys[MD_ZMQ_KEY_RADIO_SERVING_FIVE_SECOND_TIMER],
             event->serving_five_second_timer) ||
         !md_zeromq_create_json_int(obj,
-            mwz->keys[MD_ZMQ_KEY_RADIO_CELL_RESELET_STATUS],
-            event->cell_reselet_status) ||
+            mwz->keys[MD_ZMQ_KEY_RADIO_CELL_RESELECT_STATUS],
+            event->cell_reselect_status) ||
         !md_zeromq_create_json_int(obj,
             mwz->keys[MD_ZMQ_KEY_RADIO_RECENT_CELL_SELECTION],
             event->recent_cell_selection)) {
