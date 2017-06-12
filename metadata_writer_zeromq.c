@@ -375,14 +375,17 @@ static json_object *md_zeromq_create_iface_json(const struct md_writer_zeromq *m
         return NULL;
     }
 
-    if (mie->ifname && mie->imei) {
-        int iifindex=map_imei(mie->imei, mwz);
-        if (iifindex > -1) {
-            char iifname[4]="opX";
-            iifname[2]=iifindex + '0';
-            if (!md_zeromq_create_json_string(obj, mwz->keys[MD_ZMQ_KEY_MONROE_IIF_NAME], iifname)) {
-                json_object_put(obj);
-                return NULL;
+    if (mwz->metadata_project == MD_PROJECT_MNR) {
+        if (mie->ifname && mie->imei) {
+            int iifindex=map_imei(mie->imei, mwz);
+            if (iifindex > -1) {
+                char iifname[4]="opX";
+                iifname[2]=iifindex + '0';
+                if (!md_zeromq_create_json_string(obj, 
+                    mwz->keys[MD_ZMQ_KEY_MONROE_IIF_NAME], iifname)) {
+                    json_object_put(obj);
+                    return NULL;
+               }
             }
         }
     }
