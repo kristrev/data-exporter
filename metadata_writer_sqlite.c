@@ -36,9 +36,9 @@
 #include <sqlite3.h>
 
 #include "metadata_writer_sqlite.h"
-#include "metadata_writer_sqlite_conn.h"
+#include "metadata_writer_inventory_conn.h"
 #include "metadata_writer_sqlite_helpers.h"
-#include "metadata_writer_sqlite_gps.h"
+#include "metadata_writer_inventory_gps.h"
 #include "metadata_writer_sqlite_monitor.h"
 #include "netlink_helpers.h"
 #include "system_helpers.h"
@@ -82,14 +82,14 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
             mws->num_usage_events);
 
     if (mws->num_conn_events) {
-        retval = md_sqlite_conn_copy_db(mws);
+        retval = md_inventory_conn_copy_db(mws);
 
         if (retval == RETVAL_FAILURE)
             num_failed++;
     }
 
     if (mws->num_gps_events) {
-        retval = md_sqlite_gps_copy_db(mws);
+        retval = md_inventory_gps_copy_db(mws);
 
         if (retval == RETVAL_FAILURE)
             num_failed++;
@@ -103,7 +103,7 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
     }
 
     if (mws->num_usage_events) {
-        retval = md_sqlite_conn_usage_copy_db(mws);
+        retval = md_inventory_conn_usage_copy_db(mws);
 
         if (retval == RETVAL_FAILURE)
             num_failed++;
@@ -273,7 +273,8 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         const char *monitor_prefix, const char *usage_prefix)
 {
     sqlite3 *db_handle = md_sqlite_configure_db(mws, db_filename);
-   
+    const char *dump_events, *dump_updates, *dump_gps, *dump_monitor, *dump_usage;
+
     if (db_handle == NULL)
         return RETVAL_FAILURE;
 
@@ -285,20 +286,34 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
 #endif
     }
 
+    if (mws->output_format == FORMAT_SQL) {
+        dump_events = DUMP_EVENTS;
+        dump_updates = DUMP_UPDATES;
+        dump_gps = DUMP_GPS;
+        dump_monitor = DUMP_MONITOR;
+        dump_usage = DUMP_USAGE;
+    } else {
+        dump_events = DUMP_EVENTS_JSON;
+        dump_updates = DUMP_UPDATES_JSON;
+        dump_gps = DUMP_GPS_JSON;
+        dump_monitor = DUMP_MONITOR_JSON;
+        dump_usage = DUMP_USAGE_JSON;
+    }
+
     //Only set variables that are not 0
     mws->db_handle = db_handle;
     mws->db_interval = db_interval;
     mws->db_events = db_events;
     mws->do_fake_updates = 1;
     mws->delete_conn_update = 1;
-    
+
     //We will not use timer right away
     if(!(mws->timeout_handle = backend_event_loop_create_timeout(0,
             md_sqlite_handle_timeout, mws, 0))) {
         sqlite3_close_v2(db_handle);
         return RETVAL_FAILURE;
     }
-    
+
     if(sqlite3_prepare_v2(mws->db_handle, INSERT_EVENT, -1,
             &(mws->insert_event), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DELETE_TABLE, -1,
@@ -313,19 +328,19 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
             &(mws->insert_gps), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DELETE_GPS_TABLE, -1,
             &(mws->delete_gps), NULL) ||
-       sqlite3_prepare_v2(mws->db_handle, DUMP_GPS, -1,
+       sqlite3_prepare_v2(mws->db_handle, dump_gps, -1,
             &(mws->dump_gps), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, INSERT_MONITOR_EVENT, -1,
             &(mws->insert_monitor), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DELETE_MONITOR_TABLE, -1,
             &(mws->delete_monitor), NULL) ||
-       sqlite3_prepare_v2(mws->db_handle, DUMP_MONITOR, -1,
+       sqlite3_prepare_v2(mws->db_handle, dump_monitor, -1,
             &(mws->dump_monitor), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, INSERT_USAGE, -1,
             &(mws->insert_usage), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, UPDATE_USAGE, -1,
             &(mws->update_usage), NULL) ||
-       sqlite3_prepare_v2(mws->db_handle, DUMP_USAGE, -1,
+       sqlite3_prepare_v2(mws->db_handle, dump_usage, -1,
             &(mws->dump_usage), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DELETE_USAGE_TABLE, -1,
             &(mws->delete_usage), NULL)) {
@@ -335,26 +350,14 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         return RETVAL_FAILURE;
     }
 
-    if (mws->api_version == 2) {
-        if (sqlite3_prepare_v2(mws->db_handle, DUMP_EVENTS_V2, -1,
-                    &(mws->dump_table), NULL) ||
-            sqlite3_prepare_v2(mws->db_handle, DUMP_UPDATES_V2, -1,
-                &(mws->dump_update), NULL)) {
-            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Dump prepare failed: %s\n",
-                    sqlite3_errmsg(mws->db_handle));
-            sqlite3_close_v2(db_handle);
-            return RETVAL_FAILURE;
-        }
-    } else {
-         if (sqlite3_prepare_v2(mws->db_handle, DUMP_EVENTS, -1,
-                    &(mws->dump_table), NULL) ||
-            sqlite3_prepare_v2(mws->db_handle, DUMP_UPDATES, -1,
-                &(mws->dump_update), NULL)) {
-            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Dump prepare failed: %s\n",
-                    sqlite3_errmsg(mws->db_handle));
-            sqlite3_close_v2(db_handle);
-            return RETVAL_FAILURE;
-        }
+    if (sqlite3_prepare_v2(mws->db_handle, dump_events, -1,
+                &(mws->dump_table), NULL) ||
+        sqlite3_prepare_v2(mws->db_handle, dump_updates, -1,
+            &(mws->dump_update), NULL)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Dump prepare failed: %s\n",
+                sqlite3_errmsg(mws->db_handle));
+        sqlite3_close_v2(db_handle);
+        return RETVAL_FAILURE;
     }
 
     if (meta_prefix) {
@@ -425,6 +428,7 @@ void md_sqlite_usage()
     fprintf(stderr, "  \"session_id\":\t\tpath to session id file\n");
     fprintf(stderr, "  \"api_version\":\tbackend API version (default: 1)\n");
     fprintf(stderr, "  \"last_conn_tstamp_path\":\toptional path to file where we read/store timestamp of last conn dump\n");
+    fprintf(stderr, "  \"output_format\":\tJSON/SQL (default SQL)\n");
     fprintf(stderr, "}\n");
 }
 
@@ -433,7 +437,8 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
     struct md_writer_sqlite *mws = ptr;
     uint32_t node_id = 0, interval = DEFAULT_TIMEOUT, num_events = EVENT_LIMIT;
     const char *db_filename = NULL, *meta_prefix = NULL, *gps_prefix = NULL,
-               *monitor_prefix = NULL, *nodeid_file = NULL, *usage_prefix = NULL;
+               *monitor_prefix = NULL, *nodeid_file = NULL, *usage_prefix = NULL,
+               *output_format = NULL;
 
     json_object* subconfig;
     if (json_object_object_get_ex(config, "sqlite", &subconfig)) {
@@ -462,6 +467,8 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
                 mws->api_version = (uint32_t) json_object_get_int(val);
             else if (!strcmp(key, "last_conn_tstamp_path"))
                 mws->last_conn_tstamp_path = strdup(json_object_get_string(val));
+            else if (!strcmp(key, "output_format"))
+                output_format = json_object_get_string(val);    
         }
     }
 
@@ -498,6 +505,17 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
     if (!mws->api_version || mws->api_version > 2) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Unknown backend API version\n");
         return RETVAL_FAILURE;
+    }
+
+    if (output_format) {
+        if (!strcasecmp(output_format, "sql")) {
+            mws->output_format = FORMAT_SQL;
+        } else if (!strcasecmp(output_format, "json")) {
+            mws->output_format = FORMAT_JSON;
+        } else {
+            META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Unknown output format\n");
+            return RETVAL_FAILURE;
+        }
     }
 
     META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Done configuring SQLite handle\n");
@@ -571,13 +589,13 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
         if (!mws->meta_prefix[0])
             return;
 
-        retval = md_sqlite_handle_conn_event(mws, (struct md_conn_event*) event);
+        retval = md_inventory_handle_conn_event(mws, (struct md_conn_event*) event);
         break;
     case META_TYPE_POS:
         if (!mws->gps_prefix[0])
             return;
 
-        retval = md_sqlite_handle_gps_event(mws, (struct md_gps_event*) event);
+        retval = md_inventory_handle_gps_event(mws, (struct md_gps_event*) event);
         if (!retval)
             mws->num_gps_events++;
         break;
@@ -705,5 +723,6 @@ void md_sqlite_setup(struct md_exporter *mde, struct md_writer_sqlite* mws) {
     mws->itr_cb = md_sqlite_itr_cb;
     mws->usage = md_sqlite_usage;
     mws->api_version = 1;
+    mws->output_format = FORMAT_SQL;
 }
 

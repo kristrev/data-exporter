@@ -29,12 +29,15 @@
 
 #include <pthread.h>
 #include <stdint.h>
+#include <sys/time.h>
 
 #include JSON_LOC
 
 #include "lib/minmea.h"
 
 #define CONFIG_MAX_SIZE 8092
+
+#define OUTPUT_FORMAT_BUF_SIZE 20
 
 #define MDE_VERSION 1
 #define METADATA_NL_GROUP 0x03
@@ -112,7 +115,14 @@ enum md_writers {
     MD_WRITER_SQLITE,
     MD_WRITER_ZEROMQ,
     MD_WRITER_NNE,
+    MD_WRITER_NEAT,
     __MD_WRITER_MAX
+};
+
+enum output_format
+{
+    FORMAT_SQL = 1,
+    FORMAT_JSON
 };
 
 #define MD_INPUT \
@@ -146,7 +156,6 @@ struct backend_timeout_handle;
 struct md_input;
 struct md_writer;
 struct md_event;
-struct timeval;
 
 //TODO: Maybe moved this to some shared header file?
 struct md_iface_event {
@@ -199,7 +208,10 @@ struct md_conn_event {
     const char *interface_name;
     uint32_t network_provider;
     const char *network_address;
-    const char *event_value_str;
+    uint8_t has_ip;
+    uint8_t connectivity;
+    uint8_t connection_mode;
+    uint8_t quality;
 };
 
 struct md_gps_event {

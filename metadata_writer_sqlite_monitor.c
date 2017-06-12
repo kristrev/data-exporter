@@ -25,22 +25,42 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 #include <sqlite3.h>
 #include <sys/time.h>
 
 #include "metadata_exporter.h"
 #include "metadata_writer_sqlite_monitor.h"
 #include "metadata_writer_sqlite_helpers.h"
+#include "metadata_writer_json_helpers.h"
 #include "metadata_exporter_log.h"
 
-static uint8_t md_sqlite_monitor_dump_db(struct md_writer_sqlite *mws, FILE *output)
+static uint8_t md_sqlite_monitor_dump_db_sql(struct md_writer_sqlite *mws, FILE *output)
 {
     sqlite3_reset(mws->dump_monitor);
-    
+
     if (md_sqlite_helpers_dump_write(mws->dump_monitor, output))
         return RETVAL_FAILURE;
     else
         return RETVAL_SUCCESS;
+}
+
+static uint8_t md_sqlite_monitor_dump_json(struct md_writer_sqlite *mws, FILE *output)
+{
+    const char *json_str;
+    sqlite3_reset(mws->dump_monitor);
+    json_object *jarray = json_object_new_array();
+
+    if (md_json_helpers_dump_write(mws->dump_monitor, jarray)) {
+        json_object_put(jarray);
+        return RETVAL_FAILURE;
+    }
+
+    json_str = json_object_to_json_string_ext(jarray, JSON_C_TO_STRING_PLAIN);
+    fprintf(output, "%s", json_str);
+
+    json_object_put(jarray);
+    return RETVAL_SUCCESS;
 }
 
 static uint8_t md_sqlite_monitor_delete_db(struct md_writer_sqlite *mws)
@@ -60,8 +80,16 @@ static uint8_t md_sqlite_monitor_delete_db(struct md_writer_sqlite *mws)
 
 uint8_t md_sqlite_monitor_copy_db(struct md_writer_sqlite *mws)
 {
+    dump_db_cb dump_cb = NULL;
+
+    if (mws->output_format == FORMAT_SQL) {
+        dump_cb = md_sqlite_monitor_dump_db_sql;
+    } else {
+        dump_cb = md_sqlite_monitor_dump_json;
+    }
+
     uint8_t retval = md_writer_helpers_copy_db(mws->monitor_prefix,
-            mws->monitor_prefix_len, md_sqlite_monitor_dump_db, mws,
+            mws->monitor_prefix_len, dump_cb, mws,
             md_sqlite_monitor_delete_db);
 
     if (retval == RETVAL_SUCCESS)

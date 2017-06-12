@@ -24,15 +24,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef METADATA_WRITER_SQLITE_CONN
-#define METADATA_WRITER_SQLITE_CONN
+#ifndef METADATA_WRITER_INVENTORY_CONN
+#define METADATA_WRITER_INVENTORY_CONN
 
 #include "metadata_exporter.h"
 #include "metadata_writer_sqlite.h"
 
-uint8_t md_sqlite_handle_conn_event(struct md_writer_sqlite *mws,
+#define UPDATE_STR_LEN  8
+
+uint8_t md_inventory_handle_conn_event(struct md_writer_sqlite *mws,
                                     struct md_conn_event *mce);
-uint8_t md_sqlite_conn_copy_db(struct md_writer_sqlite *mws);
-uint8_t md_sqlite_conn_usage_copy_db(struct md_writer_sqlite *mws);
+uint8_t md_inventory_conn_copy_db(struct md_writer_sqlite *mws);
+uint8_t md_inventory_conn_usage_copy_db(struct md_writer_sqlite *mws);
 
 #endif

@@ -64,6 +64,9 @@
 #ifdef NNE_SUPPORT
     #include "metadata_writer_nne.h"
 #endif
+#ifdef NEAT_SUPPORT
+    #include "metadata_writer_neat.h"
+#endif
 
 #include "netlink_helpers.h"
 #include "backend_event_loop.h"
@@ -156,6 +159,7 @@ static int configure_core(struct md_exporter **mde)
     return RETVAL_SUCCESS;
 }
 
+#if 0
 static struct json_object *create_fake_gps_gga_obj()
 {
     struct json_object *obj = NULL, *obj_add = NULL;
@@ -217,6 +221,7 @@ static struct json_object *create_fake_gps_rmc_obj()
 
     return obj;
 }
+#endif
 
 static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
         uint8_t event_param, char *event_value_str, uint64_t tstamp)
@@ -385,6 +390,7 @@ static ssize_t send_netlink_json(uint8_t *snd_buf,
             netlink_addrlen);
 }
 
+#if 0
 static void test_modem_metadata(uint8_t *snd_buf, int32_t sock_fd,
         struct sockaddr *netlink_addr)
 {
@@ -503,7 +509,7 @@ static void test_modem_metadata(uint8_t *snd_buf, int32_t sock_fd,
     }
 
 }
-
+#endif
 //Test function which just generates some netlink messages that are sent to our
 //group
 static void test_netlink(uint32_t packets)
@@ -634,6 +640,9 @@ static void print_usage()
     md_sysevent_usage();
 #endif
     fprintf(stderr, "WRITERS:\n");
+#ifdef NEAT_SUPPORT
+    md_neat_usage();
+#endif
 #ifdef NNE_SUPPORT
     md_nne_usage();
 #endif
@@ -643,7 +652,6 @@ static void print_usage()
 #ifdef ZEROMQ_SUPPORT
     md_zeromq_usage();
 #endif
-
 }
 
 void read_config(char* config_file, json_object** config_obj)
@@ -682,7 +690,7 @@ void read_config(char* config_file, json_object** config_obj)
     json_tokener_free(tok);
 
     *config_obj = parsed;
-}          
+}
 
 int main(int argc, char *argv[])
 {
@@ -751,6 +759,19 @@ int main(int argc, char *argv[])
             }
 
             md_nne_setup(mde, (struct md_writer_nne*) mde->md_writers[MD_WRITER_NNE]);
+            num_writers++;
+        }
+#endif
+#ifdef NEAT_SUPPORT
+        else if (!strcmp(key, "neat")) {
+            mde->md_writers[MD_WRITER_NEAT] = calloc(sizeof(struct md_writer_neat), 1);
+
+            if (mde->md_writers[MD_WRITER_NEAT] == NULL) {
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate NEAT writer\n");
+                exit(EXIT_FAILURE);
+            }
+
+            md_neat_setup(mde, (struct md_writer_neat *)mde->md_writers[MD_WRITER_NEAT]);
             num_writers++;
         }
 #endif

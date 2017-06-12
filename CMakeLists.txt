@@ -13,7 +13,7 @@ set(SOURCE
     system_helpers.c
     metadata_input_netlink.c
     lib/minmea.c)
-            
+
 
 if (TARGET_OWRT)
     MESSAGE(STATUS "OpenWRT build, will include UCI")
@@ -37,8 +37,9 @@ if (SQLITE3)
     set(SOURCE ${SOURCE} 
         metadata_writer_sqlite.c
         metadata_writer_sqlite_helpers.c
-        metadata_writer_sqlite_conn.c
-        metadata_writer_sqlite_gps.c
+        metadata_writer_json_helpers.c
+        metadata_writer_inventory_conn.c
+        metadata_writer_inventory_gps.c
         metadata_writer_sqlite_monitor.c)
     add_definitions("-DSQLITE_SUPPORT")
 endif()
@@ -49,10 +50,18 @@ if (NNE)
     add_definitions("-DNNE_SUPPORT")
 endif()
 
+if (NEAT)
+    set(SOURCE ${SOURCE}
+        metadata_writer_neat.c)
+    add_definitions("-DNEAT_SUPPORT")
+endif()
+
 if (ZEROMQ)
     set(LIBS ${LIBS} zmq)
     set(SOURCE ${SOURCE}
-        metadata_writer_zeromq.c)
+        metadata_writer_zeromq.c
+        metadata_writer_zeromq_monroe.c
+        metadata_writer_zeromq_nne.c)
     add_definitions("-DZEROMQ_SUPPORT")
 endif()
 
