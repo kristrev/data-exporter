@@ -35,6 +35,7 @@ const char *monroe_keys[MD_ZMQ_KEYS_MAX + 1] = {
     "IMEI",
     "IPAddress",
     "InternalIPAddress",
+    "Operator",
     "LAC",
     "LTERSRP",
     "LTEFrequency",
