@@ -193,7 +193,7 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
             json_object_to_json_string_ext(gps_obj, JSON_C_TO_STRING_PLAIN));
 
     if (retval < sizeof(topic)) {
-        zmq_send(mwz, topic, strlen(topic), 0);
+        zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
     }
     json_object_put(gps_obj);
 }
@@ -217,7 +217,7 @@ static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
                 mwz->topics[MD_ZMQ_TOPIC_SENSOR],
                 key, json_object_to_json_string_ext(val, JSON_C_TO_STRING_PLAIN));
         if (retval < sizeof(topic)) {
-            zmq_send(mwz, topic, strlen(topic), 0);
+            zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
         }
     }
 }
@@ -237,7 +237,7 @@ static void md_zeromq_handle_sysevent(struct md_writer_zeromq *mwz,
             json_object_to_json_string_ext(mge->json_blob,
                 JSON_C_TO_STRING_PLAIN));
     if (retval < sizeof(topic)) {
-        zmq_send(mwz, topic, strlen(topic), 0);
+        zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
     }
 }
 
@@ -326,7 +326,7 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
             json_object_to_json_string_ext(json_obj, JSON_C_TO_STRING_PLAIN));
 
     if (retval < sizeof(topic))
-        zmq_send(mwz, topic, strlen(topic), 0);
+        zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
 
     json_object_put(json_obj);
 }
@@ -544,7 +544,7 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
         return;
     }
 
-    zmq_send(mwz, topic, strlen(topic), 0);
+    zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
     json_object_put(json_obj);
 }
 
