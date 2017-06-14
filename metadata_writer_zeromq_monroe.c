@@ -14,7 +14,12 @@ const char *monroe_topics[MD_ZMQ_TOPICS_MAX + 1] = {
     "UPDATE",
     "IP_ADDR",
     "LOC_CHANGE",
-    "NW_MCCMNC_CHANGE"
+    "NW_MCCMNC_CHANGE",
+    "RADIO_CELL_LOCATION_GERAN",
+    "RADIO_GSM_RR_CELL_SEL_RESEL_PARAM",
+    "RADIO_GRR_CELL_RESEL",
+    "RADIO_GSM_RR_CIPHER_MODE",
+    "RADIO_GSM_RR_CHANNEL_CONF"
 };
 
 const char *monroe_keys[MD_ZMQ_KEYS_MAX + 1] = {
