@@ -30,6 +30,7 @@
 #include <zmq.h>
 #include JSON_LOC
 #include <getopt.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -44,6 +45,16 @@
 #include "metadata_exporter_log.h"
 #include "backend_event_loop.h"
 
+static double override_tstamp() {
+    /* return a current export timestamp with us precision, as the 
+       event timestamp with sec resolution is not deemed useful.   */
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    return (double) tv.tv_sec + (double) (tv.tv_usec / 1000000.0); 
+}
+
+
 static json_object *md_zeromq_create_json_string(json_object *obj,
         const char *key, const char *value)
 {
@@ -53,7 +64,7 @@ static json_object *md_zeromq_create_json_string(json_object *obj,
 
     if (!obj_add)
         return NULL;
-    
+
     json_object_object_add(obj, key, obj_add);
     return obj;
 }
@@ -65,7 +76,7 @@ static json_object *md_zeromq_create_json_int(json_object *obj, const char *key,
 
     if (!obj_add)
         return NULL;
-    
+
     json_object_object_add(obj, key, obj_add);
     return obj;
 }
@@ -77,7 +88,7 @@ static json_object *md_zeromq_create_json_int64(json_object *obj,
 
     if (!obj_add)
         return NULL;
-    
+
     json_object_object_add(obj, key, obj_add);
     return obj;
 }
@@ -97,10 +108,20 @@ static json_object *md_zeromq_create_json_double(json_object *obj,
 static uint8_t md_zeromq_add_default_fields(const struct md_writer_zeromq *mwz,
         struct json_object* obj, int seq, int64_t tstamp, const char* dataid) {
     if (!md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_SEQ],
-            seq) ||
+            seq)) {
+      return 0;
+    } 
+    if ((mwz->metadata_project == MD_PROJECT_NNE) && 
         !md_zeromq_create_json_int64(obj, mwz->keys[MD_ZMQ_KEY_TSTAMP],
-            tstamp) ||
-        (mwz->keys[MD_ZMQ_KEY_DATAVERSION] &&
+            tstamp)) {
+      return 0;
+    } else  
+    if ((mwz->metadata_project == MD_PROJECT_MNR) && 
+        !md_zeromq_create_json_double(obj, mwz->keys[MD_ZMQ_KEY_TSTAMP],
+            override_tstamp())) {
+      return 0;
+    }
+    if ((mwz->keys[MD_ZMQ_KEY_DATAVERSION] &&
          !md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_DATAVERSION],
             MD_ZMQ_DATA_VERSION)) ||
         (mwz->keys[MD_ZMQ_KEY_DATAID] &&
@@ -119,6 +140,7 @@ static json_object* md_zeromq_create_json_gps(struct md_writer_zeromq *mwz,
 
     if (!(obj = json_object_new_object()))
         return NULL;
+
 
     if (!md_zeromq_add_default_fields(mwz, obj, mge->sequence,
             mge->tstamp_tv.tv_sec, mwz->topics[MD_ZMQ_TOPIC_GPS])) {
@@ -157,7 +179,17 @@ static void md_zeromq_handle_gps(struct md_writer_zeromq *mwz,
         return;
     }
 
-    retval = snprintf(topic, sizeof(topic), "%s %s", mwz->topics[MD_ZMQ_TOPIC_GPS],
+    char* suffix="";
+    if (mge->nmea_raw) {
+    	if (strncmp(mge->nmea_raw, "$GPGGA", 6)==0) {
+    	    suffix = ".GPGGA";
+    	} else if (strncmp(mge->nmea_raw, "$GPRMC", 6)==0) {
+          suffix = ".GPRMC";
+      }
+    }
+
+    retval = snprintf(topic, sizeof(topic), "%s%s %s", mwz->topics[MD_ZMQ_TOPIC_GPS],
+            suffix,
             json_object_to_json_string_ext(gps_obj, JSON_C_TO_STRING_PLAIN));
 
     if (retval < sizeof(topic)) {
@@ -179,8 +211,7 @@ static void md_zeromq_handle_munin(struct md_writer_zeromq *mwz,
                 mwz->topics[MD_ZMQ_TOPIC_SENSOR], key);
         if (retval >= sizeof(dataid)) continue;
 
-        md_zeromq_add_default_fields(mwz, val, mge->sequence, mge->tstamp,
-                dataid);
+        md_zeromq_add_default_fields(mwz, val, mge->sequence, mge->tstamp, dataid);
 
         retval = snprintf(topic, sizeof(topic), "%s.%s %s",
                 mwz->topics[MD_ZMQ_TOPIC_SENSOR],
@@ -199,14 +230,14 @@ static void md_zeromq_handle_sysevent(struct md_writer_zeromq *mwz,
     int retval;
 
     md_zeromq_add_default_fields(mwz, mge->json_blob, mge->sequence,
-            mge->tstamp, mwz->topics[MD_ZMQ_TOPIC_SYSEVENT]);
+        mge->tstamp, mwz->topics[MD_ZMQ_TOPIC_SYSEVENT]);
 
     retval = snprintf(topic, sizeof(topic), "%s %s",
             mwz->topics[MD_ZMQ_TOPIC_SYSEVENT],
             json_object_to_json_string_ext(mge->json_blob,
                 JSON_C_TO_STRING_PLAIN));
     if (retval < sizeof(topic)) {
-        zmq_send(mwz->zmq_publisher , topic, strlen(topic), 0);
+        zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
     }
 }
 
@@ -264,7 +295,7 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
     } else {
         mode = mce->connection_mode;
     }
-    
+
     json_obj = md_zeromq_create_json_modem_default(mwz, mce);
 
     if (!(obj_add = json_object_new_int(mode))) {
@@ -300,6 +331,36 @@ static void md_zeromq_handle_conn(struct md_writer_zeromq *mwz,
     json_object_put(json_obj);
 }
 
+
+char imei_mapping [10][30];
+int   maplen=0;
+static int map_imei(const char* imei, const struct md_writer_zeromq *mwz) {
+    for (int i=0;i<maplen;i++) {
+        if (strcmp(imei_mapping[i], imei)==0) {
+            return i;
+        }
+    }
+    FILE *fp = fopen("/tmp/interfaces", "r");
+    if (fp==NULL) return -1;
+    char* line = NULL;
+    int nr=0;
+    int match=-1;
+    size_t len = 0;
+    ssize_t read;
+    while ((read = getline(&line, &len, fp)) != -1) {
+        if(len>29) len=29;
+        strncpy(imei_mapping[nr], line, len);
+        imei_mapping[nr][strlen(imei_mapping[nr])-1]='\0';
+
+        if (strcmp(imei_mapping[nr], imei)==0) match=nr;
+        if (++nr==10) break;
+    }
+    maplen=nr;
+    fclose(fp);
+    if (line) free(line);
+    return match;
+}
+
 static json_object *md_zeromq_create_iface_json(const struct md_writer_zeromq *mwz,
         struct md_iface_event *mie)
 {
@@ -314,11 +375,22 @@ static json_object *md_zeromq_create_iface_json(const struct md_writer_zeromq *m
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_SEQ],
-                mie->sequence) ||
-        !md_zeromq_create_json_int64(obj, mwz->keys[MD_ZMQ_KEY_TSTAMP],
-            mie->tstamp) ||
-        !md_zeromq_create_json_string(obj, mwz->keys[MD_ZMQ_KEY_ICCID],
+    if (mwz->metadata_project == MD_PROJECT_MNR) {
+        if (mie->ifname && mie->imei) {
+            int iifindex=map_imei(mie->imei, mwz);
+            if (iifindex > -1) {
+                char iifname[4]="opX";
+                iifname[2]=iifindex + '0';
+                if (!md_zeromq_create_json_string(obj, 
+                    mwz->keys[MD_ZMQ_KEY_MONROE_IIF_NAME], iifname)) {
+                    json_object_put(obj);
+                    return NULL;
+               }
+            }
+        }
+    }
+
+    if (!md_zeromq_create_json_string(obj, mwz->keys[MD_ZMQ_KEY_ICCID],
             mie->iccid) ||
         !md_zeromq_create_json_string(obj, mwz->keys[MD_ZMQ_KEY_IMSI],
             mie->imsi) ||
@@ -472,7 +544,7 @@ static void md_zeromq_handle_iface(struct md_writer_zeromq *mwz,
         return;
     }
 
-    retval = zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+    zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
     json_object_put(json_obj);
 }
 
@@ -484,6 +556,12 @@ static json_object *md_zeromq_handle_radio_cell_loc_gerant(
 
     if (!(obj = json_object_new_object()))
         return NULL;
+
+    if (!md_zeromq_add_default_fields(mwz, obj, event->sequence,
+            event->tstamp, mwz->topics[MD_ZMQ_TOPIC_RADIO_CELL_LOCATION_GERAN])) {
+        json_object_put(obj);
+        return NULL;
+    }
 
     if (event->iccid &&
         !md_zeromq_create_json_string(obj, mwz->keys[MD_ZMQ_KEY_ICCID],
@@ -506,11 +584,7 @@ static json_object *md_zeromq_handle_radio_cell_loc_gerant(
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_SEQ],
-            event->sequence) ||
-        !md_zeromq_create_json_int64(obj, mwz->keys[MD_ZMQ_KEY_TSTAMP],
-            event->tstamp) ||
-        !md_zeromq_create_json_int64(obj, mwz->keys[MD_ZMQ_KEY_RADIO_CELL_ID],
+    if (!md_zeromq_create_json_int64(obj, mwz->keys[MD_ZMQ_KEY_RADIO_CELL_ID],
             event->cell_id) ||
         !md_zeromq_create_json_string(obj, mwz->keys[MD_ZMQ_KEY_RADIO_PLMN],
             event->plmn) ||
@@ -576,11 +650,13 @@ static json_object *md_zeromq_handle_radio_cell_resel_event(
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_SEQ],
-            event->sequence) ||
-        !md_zeromq_create_json_int64(obj, mwz->keys[MD_ZMQ_KEY_TSTAMP],
-            event->tstamp) ||
-        !md_zeromq_create_json_int(obj,
+    if (!md_zeromq_add_default_fields(mwz, obj, event->sequence,
+        event->tstamp, mwz->topics[MD_ZMQ_TOPIC_RADIO_GRR_CELL_RESEL])) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (!md_zeromq_create_json_int(obj,
             mwz->keys[MD_ZMQ_KEY_RADIO_SERVING_BCCH_ARFCN],
             event->serving_bcch_arfcn) ||
         !md_zeromq_create_json_int(obj,
@@ -608,8 +684,8 @@ static json_object *md_zeromq_handle_radio_cell_resel_event(
             mwz->keys[MD_ZMQ_KEY_RADIO_SERVING_FIVE_SECOND_TIMER],
             event->serving_five_second_timer) ||
         !md_zeromq_create_json_int(obj,
-            mwz->keys[MD_ZMQ_KEY_RADIO_CELL_RESELET_STATUS],
-            event->cell_reselet_status) ||
+            mwz->keys[MD_ZMQ_KEY_RADIO_CELL_RESELECT_STATUS],
+            event->cell_reselect_status) ||
         !md_zeromq_create_json_int(obj,
             mwz->keys[MD_ZMQ_KEY_RADIO_RECENT_CELL_SELECTION],
             event->recent_cell_selection)) {
@@ -662,11 +738,13 @@ static json_object *md_zeromq_handle_radio_cipher_mode_event(
         return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_SEQ],
-            event->sequence) ||
-        !md_zeromq_create_json_int64(obj, mwz->keys[MD_ZMQ_KEY_TSTAMP],
-            event->tstamp) ||
-        !md_zeromq_create_json_int(obj,
+    if (!md_zeromq_add_default_fields(mwz, obj, event->sequence,
+        event->tstamp, mwz->topics[MD_ZMQ_TOPIC_RADIO_GSM_RR_CIPHER_MODE])) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    if (!md_zeromq_create_json_int(obj,
             mwz->keys[MD_ZMQ_KEY_RADIO_CIPHERING_STATE],
             event->ciphering_state) ||
         !md_zeromq_create_json_int(obj,
@@ -707,13 +785,15 @@ static json_object *md_zeromq_handle_cell_reset_param_event(
             event->imei)) {
         json_object_put(obj);
         return NULL;
+    } 
+
+    if (!md_zeromq_add_default_fields(mwz, obj, event->sequence,
+        event->tstamp, mwz->topics[MD_ZMQ_TOPIC_RADIO_GSM_RR_CELL_SEL_RESEL_PARAM])) {
+        json_object_put(obj);
+        return NULL;
     }
 
-    if (!md_zeromq_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_SEQ],
-            event->sequence) ||
-        !md_zeromq_create_json_int64(obj, mwz->keys[MD_ZMQ_KEY_TSTAMP],
-            event->tstamp) ||
-        !md_zeromq_create_json_int(obj,
+    if (!md_zeromq_create_json_int(obj,
             mwz->keys[MD_ZMQ_KEY_RADIO_CELL_RESELECT_HYSTERESIS],
             event->cell_reselect_hysteresis) ||
         !md_zeromq_create_json_int(obj,
@@ -786,13 +866,13 @@ static json_object *md_zeromq_handle_rr_channel_conf_event(
         return NULL;
     }
 
+    if (!md_zeromq_add_default_fields(mwz, obj, event->sequence,
+        event->tstamp, mwz->topics[MD_ZMQ_TOPIC_RADIO_GSM_RR_CHANNEL_CONF])) {
+        json_object_put(obj);
+        return NULL;
+    }
+
     if (!md_zeromq_create_json_int(obj,
-            mwz->keys[MD_ZMQ_KEY_SEQ],
-            event->sequence) ||
-        !md_zeromq_create_json_int64(obj,
-            mwz->keys[MD_ZMQ_KEY_TSTAMP],
-            event->tstamp) ||
-        !md_zeromq_create_json_int(obj,
             mwz->keys[MD_ZMQ_KEY_RADIO_NUM_DED_CHANS],
             event->num_ded_chans) ||
         !md_zeromq_create_json_int(obj,
@@ -982,7 +1062,6 @@ static uint8_t md_zeromq_config(struct md_writer_zeromq *mwz,
 
     if ((mwz->zmq_publisher = zmq_socket(mwz->zmq_context, ZMQ_PUB)) == NULL)
         return RETVAL_FAILURE;
-
 
     if ((retval = zmq_bind(mwz->zmq_publisher, mwz->zmq_addr)) != 0) {
         META_PRINT_SYSLOG(mwz->parent, LOG_ERR, "zmq_bind failed (%d): %s, "

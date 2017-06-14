@@ -14,7 +14,12 @@ const char *monroe_topics[MD_ZMQ_TOPICS_MAX + 1] = {
     "UPDATE",
     "IP_ADDR",
     "LOC_CHANGE",
-    "NW_MCCMNC_CHANGE"
+    "NW_MCCMNC_CHANGE",
+    "RADIO_CELL_LOCATION_GERAN",
+    "RADIO_GSM_RR_CELL_SEL_RESEL_PARAM",
+    "RADIO_GRR_CELL_RESEL",
+    "RADIO_GSM_RR_CIPHER_MODE",
+    "RADIO_GSM_RR_CHANNEL_CONF"
 };
 
 const char *monroe_keys[MD_ZMQ_KEYS_MAX + 1] = {
@@ -35,6 +40,7 @@ const char *monroe_keys[MD_ZMQ_KEYS_MAX + 1] = {
     "IMEI",
     "IPAddress",
     "InternalIPAddress",
+    "Operator",
     "LAC",
     "LTERSRP",
     "LTEFrequency",
@@ -55,5 +61,57 @@ const char *monroe_keys[MD_ZMQ_KEYS_MAX + 1] = {
     "Latitude",
     "NumberOfSatellites",
     "NMEA",
-    "Speed"
+    "Speed",
+
+    "CellID",
+    "PLMN",
+    "LAC",
+    "ARFCN",
+    "BSIC",
+    "TimingAdvance",
+    "RXLEV",
+    "CellGeranInfoNumber",
+
+    "ServingBCCHARFCN",
+    "ServingPBCCHARFCN",
+    "ServingPriorityClass",
+    "ServingRXLEVAverage",
+    "ServingC1",
+    "ServingC2",
+    "ServingC31",
+    "ServingC32",
+    "ServingFiveSecondTimer",
+    "CellReselectStatus",
+    "RecentCellSelection",
+    "GRRCellNeighbors",
+
+    "CipheringState",
+    "CipheringAlgorithm",
+
+    "CellReselectHysteresis",
+    "MSTXPowerMaxCCH",
+    "RXLEVAccessMin",
+    "PowerOffsetValid",
+    "PowerOffset",
+    "NECI",
+    "ACS",
+    "OptReselectParamInd",
+    "CellBarQualify",
+    "CellReselectOffset",
+    "TemporaryOffset",
+    "PenaltyTime",
+
+    "DedicatedChannelCount",
+    "DTXIndicator",
+    "PowerLevel",
+    "StartingTimeValid",
+    "StartingTime",
+    "CipherFlag",
+    "CipherAlgorithm",
+    "AfterChannelConfig",
+    "BeforeChannelCondif",
+    "ChannelMode1",
+    "ChannelMode2",
+
+    "InternalInterfaceName"
 };

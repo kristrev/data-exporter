@@ -17,7 +17,7 @@
 #include "backend_event_loop.h"
 
 /* polling interval in seconds */
-#define MUNIN_POLLING_INTERVAL 5  
+#define MUNIN_POLLING_INTERVAL 60 
 
 /* TODO
 - handle socket disconnect/reconnect 
