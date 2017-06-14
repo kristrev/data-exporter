@@ -19,7 +19,9 @@ const char *nne_topics[MD_ZMQ_TOPICS_MAX + 1] = {
     "RADIO.GSM_RR_CELL_SEL_RESEL_PARAM",
     "RADIO.GRR_CELL_RESEL",
     "RADIO.GSM_RR_CIPHER_MODE",
-    "RADIO.GSM_RR_CHANNEL_CONF"
+    "RADIO.GSM_RR_CHANNEL_CONF",
+    "RADIO.WCDMA_RRC_STATE",
+    "RADIO.WCDMA_CELL_ID"
 };
 
 const char *nne_keys[MD_ZMQ_KEYS_MAX + 1] = {

@@ -93,7 +93,9 @@ enum radio_event {
     RADIO_EVENT_GSM_RR_CHANNEL_CONF,
     RADIO_EVENT_CELL_LOCATION_GERAN,
     RADIO_EVENT_GSM_RR_CELL_SEL_RESEL_PARAM,
-    RADIO_EVENT_GRR_CELL_RESEL
+    RADIO_EVENT_GRR_CELL_RESEL,
+    RADIO_EVENT_WCDMA_RRC_STATE,
+    RADIO_EVENT_WCDMA_CELL_ID
 };
 
 #define EVENT_STR_LEN 255
@@ -299,6 +301,21 @@ struct md_radio_gsm_rr_channel_conf_event {
     const char *before_channel_config;
     uint8_t channel_mode_1;
     uint8_t channel_mode_2;
+};
+
+struct md_radio_wcdma_rrc_state_event {
+    MD_RADIO_EVENT;
+    uint8_t rrc_state;
+};
+
+struct md_radio_wcdma_cell_id_event {
+    MD_RADIO_EVENT;
+    uint32_t ul_uarfcn;
+    uint32_t dl_uarfcn;
+    uint32_t cell_id;
+    uint16_t ura_id;
+    uint8_t cell_access_rest;
+    uint8_t call_accs;
 };
 
 #define md_sysevent md_munin_event

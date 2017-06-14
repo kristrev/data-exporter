@@ -845,6 +845,21 @@ struct nne_radio_descr NNE_RADIO_GRR_CELL_RESEL_DESCR[] = {
     { NULL, NNE_TYPE_NULL, 0 }
 };
 
+struct nne_radio_descr NNE_RADIO_WCDMA_RRC_STATE_DESCR[] = {
+    { "wcdma_rrc_state.rrc_state", NNE_TYPE_UINT8, offsetof(struct md_radio_wcdma_rrc_state_event, rrc_state) },
+    { NULL, NNE_TYPE_NULL, 0 }
+};
+
+struct nne_radio_descr NNE_RADIO_WCDMA_CELL_ID_DESCR[] = {
+    { "wcdma_cell_id.ul_uarfcn", NNE_TYPE_UINT32, offsetof(struct md_radio_wcdma_cell_id_event, ul_uarfcn) },
+    { "wcdma_cell_id.dl_uarfcn", NNE_TYPE_UINT32, offsetof(struct md_radio_wcdma_cell_id_event, dl_uarfcn) },
+    { "wcdma_cell_id.cell_id", NNE_TYPE_UINT32, offsetof(struct md_radio_wcdma_cell_id_event, cell_id) },
+    { "wcdma_cell_id.ura_id", NNE_TYPE_UINT16, offsetof(struct md_radio_wcdma_cell_id_event, ura_id) },
+    { "wcdma_cell_id.ul_uarfcn", NNE_TYPE_UINT8, offsetof(struct md_radio_wcdma_cell_id_event, cell_access_rest) },
+    { "wcdma_cell_id.ul_uarfcn", NNE_TYPE_UINT8, offsetof(struct md_radio_wcdma_cell_id_event, call_accs) },
+    { NULL, NNE_TYPE_NULL, 0 }
+};
+
 static void md_nne_send_radio_message(struct md_writer_nne *mwn,
                                       struct md_radio_event *mre,
                                       struct nne_radio_descr *descr)
@@ -913,6 +928,14 @@ static void md_nne_handle_radio(struct md_writer_nne *mwn,
     case RADIO_EVENT_GRR_CELL_RESEL:
         META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: RADIO_EVENT_GRR_CELL_RESEL\n");
         md_nne_send_radio_message(mwn, mre, NNE_RADIO_GRR_CELL_RESEL_DESCR);
+        break;
+    case RADIO_EVENT_WCDMA_RRC_STATE:
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: RADIO_EVENT_WCDMA_RRC_STATE\n");
+        md_nne_send_radio_message(mwn, mre, NNE_RADIO_WCDMA_RRC_STATE_DESCR);
+        break;
+    case RADIO_EVENT_WCDMA_CELL_ID:
+        META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: RADIO_EVENT_WCDMA_CELL_ID\n");
+        md_nne_send_radio_message(mwn, mre, NNE_RADIO_WCDMA_CELL_ID_DESCR);
         break;
     default:
         META_PRINT_SYSLOG(mwn->parent, LOG_ERR, "NNE writer: Unsupported radio event %u\n", mre->event_param);
