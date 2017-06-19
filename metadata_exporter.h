@@ -191,6 +191,8 @@ struct md_iface_event {
     uint8_t event_type;
 };
 
+typedef struct md_iface_event md_system_event_t;
+
 struct md_conn_event {
     MD_EVENT;
     uint8_t event_type;

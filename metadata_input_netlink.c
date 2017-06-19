@@ -683,13 +683,13 @@ static void md_input_netlink_handle_system_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
     //recycle iface event, it contains all fields we need (currently)
-    memset(min->mie, 0, sizeof(struct md_iface_event));
-    min->mie->md_type = META_TYPE_SYSTEM;
+    memset(min->mse, 0, sizeof(md_system_event_t));
+    min->mse->md_type = META_TYPE_SYSTEM;
 
-    if (md_input_netlink_parse_iface_event(min, obj, min->mie) == RETVAL_FAILURE)
+    if (md_input_netlink_parse_iface_event(min, obj, min->mse) == RETVAL_FAILURE)
         return;
 
-    mde_publish_event_obj(min->parent, (struct md_event*) min->mie);
+    mde_publish_event_obj(min->parent, (struct md_event*) min->mse);
 }
 
 static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events)

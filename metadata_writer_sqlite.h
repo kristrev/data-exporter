@@ -124,7 +124,7 @@
                             "TxData INTEGER NOT NULL," \
                             "PRIMARY KEY(DeviceId,SimCardIccid,SimCardImsi,Timestamp))"
 
-#define CREATE_REBOOT_SQL   "CREATE TABLE IF NOT EXISTS Reboot(" \
+#define CREATE_REBOOT_SQL   "CREATE TABLE IF NOT EXISTS RebootEvent(" \
                             "NodeId INTEGER NOT NULL," \
                             "BootCount INTEGER," \
                             "BootMultiplier INTEGER," \
@@ -161,6 +161,10 @@
                             ",SimCardIccid" \
                             ",SimCardImsi,Timestamp,RxData,TxData) " \
                             "VALUES (?,?,?,?,?,?,?,?)"
+
+#define INSERT_REBOOT_EVENT "INSERT INTO RebootEvent(NodeId, BootCount," \
+                            "BootMultiplier, Timestamp, Sequence, InterfaceId)"\
+                            "VALUES (?,?,?,?,?,?)"
 
 #define SELECT_LAST_UPDATE  "SELECT HasIp,Connectivity,ConnectionMode,Quality "\
                             " FROM NetworkUpdates WHERE "\
@@ -296,6 +300,9 @@
 
 #define DUMP_USAGE_JSON     "SELECT * FROM DataUse"
 
+#define DUMP_SYSTEM_JSON    "SELECT * FROM RebootEvent"
+
+
 struct md_event;
 struct md_writer;
 struct backend_timeout_handle;
@@ -315,6 +322,8 @@ struct md_writer_sqlite {
 
     sqlite3_stmt *insert_usage, *update_usage, *dump_usage, *delete_usage;
 
+    sqlite3_stmt *insert_system, *dump_system;
+
     char *session_id_file;
     const char *last_conn_tstamp_path;
 
@@ -325,6 +334,7 @@ struct md_writer_sqlite {
     uint32_t num_gps_events;
     uint32_t num_munin_events;
     uint32_t num_usage_events;
+    uint32_t num_system_events;
 
     uint8_t timeout_added;
     uint8_t file_failed;
@@ -345,8 +355,10 @@ struct md_writer_sqlite {
     float gps_speed;
 
     struct backend_timeout_handle *timeout_handle;
-    char   meta_prefix[128], gps_prefix[128], monitor_prefix[128], usage_prefix[128];
-    size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len, usage_prefix_len;
+    char meta_prefix[128], gps_prefix[128], monitor_prefix[128],
+        usage_prefix[128], system_prefix[128];
+    size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len,
+           usage_prefix_len, system_prefix_len;
 
     uint8_t api_version;
     uint8_t delete_conn_update;

@@ -40,6 +40,7 @@ if (SQLITE3)
         metadata_writer_json_helpers.c
         metadata_writer_inventory_conn.c
         metadata_writer_inventory_gps.c
+        metadata_writer_inventory_system.c
         metadata_writer_sqlite_monitor.c)
     add_definitions("-DSQLITE_SUPPORT")
 endif()
