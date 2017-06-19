@@ -124,6 +124,15 @@
                             "TxData INTEGER NOT NULL," \
                             "PRIMARY KEY(DeviceId,SimCardIccid,SimCardImsi,Timestamp))"
 
+#define CREATE_REBOOT_SQL   "CREATE TABLE IF NOT EXISTS Reboot(" \
+                            "NodeId INTEGER NOT NULL," \
+                            "BootCount INTEGER," \
+                            "BootMultiplier INTEGER," \
+                            "Timestamp INTEGER NOT NULL," \
+                            "Sequence INTEGER NOT NULL," \
+                            "InterfaceId TEXT NOT NULL," \
+                            "PRIMARY KEY(BootCount,BootMultiplier,Timestamp,Sequence)"
+
 #define INSERT_EVENT        "INSERT INTO NetworkEvent(NodeId,SessionId,"\
                             "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
                             "L4SessionId,EventType,EventParam,EventValue,"\

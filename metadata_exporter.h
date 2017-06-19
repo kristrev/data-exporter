@@ -53,6 +53,7 @@
 #define META_TYPE_MUNIN      0x05
 #define META_TYPE_SYSEVENT   0x06
 #define META_TYPE_RADIO      0x08
+#define META_TYPE_SYSTEM     0x10
 
 enum iface_event {
     IFACE_EVENT_DEV_STATE=1,
