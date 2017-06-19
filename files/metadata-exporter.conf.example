@@ -16,7 +16,8 @@
   "netlink": {
     "conn" : true,
     "pos"  : true,
-    "iface": true
+    "iface": true,
+    "system": true,
   },
   "sqlite": {
     "database": "/tmp/metadata.db",

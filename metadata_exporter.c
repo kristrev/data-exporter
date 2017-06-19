@@ -223,6 +223,38 @@ static struct json_object *create_fake_gps_rmc_obj()
 }
 #endif
 
+static struct json_object *create_fake_restart_obj()
+{
+    struct json_object *obj = NULL, *obj_add = NULL;
+    struct timeval tv;
+
+    if (!(obj = json_object_new_object())) {
+        return NULL;
+    }
+
+    gettimeofday(&tv, NULL);
+	if (!(obj_add = json_object_new_int64(tv.tv_sec))) {
+        json_object_put(obj);
+        return NULL;
+    }
+    json_object_object_add(obj, "timestamp", obj_add);
+
+    if (!(obj_add = json_object_new_int(META_TYPE_SYSTEM))) {
+        json_object_put(obj);
+        return NULL;
+    }
+    json_object_object_add(obj, "event_type", obj_add);
+
+    if (!(obj_add = json_object_new_string("861107030230685"))) {
+        json_object_put(obj);
+        return NULL;
+    }
+    json_object_object_add(obj, "imei", obj_add);
+
+    return obj;
+}
+
+#if 0
 static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
         uint8_t event_param, char *event_value_str, uint64_t tstamp)
 {
@@ -373,6 +405,7 @@ static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
 
 	return obj;	
 }
+#endif
 
 static ssize_t send_netlink_json(uint8_t *snd_buf,
         struct json_object *parsed_obj, int32_t sock_fd,
@@ -552,15 +585,17 @@ static void test_netlink(uint32_t packets)
     while(1) {
         gettimeofday(&tv, NULL);
 
-        if (i == 0)
+        /*if (i == 0)
             obj_to_send = create_fake_conn_obj(0, 0, CONN_EVENT_META_UPDATE, "1,2,1,", i+1);
         else
-            obj_to_send = create_fake_conn_obj(0, 0, CONN_EVENT_META_UPDATE, "1,2,1,4", i+1);
+            obj_to_send = create_fake_conn_obj(0, 0, CONN_EVENT_META_UPDATE, "1,2,1,4", i+1);*/
 
         /*if (i < 4)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, "1,2,1", i+1);
         else
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_DATA_USAGE_UPDATE, "1,2,1,4", tv.tv_sec);*/
+
+        obj_to_send = create_fake_restart_obj();
 
         if (!obj_to_send)
             continue;

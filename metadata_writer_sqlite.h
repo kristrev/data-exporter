@@ -124,6 +124,15 @@
                             "TxData INTEGER NOT NULL," \
                             "PRIMARY KEY(DeviceId,SimCardIccid,SimCardImsi,Timestamp))"
 
+#define CREATE_REBOOT_SQL   "CREATE TABLE IF NOT EXISTS RebootEvent(" \
+                            "NodeId INTEGER NOT NULL," \
+                            "BootCount INTEGER," \
+                            "BootMultiplier INTEGER," \
+                            "Timestamp INTEGER NOT NULL," \
+                            "Sequence INTEGER NOT NULL," \
+                            "DeviceId TEXT NOT NULL," \
+                            "PRIMARY KEY(BootCount,BootMultiplier,Timestamp,Sequence))"
+
 #define INSERT_EVENT        "INSERT INTO NetworkEvent(NodeId,SessionId,"\
                             "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
                             "L4SessionId,EventType,EventParam,EventValue,"\
@@ -152,6 +161,10 @@
                             ",SimCardIccid" \
                             ",SimCardImsi,Timestamp,RxData,TxData) " \
                             "VALUES (?,?,?,?,?,?,?,?)"
+
+#define INSERT_REBOOT_EVENT "INSERT INTO RebootEvent(NodeId, BootCount," \
+                            "BootMultiplier, Timestamp, Sequence, DeviceId)"\
+                            "VALUES (?,?,?,?,?,?)"
 
 #define SELECT_LAST_UPDATE  "SELECT HasIp,Connectivity,ConnectionMode,Quality "\
                             " FROM NetworkUpdates WHERE "\
@@ -187,6 +200,10 @@
                             "NodeId=? "\
                             "WHERE NodeId=0"
 
+#define UPDATE_SYSTEM_ID   "UPDATE RebootEvent SET " \
+                            "NodeId=? "\
+                            "WHERE NodeId=0"
+
 #define UPDATE_EVENT_TSTAMP "UPDATE NetworkEvent SET " \
                             "Timestamp = Timestamp + ? "\
                             "WHERE Timestamp < ?"
@@ -195,11 +212,19 @@
                                   "Timestamp = Timestamp + ? "\
                                   "WHERE Timestamp < ?"
 
+#define UPDATE_SYSTEM_TSTAMP     "UPDATE RebootEvent SET " \
+                                  "Timestamp = Timestamp + ? "\
+                                  "WHERE Timestamp < ?"
+
 #define UPDATE_EVENT_SESSION_ID "UPDATE NetworkEvent SET "\
                                 "SessionId=?,SessionIdMultip=? "\
                                 "WHERE SessionId = 0"
 
 #define UPDATE_UPDATES_SESSION_ID "UPDATE NetworkUpdates SET "\
+                                  "SessionId=?,SessionIdMultip=? "\
+                                  "WHERE SessionId = 0"
+
+#define UPDATE_SYSTEM_SESSION_ID "UPDATE RebootEvent SET "\
                                   "SessionId=?,SessionIdMultip=? "\
                                   "WHERE SessionId = 0"
 
@@ -212,6 +237,8 @@
 #define DELETE_MONITOR_TABLE "DELETE FROM MonitorEvents"
 
 #define DELETE_USAGE_TABLE "DELETE FROM DataUse"
+
+#define DELETE_SYSTEM_TABLE "DELETE FROM RebootEvent"
 
 //This statement is a static version of what the .dump command does. A dynamic
 //version would query the master table to get tables and then PRAGMA to get
@@ -287,6 +314,9 @@
 
 #define DUMP_USAGE_JSON     "SELECT * FROM DataUse"
 
+#define DUMP_SYSTEM_JSON    "SELECT * FROM RebootEvent"
+
+
 struct md_event;
 struct md_writer;
 struct backend_timeout_handle;
@@ -306,7 +336,10 @@ struct md_writer_sqlite {
 
     sqlite3_stmt *insert_usage, *update_usage, *dump_usage, *delete_usage;
 
+    sqlite3_stmt *insert_system, *dump_system, *delete_system;
+
     char *session_id_file;
+    char *node_id_file;
     const char *last_conn_tstamp_path;
 
     uint32_t node_id;
@@ -316,6 +349,7 @@ struct md_writer_sqlite {
     uint32_t num_gps_events;
     uint32_t num_munin_events;
     uint32_t num_usage_events;
+    uint32_t num_system_events;
 
     uint8_t timeout_added;
     uint8_t file_failed;
@@ -336,8 +370,10 @@ struct md_writer_sqlite {
     float gps_speed;
 
     struct backend_timeout_handle *timeout_handle;
-    char   meta_prefix[128], gps_prefix[128], monitor_prefix[128], usage_prefix[128];
-    size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len, usage_prefix_len;
+    char meta_prefix[128], gps_prefix[128], monitor_prefix[128],
+        usage_prefix[128], system_prefix[128];
+    size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len,
+           usage_prefix_len, system_prefix_len;
 
     uint8_t api_version;
     uint8_t delete_conn_update;

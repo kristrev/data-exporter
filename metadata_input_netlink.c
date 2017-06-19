@@ -679,6 +679,19 @@ static uint8_t md_input_netlink_add_json_key_value(const char *key,
     return RETVAL_SUCCESS;
 }
 
+static void md_input_netlink_handle_system_event(struct md_input_netlink *min,
+        struct json_object *obj)
+{
+    //recycle iface event, it contains all fields we need (currently)
+    memset(min->mse, 0, sizeof(md_system_event_t));
+    min->mse->md_type = META_TYPE_SYSTEM;
+
+    if (md_input_netlink_parse_iface_event(min, obj, min->mse) == RETVAL_FAILURE)
+        return;
+
+    mde_publish_event_obj(min->parent, (struct md_event*) min->mse);
+}
+
 static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events)
 {
     struct md_input_netlink *min = ptr;
@@ -746,6 +759,9 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
     case META_TYPE_RADIO:
         md_input_netlink_handle_radio_event(min, nlh_obj);
         break;
+    case META_TYPE_SYSTEM:
+        md_input_netlink_handle_system_event(min, nlh_obj);
+        break;
     default:
         META_PRINT(min->parent->logfile, "Unknown event type\n");
         break;
@@ -773,7 +789,7 @@ static uint8_t md_input_netlink_config(struct md_input_netlink *min)
     backend_event_loop_update(min->parent->event_loop, EPOLLIN, EPOLL_CTL_ADD,
         mnl_socket_get_fd(min->metadata_sock), min->event_handle);
 
-    //TODO: Move to handler
+    //TODO: guard with check for flag
     min->mce = calloc(sizeof(struct md_conn_event), 1);
     if (min->mce == NULL)
         return RETVAL_FAILURE;
@@ -786,6 +802,11 @@ static uint8_t md_input_netlink_config(struct md_input_netlink *min)
     if (min->mre == NULL)
         return RETVAL_FAILURE;
 
+    min->mse = calloc(sizeof(md_system_event_t), 1);
+    if (min->mre == NULL)
+        return RETVAL_FAILURE;
+
+
     return RETVAL_SUCCESS;
 }
 
@@ -797,14 +818,17 @@ static uint8_t md_input_netlink_init(void *ptr, json_object* config)
     json_object* subconfig;
     if (json_object_object_get_ex(config, "netlink", &subconfig)) {
         json_object_object_foreach(subconfig, key, val) {
-            if (!strcmp(key, "conn")) 
+            if (!strcmp(key, "conn")) {
                 md_nl_mask |= META_TYPE_CONNECTION;
-            else if (!strcmp(key, "pos")) 
+            } else if (!strcmp(key, "pos")) {
                 md_nl_mask |= META_TYPE_POS;
-            else if (!strcmp(key, "iface")) 
+            } else if (!strcmp(key, "iface")) {
                 md_nl_mask |= META_TYPE_INTERFACE;
-            else if (!strcmp(key, "radio"))
+            } else if (!strcmp(key, "radio")) {
                 md_nl_mask |= META_TYPE_RADIO;
+            } else if (!strcmp(key, "system")) {
+                md_nl_mask |= META_TYPE_SYSTEM;
+            }
         }
     }
 
@@ -826,6 +850,7 @@ void md_netlink_usage()
     fprintf(stderr, "  \"pos\":\t\tReceive netlink position events\n");
     fprintf(stderr, "  \"iface\":\t\tReceive netlink interface events\n");
     fprintf(stderr, "  \"radio\":\t\tReceive netlink radio events (QXDM + neigh. cells)\n");
+    fprintf(stderr, "  \"system\":\t\tReceive netlink system (reboot) events\n");
     fprintf(stderr, "},\n");
 }
 

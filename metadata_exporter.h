@@ -53,6 +53,7 @@
 #define META_TYPE_MUNIN      0x05
 #define META_TYPE_SYSEVENT   0x06
 #define META_TYPE_RADIO      0x08
+#define META_TYPE_SYSTEM     0x10
 
 enum iface_event {
     IFACE_EVENT_DEV_STATE=1,
@@ -189,6 +190,8 @@ struct md_iface_event {
     uint8_t event_param;
     uint8_t event_type;
 };
+
+typedef struct md_iface_event md_system_event_t;
 
 struct md_conn_event {
     MD_EVENT;

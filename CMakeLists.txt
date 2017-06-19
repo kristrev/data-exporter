@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(meta_exporter)
 
-set(CMAKE_C_FLAGS "-O1 -Wall -std=gnu99")
+set(CMAKE_C_FLAGS "-O1 -Wall -std=gnu99 -g")
 
 set(LIBS pthread mnl)
 set(SOURCE
@@ -40,6 +40,7 @@ if (SQLITE3)
         metadata_writer_json_helpers.c
         metadata_writer_inventory_conn.c
         metadata_writer_inventory_gps.c
+        metadata_writer_inventory_system.c
         metadata_writer_sqlite_monitor.c)
     add_definitions("-DSQLITE_SUPPORT")
 endif()
