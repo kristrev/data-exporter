@@ -163,7 +163,7 @@
                             "VALUES (?,?,?,?,?,?,?,?)"
 
 #define INSERT_REBOOT_EVENT "INSERT INTO RebootEvent(NodeId, BootCount," \
-                            "BootMultiplier, Timestamp, Sequence, InterfaceId)"\
+                            "BootMultiplier, Timestamp, Sequence, DeviceId)"\
                             "VALUES (?,?,?,?,?,?)"
 
 #define SELECT_LAST_UPDATE  "SELECT HasIp,Connectivity,ConnectionMode,Quality "\
@@ -200,6 +200,10 @@
                             "NodeId=? "\
                             "WHERE NodeId=0"
 
+#define UPDATE_SYSTEM_ID   "UPDATE RebootEvent SET " \
+                            "NodeId=? "\
+                            "WHERE NodeId=0"
+
 #define UPDATE_EVENT_TSTAMP "UPDATE NetworkEvent SET " \
                             "Timestamp = Timestamp + ? "\
                             "WHERE Timestamp < ?"
@@ -208,11 +212,19 @@
                                   "Timestamp = Timestamp + ? "\
                                   "WHERE Timestamp < ?"
 
+#define UPDATE_SYSTEM_TSTAMP     "UPDATE RebootEvent SET " \
+                                  "Timestamp = Timestamp + ? "\
+                                  "WHERE Timestamp < ?"
+
 #define UPDATE_EVENT_SESSION_ID "UPDATE NetworkEvent SET "\
                                 "SessionId=?,SessionIdMultip=? "\
                                 "WHERE SessionId = 0"
 
 #define UPDATE_UPDATES_SESSION_ID "UPDATE NetworkUpdates SET "\
+                                  "SessionId=?,SessionIdMultip=? "\
+                                  "WHERE SessionId = 0"
+
+#define UPDATE_SYSTEM_SESSION_ID "UPDATE RebootEvent SET "\
                                   "SessionId=?,SessionIdMultip=? "\
                                   "WHERE SessionId = 0"
 
@@ -327,6 +339,7 @@ struct md_writer_sqlite {
     sqlite3_stmt *insert_system, *dump_system, *delete_system;
 
     char *session_id_file;
+    char *node_id_file;
     const char *last_conn_tstamp_path;
 
     uint32_t node_id;

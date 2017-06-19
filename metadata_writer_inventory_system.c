@@ -36,7 +36,7 @@ static uint8_t md_inventory_system_dump_db_json(struct md_writer_sqlite *mws,
         FILE *output)
 {
     const char *json_str;
-    sqlite3_reset(mws->dump_gps);
+    sqlite3_reset(mws->dump_system);
 
     json_object *jarray = json_object_new_array();
 
