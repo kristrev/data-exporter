@@ -789,7 +789,7 @@ static uint8_t md_input_netlink_config(struct md_input_netlink *min)
     backend_event_loop_update(min->parent->event_loop, EPOLLIN, EPOLL_CTL_ADD,
         mnl_socket_get_fd(min->metadata_sock), min->event_handle);
 
-    //TODO: Move to handler
+    //TODO: guard with check for flag
     min->mce = calloc(sizeof(struct md_conn_event), 1);
     if (min->mce == NULL)
         return RETVAL_FAILURE;
@@ -801,6 +801,11 @@ static uint8_t md_input_netlink_config(struct md_input_netlink *min)
     min->mre = calloc(sizeof(struct md_radio_event), 1);
     if (min->mre == NULL)
         return RETVAL_FAILURE;
+
+    min->mse = calloc(sizeof(md_system_event_t), 1);
+    if (min->mre == NULL)
+        return RETVAL_FAILURE;
+
 
     return RETVAL_SUCCESS;
 }

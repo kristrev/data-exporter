@@ -130,8 +130,8 @@
                             "BootMultiplier INTEGER," \
                             "Timestamp INTEGER NOT NULL," \
                             "Sequence INTEGER NOT NULL," \
-                            "InterfaceId TEXT NOT NULL," \
-                            "PRIMARY KEY(BootCount,BootMultiplier,Timestamp,Sequence)"
+                            "DeviceId TEXT NOT NULL," \
+                            "PRIMARY KEY(BootCount,BootMultiplier,Timestamp,Sequence))"
 
 #define INSERT_EVENT        "INSERT INTO NetworkEvent(NodeId,SessionId,"\
                             "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
@@ -225,6 +225,8 @@
 #define DELETE_MONITOR_TABLE "DELETE FROM MonitorEvents"
 
 #define DELETE_USAGE_TABLE "DELETE FROM DataUse"
+
+#define DELETE_SYSTEM_TABLE "DELETE FROM RebootEvent"
 
 //This statement is a static version of what the .dump command does. A dynamic
 //version would query the master table to get tables and then PRAGMA to get
@@ -322,7 +324,7 @@ struct md_writer_sqlite {
 
     sqlite3_stmt *insert_usage, *update_usage, *dump_usage, *delete_usage;
 
-    sqlite3_stmt *insert_system, *dump_system;
+    sqlite3_stmt *insert_system, *dump_system, *delete_system;
 
     char *session_id_file;
     const char *last_conn_tstamp_path;
