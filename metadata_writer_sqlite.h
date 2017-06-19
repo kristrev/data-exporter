@@ -130,6 +130,7 @@
                             "BootMultiplier INTEGER," \
                             "Timestamp INTEGER NOT NULL," \
                             "Sequence INTEGER NOT NULL," \
+                            "EventType INTEGER NOT NULL," \
                             "DeviceId TEXT NOT NULL," \
                             "PRIMARY KEY(BootCount,BootMultiplier,Timestamp,Sequence))"
 
@@ -163,8 +164,8 @@
                             "VALUES (?,?,?,?,?,?,?,?)"
 
 #define INSERT_REBOOT_EVENT "INSERT INTO RebootEvent(NodeId, BootCount," \
-                            "BootMultiplier, Timestamp, Sequence, DeviceId)"\
-                            "VALUES (?,?,?,?,?,?)"
+                            "BootMultiplier, Timestamp, Sequence, EventType, DeviceId)"\
+                            "VALUES (?,?,?,?,?,16,?)"
 
 #define SELECT_LAST_UPDATE  "SELECT HasIp,Connectivity,ConnectionMode,Quality "\
                             " FROM NetworkUpdates WHERE "\
