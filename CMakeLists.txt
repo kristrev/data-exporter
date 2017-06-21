@@ -88,7 +88,7 @@ endif()
 if (GPS_NSB)
     set(SOURCE ${SOURCE}
         metadata_input_gps_nsb.c)
-    add_definitions("-DNSB_GPS")
+    add_definitions("-DGPS_NSB_SUPPORT")
 endif()
 
 set(CPACK_GENERATOR "DEB")
