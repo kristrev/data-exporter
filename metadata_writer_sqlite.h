@@ -86,6 +86,7 @@
                             "InterfaceId TEXT NOT NULL," \
                             "NetworkAddress TEXT NOT NULL," \
                             "NetworkProvider INT," \
+                            "EventValueStr TEXT, " \
                             "PRIMARY KEY(SessionId,SessionIdMultip,"\
                             "L3SessionId,L4SessionId,InterfaceId,"\
                             "NetworkAddress))"
@@ -123,6 +124,16 @@
                             "TxData INTEGER NOT NULL," \
                             "PRIMARY KEY(DeviceId,SimCardIccid,SimCardImsi,Timestamp))"
 
+#define CREATE_REBOOT_SQL   "CREATE TABLE IF NOT EXISTS RebootEvent(" \
+                            "NodeId INTEGER NOT NULL," \
+                            "BootCount INTEGER," \
+                            "BootMultiplier INTEGER," \
+                            "Timestamp INTEGER NOT NULL," \
+                            "Sequence INTEGER NOT NULL," \
+                            "EventType INTEGER NOT NULL," \
+                            "DeviceId TEXT NOT NULL," \
+                            "PRIMARY KEY(BootCount,BootMultiplier,Timestamp,Sequence))"
+
 #define INSERT_EVENT        "INSERT INTO NetworkEvent(NodeId,SessionId,"\
                             "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
                             "L4SessionId,EventType,EventParam,EventValue,"\
@@ -134,8 +145,8 @@
 #define INSERT_UPDATE       "INSERT INTO NetworkUpdates(NodeId,SessionId,"\
                             "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
                             "L4SessionId,EventType,EventParam,HasIp,Connectivity,ConnectionMode,Quality"\
-                            ",InterfaceType,InterfaceId,NetworkAddress,NetworkProvider) " \
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                            ",InterfaceType,InterfaceId,NetworkAddress,NetworkProvider,EventValueStr) " \
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_GPS_EVENT    "INSERT INTO GpsUpdate(NodeId,BootCount" \
                             ",BootMultiplier,Timestamp" \
@@ -152,6 +163,10 @@
                             ",SimCardImsi,Timestamp,RxData,TxData) " \
                             "VALUES (?,?,?,?,?,?,?,?)"
 
+#define INSERT_REBOOT_EVENT "INSERT INTO RebootEvent(NodeId, BootCount," \
+                            "BootMultiplier, Timestamp, Sequence, EventType, DeviceId)"\
+                            "VALUES (?,?,?,?,?,16,?)"
+
 #define SELECT_LAST_UPDATE  "SELECT HasIp,Connectivity,ConnectionMode,Quality "\
                             " FROM NetworkUpdates WHERE "\
                             "L3SessionId=? AND "\
@@ -167,7 +182,8 @@
 //address can have multiple L3/L4 IDs (two mf823 for example). However, same
 //address (+prefix) and same interface is guaranteed to have unique L3/L4
 #define UPDATE_UPDATE       "UPDATE NetworkUpdates SET " \
-                            "Timestamp=?,HasIp=?,Connectivity=?,ConnectionMode=?,Quality=? " \
+                            "Timestamp=?,HasIp=?,Connectivity=?,ConnectionMode=?," \
+                            "Quality=?,EventValueStr=? " \
                             "WHERE "\
                             "L3SessionId=? AND L4SessionId=? " \
                             "AND NetworkAddress=? AND InterfaceId=?"
@@ -185,6 +201,10 @@
                             "NodeId=? "\
                             "WHERE NodeId=0"
 
+#define UPDATE_SYSTEM_ID   "UPDATE RebootEvent SET " \
+                            "NodeId=? "\
+                            "WHERE NodeId=0"
+
 #define UPDATE_EVENT_TSTAMP "UPDATE NetworkEvent SET " \
                             "Timestamp = Timestamp + ? "\
                             "WHERE Timestamp < ?"
@@ -193,11 +213,19 @@
                                   "Timestamp = Timestamp + ? "\
                                   "WHERE Timestamp < ?"
 
+#define UPDATE_SYSTEM_TSTAMP     "UPDATE RebootEvent SET " \
+                                  "Timestamp = Timestamp + ? "\
+                                  "WHERE Timestamp < ?"
+
 #define UPDATE_EVENT_SESSION_ID "UPDATE NetworkEvent SET "\
                                 "SessionId=?,SessionIdMultip=? "\
                                 "WHERE SessionId = 0"
 
 #define UPDATE_UPDATES_SESSION_ID "UPDATE NetworkUpdates SET "\
+                                  "SessionId=?,SessionIdMultip=? "\
+                                  "WHERE SessionId = 0"
+
+#define UPDATE_SYSTEM_SESSION_ID "UPDATE RebootEvent SET "\
                                   "SessionId=?,SessionIdMultip=? "\
                                   "WHERE SessionId = 0"
 
@@ -211,6 +239,8 @@
 
 #define DELETE_USAGE_TABLE "DELETE FROM DataUse"
 
+#define DELETE_SYSTEM_TABLE "DELETE FROM RebootEvent"
+
 //This statement is a static version of what the .dump command does. A dynamic
 //version would query the master table to get tables and then PRAGMA to get
 //rows. The actualy query is simpler than it looks. It seems SQLite supports
@@ -218,48 +248,11 @@
 //do here. quote() gives a quoted string of the row content, suitable for
 //inclusion in another SQL query. The || is string concation. So, the query
 //queries for all columns, and each row is prefixed with some string
-#define DUMP_EVENTS         "SELECT \"INSERT IGNORE INTO NetworkEventV2"\
-                            "(NodeId,SessionId,SessionIdMultip,Timestamp,"\
-                            "Sequence,L3SessionId,L4SessionId,EventType,"\
-                            "EventParam,EventValue,HasIp,Connectivity,"\
-                            "ConnectionMode,Quality,"\
-                            "InterfaceType,InterfaceIdType,InterfaceId,"\
-                            "NetworkProvider,NetworkAddressFamily,"\
-                            "NetworkAddress) VALUES(\" "\
-                            "|| quote(\"NodeId\"), quote(\"SessionId\"),"\
-                            "quote(\"SessionIdMultip\"),quote(\"Timestamp\"), "\
-                            "quote(\"Sequence\"), quote(\"L3SessionId\"), "\
-                            "quote(\"L4SessionId\"), quote(\"EventType\"), "\
-                            "quote(\"EventParam\"), quote(\"EventValue\"), "\
-                            "quote(\"HasIp\"), "\
-                            "quote(\"Connectivity\"), "\
-                            "quote(\"ConnectionMode\"), "\
-                            "quote(\"Quality\"), "\
-                            "quote(\"InterfaceType\"), quote(\"InterfaceIdType\"), "\
-                            "quote(\"InterfaceId\"),"\
-                            "quote(\"NetworkProvider\"), quote(\"NetworkAddressFamily\"), "\
-                            "quote(\"NetworkAddress\") || \")\" FROM  \"NetworkEvent\" WHERE Timestamp>=? ORDER BY Timestamp;"
-
-#define DUMP_UPDATES        "SELECT \"REPLACE INTO NetworkUpdateV2"\
-                            "(NodeId,SessionId,SessionIdMultip,Timestamp,"\
-                            "Sequence,L3SessionId,L4SessionId,HasIp,Connectivity,"\
-                            "ConnectionMode,Quality,InterfaceType, InterfaceId,NetworkAddress,"\
-                            "NetworkProvider,ServerTimestamp) VALUES(\" "\
-                            "|| quote(\"NodeId\"), quote(\"SessionId\"),"\
-                            "quote(\"SessionIdMultip\"),quote(\"Timestamp\"), "\
-                            "quote(\"Sequence\"), quote(\"L3SessionId\"), "\
-                            "quote(\"L4SessionId\"),quote(\"HasIp\"), "\
-                            "quote(\"Connectivity\"), quote(\"ConnectionMode\"), "\
-                            "quote(\"Quality\"), quote(\"InterfaceType\"), quote(\"InterfaceId\"),"\
-                            "quote(\"NetworkAddress\"),quote(\"NetworkProvider\") || \",Now())\""\
-                            "FROM \"NetworkUpdates\" WHERE Timestamp>=? ORDER BY Timestamp;"
-
-#define DUMP_EVENTS_V2      "SELECT \"INSERT IGNORE INTO NetworkEvent"\
+#define DUMP_EVENTS      "SELECT \"INSERT IGNORE INTO NetworkEvent"\
                             "(NodeId,BootCount,BootMultiplier,Timestamp,"\
                             "Sequence,L3SessionId,L4SessionId,DeviceId,"\
                             "DeviceTypeId,NetworkAddress,NetworkAddressFamily,"\
-                            "EventType,EventParam,EventValue,HasIp,Connectivity,"\
-                            "ConnectionMode,Quality,Operator) "\
+                            "EventType,EventParam,EventValue) "\
                             "VALUES(\" "\
                             "|| quote(\"NodeId\"), quote(\"SessionId\"),"\
                             "quote(\"SessionIdMultip\"),quote(\"Timestamp\"), "\
@@ -267,26 +260,22 @@
                             "quote(\"L4SessionId\"), quote(\"InterfaceId\"), "\
                             "quote(\"InterfaceType\"), quote(\"NetworkAddress\"), "\
                             "quote(\"NetworkAddressFamily\"), quote(\"EventType\"), "\
-                            "quote(\"EventParam\"), quote(\"EventValue\"), "\
-                            "quote(\"HasIp\"), quote(\"Connectivity\"), "\
-                            "quote(\"ConnectionMode\"), quote(\"Quality\"), "\
-                            "quote(\"NetworkProvider\") "\
+                            "quote(\"EventParam\"), quote(\"EventValue\") "\
                             "|| \")\" FROM  \"NetworkEvent\" WHERE Timestamp>=? ORDER BY Timestamp;"
 
-#define DUMP_UPDATES_V2     "SELECT \"REPLACE INTO NetworkUpdate"\
-                            "(NodeId,BootCount,BootMultiplier,Timestamp,"\
-                            "Sequence,L3SessionId,L4SessionId,HasIp,Connectivity,"\
-                            "ConnectionMode,Quality,DeviceTypeId,DeviceId,NetworkAddress,"\
-                            "Operator,ServerTimestamp) VALUES(\" "\
-                            "|| quote(\"NodeId\"), quote(\"SessionId\"),"\
-                            "quote(\"SessionIdMultip\"),quote(\"Timestamp\"), "\
-                            "quote(\"Sequence\"), quote(\"L3SessionId\"), "\
-                            "quote(\"L4SessionId\")"\
-                            "quote(\"HasIp\"), quote(\"Connectivity\"), "\
-                            "quote(\"ConnectionMode\"), quote(\"Quality\"), "\
-                            "quote(\"InterfaceType\"), quote(\"InterfaceId\"),"\
-                            "quote(\"NetworkAddress\"),quote(\"NetworkProvider\") || \",Now())\""\
-                            "FROM \"NetworkUpdates\" WHERE Timestamp>=? ORDER BY Timestamp;"
+#define DUMP_UPDATES     "SELECT \"REPLACE INTO NetworkUpdate"\
+                            "(NodeId,BootCount,BootMultiplier,L3SessionId,"\
+                            "L4SessionId,DeviceId,NetworkAddress,DeviceTypeId,"\
+                            "Timestamp,Sequence,EventValueStr,"\
+                            "ServerTimestamp) VALUES(\" ||"\
+                            "quote(\"NodeId\"), quote(\"SessionId\"),"\
+                            "quote(\"SessionIdMultip\"), quote(\"L3SessionId\"),"\
+                            "quote(\"L4SessionId\"), quote(\"InterfaceId\"),"\
+                            "quote(\"NetworkAddress\"), quote(\"InterfaceType\"),"\
+                            "quote(\"Timestamp\"), quote(\"Sequence\"), "\
+                            "quote(\"EventValueStr\") ||"\
+                            "\", Now())\" FROM \"NetworkUpdates\" WHERE "\
+                            "Timestamp>=? ORDER BY Timestamp;"
 
 #define DUMP_GPS            "SELECT \"REPLACE INTO GpsUpdates" \
                             "(NodeId,BootCount,BootMultiplier"\
@@ -326,6 +315,9 @@
 
 #define DUMP_USAGE_JSON     "SELECT * FROM DataUse"
 
+#define DUMP_SYSTEM_JSON    "SELECT * FROM RebootEvent"
+
+
 struct md_event;
 struct md_writer;
 struct backend_timeout_handle;
@@ -345,7 +337,10 @@ struct md_writer_sqlite {
 
     sqlite3_stmt *insert_usage, *update_usage, *dump_usage, *delete_usage;
 
+    sqlite3_stmt *insert_system, *dump_system, *delete_system;
+
     char *session_id_file;
+    char *node_id_file;
     const char *last_conn_tstamp_path;
 
     uint32_t node_id;
@@ -355,6 +350,7 @@ struct md_writer_sqlite {
     uint32_t num_gps_events;
     uint32_t num_munin_events;
     uint32_t num_usage_events;
+    uint32_t num_system_events;
 
     uint8_t timeout_added;
     uint8_t file_failed;
@@ -375,8 +371,10 @@ struct md_writer_sqlite {
     float gps_speed;
 
     struct backend_timeout_handle *timeout_handle;
-    char   meta_prefix[128], gps_prefix[128], monitor_prefix[128], usage_prefix[128];
-    size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len, usage_prefix_len;
+    char meta_prefix[128], gps_prefix[128], monitor_prefix[128],
+        usage_prefix[128], system_prefix[128];
+    size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len,
+           usage_prefix_len, system_prefix_len;
 
     uint8_t api_version;
     uint8_t delete_conn_update;

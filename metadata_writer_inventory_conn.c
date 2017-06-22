@@ -41,9 +41,27 @@
 #include "metadata_exporter_log.h"
 #include "system_helpers.h"
 
+static uint8_t md_inventory_conn_create_event_str(struct md_conn_event *mce,
+        char *csv_buf)
+{
+    if (mce->connection_mode) {
+        return !(snprintf(csv_buf, UPDATE_STR_LEN, "%u,%u,%u,%u", mce->has_ip,
+                mce->connectivity, mce->connection_mode, mce->quality) >=
+                UPDATE_STR_LEN);
+    } else {
+        return !(snprintf(csv_buf, UPDATE_STR_LEN, "%u,%u,,%u", mce->has_ip,
+            mce->connectivity, mce->quality) >= UPDATE_STR_LEN);
+    }
+}
+
 static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
                                                struct md_conn_event *mce)
 {
+    uint8_t csv_valid = 0;
+    char csv_buf[UPDATE_STR_LEN] = {0};
+
+    csv_valid = md_inventory_conn_create_event_str(mce, csv_buf);
+
     sqlite3_stmt *stmt = mws->insert_update;
 
     sqlite3_clear_bindings(stmt);
@@ -87,6 +105,12 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
 
     if (mce->network_provider &&
         sqlite3_bind_int(stmt, 17, mce->network_provider)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind network provider\n");
+        return SQLITE_ERROR;
+    }
+
+    if (csv_valid &&
+            sqlite3_bind_text(stmt, 18, csv_buf, -1, NULL)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind network provider\n");
         return SQLITE_ERROR;
     }
@@ -163,6 +187,10 @@ static int32_t md_inventory_update_event(struct md_writer_sqlite *mws,
                                       struct md_conn_event *mce)
 {
     sqlite3_stmt *stmt = mws->update_update;
+    uint8_t csv_valid = 0;
+    char csv_buf[UPDATE_STR_LEN] = {0};
+
+    csv_valid = md_inventory_conn_create_event_str(mce, csv_buf);
 
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
@@ -171,20 +199,20 @@ static int32_t md_inventory_update_event(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 2, mce->has_ip) ||
         sqlite3_bind_int(stmt, 3, mce->connectivity) ||
         sqlite3_bind_int(stmt, 5, mce->quality) ||
-        sqlite3_bind_int(stmt, 6, mce->l3_session_id) ||
-        sqlite3_bind_int(stmt, 7, mce->l4_session_id) ||
-        sqlite3_bind_text(stmt, 8, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
+        sqlite3_bind_int(stmt, 7, mce->l3_session_id) ||
+        sqlite3_bind_int(stmt, 8, mce->l4_session_id) ||
+        sqlite3_bind_text(stmt, 9, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE query\n");
         return SQLITE_ERROR;
     }
 
     if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
-        if (sqlite3_bind_text(stmt, 9, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 10, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
             return SQLITE_ERROR;
         }
     } else {
-        if (sqlite3_bind_text(stmt, 9, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 10, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
             return SQLITE_ERROR;
         }
@@ -194,6 +222,12 @@ static int32_t md_inventory_update_event(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 4, mce->connection_mode)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind connection mode\n");
             return SQLITE_ERROR;
+    }
+
+    if (csv_valid &&
+            sqlite3_bind_text(stmt, 6, csv_buf, -1, NULL)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind network provider\n");
+        return SQLITE_ERROR;
     }
 
     return sqlite3_step(stmt);

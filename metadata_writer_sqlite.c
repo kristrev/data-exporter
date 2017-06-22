@@ -40,6 +40,7 @@
 #include "metadata_writer_sqlite_helpers.h"
 #include "metadata_writer_inventory_gps.h"
 #include "metadata_writer_sqlite_monitor.h"
+#include "metadata_writer_inventory_system.h"
 #include "netlink_helpers.h"
 #include "system_helpers.h"
 #include "backend_event_loop.h"
@@ -75,11 +76,13 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
         mws->timeout_added = 0;
     }
 
-    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Will export DB. # meta %u # gps %u # monitor %u usage %u\n",
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Will export DB. # meta %u "
+                      "# gps %u # monitor %u usage %u system %u\n",
             mws->num_conn_events,
             mws->num_gps_events,
             mws->num_munin_events,
-            mws->num_usage_events);
+            mws->num_usage_events,
+            mws->num_system_events);
 
     if (mws->num_conn_events) {
         retval = md_inventory_conn_copy_db(mws);
@@ -104,6 +107,13 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
 
     if (mws->num_usage_events) {
         retval = md_inventory_conn_usage_copy_db(mws);
+
+        if (retval == RETVAL_FAILURE)
+            num_failed++;
+    }
+
+    if (mws->num_system_events) {
+        retval = md_inventory_system_copy_db(mws);
 
         if (retval == RETVAL_FAILURE)
             num_failed++;
@@ -264,16 +274,24 @@ static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char 
         return NULL;
     }
 
+    if (sqlite3_exec(db_handle, CREATE_REBOOT_SQL, NULL, NULL, &db_errmsg)) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "db create (reboot) failed with message: %s\n", db_errmsg);
+        sqlite3_close_v2(db_handle);
+        return NULL;
+    }
+
     return db_handle;
 }
 
 static int md_sqlite_configure(struct md_writer_sqlite *mws,
-        const char *db_filename, uint32_t node_id, const char* nodeid_file, uint32_t db_interval,
+        const char *db_filename, uint32_t node_id, uint32_t db_interval,
         uint32_t db_events, const char *meta_prefix, const char *gps_prefix,
-        const char *monitor_prefix, const char *usage_prefix)
+        const char *monitor_prefix, const char *usage_prefix,
+        const char *system_prefix)
 {
     sqlite3 *db_handle = md_sqlite_configure_db(mws, db_filename);
-    const char *dump_events, *dump_updates, *dump_gps, *dump_monitor, *dump_usage;
+    const char *dump_events, *dump_updates, *dump_gps, *dump_monitor,
+          *dump_usage, *dump_system;
 
     if (db_handle == NULL)
         return RETVAL_FAILURE;
@@ -282,28 +300,24 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         mws->node_id = node_id;
     } else {
 #ifdef MONROE
-        mws->node_id = system_helpers_get_nodeid(nodeid_file);
+        mws->node_id = system_helpers_get_nodeid(mws->node_id_file);
 #endif
     }
 
     if (mws->output_format == FORMAT_SQL) {
-        if (mws->api_version == 2) {
-            dump_events = DUMP_EVENTS_V2;
-            dump_updates = DUMP_UPDATES_V2;
-        } else {
-            dump_events = DUMP_EVENTS;
-            dump_updates = DUMP_UPDATES;
-        }
-
+        dump_events = DUMP_EVENTS;
+        dump_updates = DUMP_UPDATES;
         dump_gps = DUMP_GPS;
         dump_monitor = DUMP_MONITOR;
         dump_usage = DUMP_USAGE;
+        dump_system = NULL;
     } else {
         dump_events = DUMP_EVENTS_JSON;
         dump_updates = DUMP_UPDATES_JSON;
         dump_gps = DUMP_GPS_JSON;
         dump_monitor = DUMP_MONITOR_JSON;
         dump_usage = DUMP_USAGE_JSON;
+        dump_system = DUMP_SYSTEM_JSON;
     }
 
     //Only set variables that are not 0
@@ -349,7 +363,13 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
        sqlite3_prepare_v2(mws->db_handle, dump_usage, -1,
             &(mws->dump_usage), NULL) ||
        sqlite3_prepare_v2(mws->db_handle, DELETE_USAGE_TABLE, -1,
-            &(mws->delete_usage), NULL)) {
+            &(mws->delete_usage), NULL) ||
+       sqlite3_prepare_v2(mws->db_handle, INSERT_REBOOT_EVENT, -1,
+            &(mws->insert_system), NULL) ||
+       (dump_system && sqlite3_prepare_v2(mws->db_handle, dump_system, -1,
+            &(mws->dump_system), NULL)) ||
+       sqlite3_prepare_v2(mws->db_handle, DELETE_SYSTEM_TABLE, -1,
+            &(mws->delete_system), NULL)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Statement failed: %s\n",
                 sqlite3_errmsg(mws->db_handle));
         sqlite3_close_v2(db_handle);
@@ -402,8 +422,18 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         mws->usage_prefix_len = strlen(usage_prefix);
     }
 
+    if (system_prefix) {
+        memset(mws->system_prefix, 0, sizeof(mws->system_prefix));
+        memcpy(mws->system_prefix, system_prefix, strlen(system_prefix));
+
+        //We need to reset the last six characthers to X, so keep track of the
+        //length of the original prefix
+        mws->system_prefix_len = strlen(system_prefix);
+    }
+
     if (mws->node_id && (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
-        md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID))) {
+        md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID) ||
+        md_sqlite_update_nodeid_db(mws, UPDATE_SYSTEM_ID))) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update old ements with id 0\n");
         return RETVAL_FAILURE;
     }
@@ -429,6 +459,7 @@ void md_sqlite_usage()
     fprintf(stderr, "  \"gps_prefix\":\t\tlocation + filename prefix for GPS data (max 116 characters)\n");
     fprintf(stderr, "  \"monitor_prefix\":\tlocation + filename prefix for monitor data (max 116 characters)\n");
     fprintf(stderr, "  \"usage_prefix\":\tlocation + filename prefix for usage data (max 116 characters)\n");
+    fprintf(stderr, "  \"system_prefix\":\tlocation + filename prefix for system events (max 116 characters)\n");
     fprintf(stderr, "  \"interval\":\t\ttime (in ms) from event and until database is copied (default: 5 sec)\n");
     fprintf(stderr, "  \"events\":\t\tnumber of events before copying database (default: 10)\n");
     fprintf(stderr, "  \"session_id\":\t\tpath to session id file\n");
@@ -443,8 +474,8 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
     struct md_writer_sqlite *mws = ptr;
     uint32_t node_id = 0, interval = DEFAULT_TIMEOUT, num_events = EVENT_LIMIT;
     const char *db_filename = NULL, *meta_prefix = NULL, *gps_prefix = NULL,
-               *monitor_prefix = NULL, *nodeid_file = NULL, *usage_prefix = NULL,
-               *output_format = NULL;
+               *monitor_prefix = NULL, *usage_prefix = NULL,
+               *output_format = NULL, *system_prefix = NULL;
 
     json_object* subconfig;
     if (json_object_object_get_ex(config, "sqlite", &subconfig)) {
@@ -454,7 +485,7 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
             else if (!strcmp(key, "nodeid"))
                 node_id = (uint32_t) json_object_get_int(val);
             else if (!strcmp(key, "nodeid_file"))
-                nodeid_file = json_object_get_string(val);
+                mws->node_id_file = strdup(json_object_get_string(val));
             else if (!strcmp(key, "meta_prefix"))
                 meta_prefix = json_object_get_string(val);
             else if (!strcmp(key, "gps_prefix"))
@@ -463,6 +494,8 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
                 monitor_prefix = json_object_get_string(val);
             else if (!strcmp(key, "usage_prefix"))
                 usage_prefix = json_object_get_string(val);
+            else if (!strcmp(key, "system_prefix"))
+                system_prefix = json_object_get_string(val);
             else if (!strcmp(key, "interval"))
                 interval = ((uint32_t) json_object_get_int(val)) * 1000;
             else if (!strcmp(key, "events"))
@@ -486,20 +519,14 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
     if ((meta_prefix    && strlen(meta_prefix)    > 117) ||
         (gps_prefix     && strlen(gps_prefix)     > 117) ||
         (monitor_prefix && strlen(monitor_prefix) > 117) ||
-        (usage_prefix   && strlen(usage_prefix) > 117)) {
+        (usage_prefix   && strlen(usage_prefix) > 117)   ||
+        (system_prefix  && strlen(system_prefix) > 117)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "SQLite temp file prefix too long\n");
         return RETVAL_FAILURE;
     }
 
     if (!db_filename || (!gps_prefix && !meta_prefix && !monitor_prefix)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Required SQLite argument missing\n");
-        return RETVAL_FAILURE;
-    }
-
-    if ((meta_prefix    && strlen(meta_prefix)    > 117) ||
-        (gps_prefix     && strlen(gps_prefix)     > 117) ||
-        (monitor_prefix && strlen(monitor_prefix) > 117)) {
-        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "SQLite temp file prefix too long\n");
         return RETVAL_FAILURE;
     }
 
@@ -526,8 +553,9 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
 
     META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Done configuring SQLite handle\n");
 
-    return md_sqlite_configure(mws, db_filename, node_id, nodeid_file, interval,
-            num_events, meta_prefix, gps_prefix, monitor_prefix, usage_prefix);
+    return md_sqlite_configure(mws, db_filename, node_id, interval,
+            num_events, meta_prefix, gps_prefix, monitor_prefix, usage_prefix,
+            system_prefix);
 }
 
 static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
@@ -549,6 +577,8 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
     if (md_sqlite_update_timestamp_db(mws, UPDATE_EVENT_TSTAMP,
                 real_boot_time) ||
         md_sqlite_update_timestamp_db(mws, UPDATE_UPDATES_TSTAMP,
+            real_boot_time) ||
+        md_sqlite_update_timestamp_db(mws, UPDATE_SYSTEM_TSTAMP,
             real_boot_time)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update tstamp in database\n");
         return RETVAL_FAILURE;
@@ -569,7 +599,8 @@ static uint8_t md_sqlite_check_session_id(struct md_writer_sqlite *mws)
     }
 
     if (md_sqlite_update_session_id_db(mws, UPDATE_EVENT_SESSION_ID) ||
-        md_sqlite_update_session_id_db(mws, UPDATE_UPDATES_SESSION_ID)) {
+        md_sqlite_update_session_id_db(mws, UPDATE_UPDATES_SESSION_ID) ||
+        md_sqlite_update_session_id_db(mws, UPDATE_SYSTEM_SESSION_ID)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update session id in database\n");
         mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
         mws->session_id = 0;
@@ -612,6 +643,15 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
         retval = md_sqlite_handle_munin_event(mws, (struct md_munin_event*) event);
         if (!retval)
             mws->num_munin_events++;
+        break;
+    case META_TYPE_SYSTEM:
+        if (!mws->system_prefix[0])
+            return;
+
+        retval = md_inventory_handle_system_event(mws, (md_system_event_t*) event);
+
+        if (!retval)
+            mws->num_system_events++;
         break;
     default:
         META_PRINT_SYSLOG(mws->parent, LOG_INFO, "SQLite writer does not support event %u\n",
@@ -673,10 +713,12 @@ static void md_sqlite_handle_timeout(void *ptr)
     if(!mws->node_id) {
 #ifdef OPENWRT
         mws->node_id = system_helpers_get_nodeid();
-
-        if(mws->node_id)
-            META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Got nodeid %d\n", mws->node_id);
+#else
+        mws->node_id = system_helpers_get_nodeid(mws->node_id_file);
 #endif
+        if(mws->node_id) {
+            META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Got nodeid %d\n", mws->node_id);
+        }
        
         if (!mws->node_id) {
             META_PRINT_SYSLOG(mws->parent, LOG_INFO, "No node id found\n");
@@ -685,7 +727,8 @@ static void md_sqlite_handle_timeout(void *ptr)
         }
 
         if (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
-            md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID)) {
+            md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID) ||
+            md_sqlite_update_nodeid_db(mws, UPDATE_SYSTEM_ID)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update node id in database\n");
 
             mws->timeout_handle->intvl = DEFAULT_TIMEOUT;

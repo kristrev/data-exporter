@@ -294,8 +294,8 @@ static void md_input_netlink_radio_grr_cell_resel(struct md_input_netlink *min,
             event->serving_c32 = (uint32_t) json_object_get_int(val);
         else if (!strcmp(key, "serving_five_second_timer"))
             event->serving_five_second_timer = (uint8_t) json_object_get_int(val);
-        else if (!strcmp(key, "cell_reselet_status"))
-            event->cell_reselet_status = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "cell_reselect_status"))
+            event->cell_reselect_status = (uint8_t) json_object_get_int(val);
         else if (!strcmp(key, "recent_cell_selection"))
             event->recent_cell_selection = (uint8_t) json_object_get_int(val);
     }
@@ -453,6 +453,78 @@ static void md_input_netlink_radio_gsm_rr_channel_conf(struct md_input_netlink *
     free(event);
 }
 
+static void md_input_netlink_radio_wcdma_rrc_state(struct md_input_netlink *min,
+        struct json_object *obj)
+{
+    struct md_radio_wcdma_rrc_state_event *event = calloc(sizeof(struct md_radio_wcdma_rrc_state_event), 1);
+
+    if (!event)
+        return;
+
+    json_object_object_foreach(obj, key, val) {
+        if (!strcmp(key, "md_seq"))
+            event->sequence = (uint16_t) json_object_get_int(val);
+        else if (!strcmp(key, "timestamp"))
+            event->tstamp = json_object_get_int64(val);
+        else if (!strcmp(key, "event_param"))
+            event->event_param = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "event_type"))
+            event->md_type = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "iccid"))
+            event->iccid = json_object_get_string(val);
+        else if (!strcmp(key, "imsi"))
+            event->imsi = json_object_get_string(val);
+        else if (!strcmp(key, "imei"))
+            event->imei = json_object_get_string(val);
+        else if (!strcmp(key, "rrc_state"))
+            event->rrc_state = (uint8_t) json_object_get_int(val);
+    }
+
+    mde_publish_event_obj(min->parent, (struct md_event*) event);
+    free(event);
+}
+
+static void md_input_netlink_radio_wcdma_cell_id(struct md_input_netlink *min,
+        struct json_object *obj)
+{
+    struct md_radio_wcdma_cell_id_event *event = calloc(sizeof(struct md_radio_wcdma_cell_id_event), 1);
+
+    if (!event)
+        return;
+
+    json_object_object_foreach(obj, key, val) {
+        if (!strcmp(key, "md_seq"))
+            event->sequence = (uint16_t) json_object_get_int(val);
+        else if (!strcmp(key, "timestamp"))
+            event->tstamp = json_object_get_int64(val);
+        else if (!strcmp(key, "event_param"))
+            event->event_param = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "event_type"))
+            event->md_type = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "iccid"))
+            event->iccid = json_object_get_string(val);
+        else if (!strcmp(key, "imsi"))
+            event->imsi = json_object_get_string(val);
+        else if (!strcmp(key, "imei"))
+            event->imei = json_object_get_string(val);
+        else if (!strcmp(key, "ul_uarfcn"))
+            event->ul_uarfcn = (uint32_t) json_object_get_int(val);
+        else if (!strcmp(key, "dl_uarfcn"))
+            event->dl_uarfcn = (uint32_t) json_object_get_int(val);
+        else if (!strcmp(key, "cell_id"))
+            event->cell_id = (uint32_t) json_object_get_int(val);
+        else if (!strcmp(key, "ura_id"))
+            event->ura_id = (uint16_t) json_object_get_int(val);
+        else if (!strcmp(key, "cell_access_rest"))
+            event->cell_access_rest = (uint8_t) json_object_get_int(val);
+        else if (!strcmp(key, "call_accs"))
+            event->dl_uarfcn = (uint8_t) json_object_get_int(val);
+    }
+
+    mde_publish_event_obj(min->parent, (struct md_event*) event);
+    free(event);
+}
+
 static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
@@ -464,6 +536,8 @@ static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
         return;
     }
 
+    memset(min->mre, 0, sizeof(struct md_radio_event));
+    min->mre->md_type = META_TYPE_RADIO;
     event_param = (uint8_t) json_object_get_int(event_param_json);
 
     switch (event_param) {
@@ -487,6 +561,15 @@ static void md_input_netlink_handle_radio_event(struct md_input_netlink *min,
         META_PRINT_SYSLOG(min->parent, LOG_ERR, "GRR_CELL_RESEL\n");
         md_input_netlink_radio_grr_cell_resel(min, obj);
         break;
+    case RADIO_EVENT_WCDMA_RRC_STATE:
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "WCDMA_RRC_STATE\n");
+        md_input_netlink_radio_wcdma_rrc_state(min, obj);
+        break;
+    case RADIO_EVENT_WCDMA_CELL_ID:
+        META_PRINT_SYSLOG(min->parent, LOG_ERR, "WCDMA_CELL_ID\n");
+        md_input_netlink_radio_wcdma_cell_id(min, obj);
+        break;
+
     default:
         break;
     }
@@ -543,7 +626,7 @@ static void md_input_netlink_handle_gps_event(struct md_input_netlink *min,
 
     if (sentence_id <= 0)
         return;
-    
+
     gps_event.minmea_id = sentence_id;
 
     //We can ignore NMEA checksum
@@ -594,6 +677,19 @@ static uint8_t md_input_netlink_add_json_key_value(const char *key,
     json_object_object_add(obj, key, obj_add);
 
     return RETVAL_SUCCESS;
+}
+
+static void md_input_netlink_handle_system_event(struct md_input_netlink *min,
+        struct json_object *obj)
+{
+    //recycle iface event, it contains all fields we need (currently)
+    memset(min->mse, 0, sizeof(md_system_event_t));
+    min->mse->md_type = META_TYPE_SYSTEM;
+
+    if (md_input_netlink_parse_iface_event(min, obj, min->mse) == RETVAL_FAILURE)
+        return;
+
+    mde_publish_event_obj(min->parent, (struct md_event*) min->mse);
 }
 
 static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events)
@@ -663,6 +759,9 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
     case META_TYPE_RADIO:
         md_input_netlink_handle_radio_event(min, nlh_obj);
         break;
+    case META_TYPE_SYSTEM:
+        md_input_netlink_handle_system_event(min, nlh_obj);
+        break;
     default:
         META_PRINT(min->parent->logfile, "Unknown event type\n");
         break;
@@ -690,7 +789,7 @@ static uint8_t md_input_netlink_config(struct md_input_netlink *min)
     backend_event_loop_update(min->parent->event_loop, EPOLLIN, EPOLL_CTL_ADD,
         mnl_socket_get_fd(min->metadata_sock), min->event_handle);
 
-    //TODO: Move to handler
+    //TODO: guard with check for flag
     min->mce = calloc(sizeof(struct md_conn_event), 1);
     if (min->mce == NULL)
         return RETVAL_FAILURE;
@@ -703,6 +802,11 @@ static uint8_t md_input_netlink_config(struct md_input_netlink *min)
     if (min->mre == NULL)
         return RETVAL_FAILURE;
 
+    min->mse = calloc(sizeof(md_system_event_t), 1);
+    if (min->mre == NULL)
+        return RETVAL_FAILURE;
+
+
     return RETVAL_SUCCESS;
 }
 
@@ -714,14 +818,17 @@ static uint8_t md_input_netlink_init(void *ptr, json_object* config)
     json_object* subconfig;
     if (json_object_object_get_ex(config, "netlink", &subconfig)) {
         json_object_object_foreach(subconfig, key, val) {
-            if (!strcmp(key, "conn")) 
+            if (!strcmp(key, "conn")) {
                 md_nl_mask |= META_TYPE_CONNECTION;
-            else if (!strcmp(key, "pos")) 
+            } else if (!strcmp(key, "pos")) {
                 md_nl_mask |= META_TYPE_POS;
-            else if (!strcmp(key, "iface")) 
+            } else if (!strcmp(key, "iface")) {
                 md_nl_mask |= META_TYPE_INTERFACE;
-            else if (!strcmp(key, "radio"))
+            } else if (!strcmp(key, "radio")) {
                 md_nl_mask |= META_TYPE_RADIO;
+            } else if (!strcmp(key, "system")) {
+                md_nl_mask |= META_TYPE_SYSTEM;
+            }
         }
     }
 
@@ -743,6 +850,7 @@ void md_netlink_usage()
     fprintf(stderr, "  \"pos\":\t\tReceive netlink position events\n");
     fprintf(stderr, "  \"iface\":\t\tReceive netlink interface events\n");
     fprintf(stderr, "  \"radio\":\t\tReceive netlink radio events (QXDM + neigh. cells)\n");
+    fprintf(stderr, "  \"system\":\t\tReceive netlink system (reboot) events\n");
     fprintf(stderr, "},\n");
 }
 

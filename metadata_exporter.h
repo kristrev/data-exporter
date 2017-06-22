@@ -53,6 +53,7 @@
 #define META_TYPE_MUNIN      0x05
 #define META_TYPE_SYSEVENT   0x06
 #define META_TYPE_RADIO      0x08
+#define META_TYPE_SYSTEM     0x10
 
 enum iface_event {
     IFACE_EVENT_DEV_STATE=1,
@@ -93,7 +94,9 @@ enum radio_event {
     RADIO_EVENT_GSM_RR_CHANNEL_CONF,
     RADIO_EVENT_CELL_LOCATION_GERAN,
     RADIO_EVENT_GSM_RR_CELL_SEL_RESEL_PARAM,
-    RADIO_EVENT_GRR_CELL_RESEL
+    RADIO_EVENT_GRR_CELL_RESEL,
+    RADIO_EVENT_WCDMA_RRC_STATE,
+    RADIO_EVENT_WCDMA_CELL_ID
 };
 
 #define EVENT_STR_LEN 255
@@ -189,6 +192,8 @@ struct md_iface_event {
     uint8_t event_type;
 };
 
+typedef struct md_iface_event md_system_event_t;
+
 struct md_conn_event {
     MD_EVENT;
     uint8_t event_type;
@@ -261,7 +266,7 @@ struct md_radio_grr_cell_resel_event {
     uint8_t serving_priority_class;
     uint8_t serving_rxlev_avg;
     uint8_t serving_five_second_timer;
-    uint8_t cell_reselet_status;
+    uint8_t cell_reselect_status;
     uint8_t recent_cell_selection;
 };
 
@@ -300,6 +305,21 @@ struct md_radio_gsm_rr_channel_conf_event {
     const char *before_channel_config;
     uint8_t channel_mode_1;
     uint8_t channel_mode_2;
+};
+
+struct md_radio_wcdma_rrc_state_event {
+    MD_RADIO_EVENT;
+    uint8_t rrc_state;
+};
+
+struct md_radio_wcdma_cell_id_event {
+    MD_RADIO_EVENT;
+    uint32_t ul_uarfcn;
+    uint32_t dl_uarfcn;
+    uint32_t cell_id;
+    uint16_t ura_id;
+    uint8_t cell_access_rest;
+    uint8_t call_accs;
 };
 
 #define md_sysevent md_munin_event
