@@ -87,14 +87,14 @@ static uint8_t md_input_zeromq_config(struct md_input_zeromq *miz)
     if (((miz->md_nl_mask & META_TYPE_INTERFACE) ||
         (miz->md_nl_mask & META_TYPE_POS) ||
         (miz->md_nl_mask & META_TYPE_RADIO)) &&
-        zmq_connect(miz->zmq_socket, "tcp://localhost:" ZMQ_NL_PUBLISHER_PORT) == -1)
+        zmq_connect(miz->zmq_socket, "ipc:///tmp/nl_pub") == -1)
     {
         META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't connect to NL ZMQ publisher\n");
         return RETVAL_FAILURE;
     }
 
     if ((miz->md_nl_mask & META_TYPE_CONNECTION) &&
-        zmq_connect(miz->zmq_socket, "tcp://localhost:" ZMQ_DLB_PUBLISHER_PORT) == -1)
+        zmq_connect(miz->zmq_socket, "ipc:///tmp/dlb_pub") == -1)
     {
         META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't connect to DLB ZMQ publisher\n");
         return RETVAL_FAILURE;
