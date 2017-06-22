@@ -158,7 +158,7 @@ static uint8_t md_input_gps_nsb_init(void *ptr, json_object* config)
 
 void md_gps_nsb_usage()
 {
-    fprintf(stderr, "\"nsp_gps\": {\t\tNSB GPS input\n");
+    fprintf(stderr, "\"gps_nsb\": {\t\tNSB GPS input\n");
     fprintf(stderr, "  \"address\":\t\tIP NSB broadcasts GPS to\n");
     fprintf(stderr, "  \"port\":\t\tPort NSB broadcasts GPS to\n");
     fprintf(stderr, "},\n");
