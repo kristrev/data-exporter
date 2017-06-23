@@ -220,6 +220,23 @@ static uint8_t md_input_zeromq_config(struct md_input_zeromq *miz)
     backend_event_loop_update(miz->parent->event_loop, EPOLLIN, EPOLL_CTL_ADD,
         zmq_fd, miz->event_handle);
 
+    //TODO: guard with check for flag
+    miz->mce = calloc(sizeof(struct md_conn_event), 1);
+    if (miz->mce == NULL)
+        return RETVAL_FAILURE;
+
+    miz->mie = calloc(sizeof(struct md_iface_event), 1);
+    if (miz->mie == NULL)
+        return RETVAL_FAILURE;
+
+    miz->mre = calloc(sizeof(struct md_radio_event), 1);
+    if (miz->mre == NULL)
+        return RETVAL_FAILURE;
+
+    miz->mse = calloc(sizeof(md_system_event_t), 1);
+    if (miz->mre == NULL)
+        return RETVAL_FAILURE;
+
     return RETVAL_SUCCESS;
 }
 

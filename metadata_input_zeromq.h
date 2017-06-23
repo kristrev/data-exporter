@@ -49,6 +49,7 @@ struct md_input_zeromq {
     struct md_conn_event *mce;
     struct md_iface_event *mie;
     struct md_radio_event *mre;
+    md_system_event_t *mse;
 };
 
 void md_zeromq_input_usage();
