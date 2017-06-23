@@ -447,3 +447,42 @@ struct md_radio_wcdma_cell_id_event* radio_wcdma_cell_id(json_object *obj)
 
     return event;
 }
+
+uint8_t add_json_key_value(const char *key,
+        int32_t value, struct json_object *obj)
+{
+    struct json_object *obj_add = NULL;
+    obj_add = json_object_new_int(value);
+
+    if (!obj_add)
+        return RETVAL_FAILURE;
+
+    json_object_object_add(obj, key, obj_add);
+
+    return RETVAL_SUCCESS;
+}
+
+void init_iface_event(struct md_iface_event *mie)
+{
+    memset(mie, 0, sizeof(struct md_iface_event));
+    mie->md_type = META_TYPE_INTERFACE;
+    mie->lac = -1;
+    mie->cid = -1;
+    mie->rscp = (int16_t) META_IFACE_INVALID;
+    mie->lte_rsrp = (int16_t) META_IFACE_INVALID;
+    mie->rssi = (int8_t) META_IFACE_INVALID;
+    mie->ecio = (int8_t) META_IFACE_INVALID;
+    mie->lte_rssi = (int8_t) META_IFACE_INVALID;
+    mie->lte_rsrq = (int8_t) META_IFACE_INVALID;
+    mie->lte_pci = 0xFFFF;
+    mie->enodeb_id = -1;
+}
+
+void init_conn_event(struct md_conn_event* mce)
+{
+    memset(mce, 0, sizeof(struct md_conn_event));
+    mce->md_type = META_TYPE_CONNECTION;
+    //255 is reserved value used to indicate that there is no value to export
+    //(look at writers)
+    mce->event_value = UINT8_MAX;
+}

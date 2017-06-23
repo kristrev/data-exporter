@@ -42,35 +42,12 @@
 #include "lib/minmea.h"
 #include "metadata_exporter_log.h"
 
-static uint8_t md_input_netlink_parse_conn_event(struct md_input_netlink *min,
-        struct json_object *meta_obj)
-{
-    return parse_conn_info(meta_obj, min->mce, min->parent);
-}
-
-static uint8_t md_input_netlink_parse_iface_event(struct md_input_netlink *min,
-        struct json_object *meta_obj, struct md_iface_event *mie)
-{
-    return parse_iface_event(meta_obj, mie, min->parent);
-}
-
 static void md_input_netlink_handle_iface_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
-    memset(min->mie, 0, sizeof(struct md_iface_event));
-    min->mie->md_type = META_TYPE_INTERFACE;
-    min->mie->lac = -1;
-    min->mie->cid = -1;
-    min->mie->rscp = (int16_t) META_IFACE_INVALID;
-    min->mie->lte_rsrp = (int16_t) META_IFACE_INVALID;
-    min->mie->rssi = (int8_t) META_IFACE_INVALID;
-    min->mie->ecio = (int8_t) META_IFACE_INVALID;
-    min->mie->lte_rssi = (int8_t) META_IFACE_INVALID;
-    min->mie->lte_rsrq = (int8_t) META_IFACE_INVALID;
-    min->mie->lte_pci = 0xFFFF;
-    min->mie->enodeb_id = -1;
+    init_iface_event(min->mie);
 
-    if (md_input_netlink_parse_iface_event(min, obj, min->mie) == RETVAL_FAILURE)
+    if (parse_iface_event(obj, min->mie, min->parent) == RETVAL_FAILURE)
         return;
 
     mde_publish_event_obj(min->parent, (struct md_event*) min->mie);
@@ -215,12 +192,8 @@ static void md_input_netlink_handle_conn_event(struct md_input_netlink *min,
 {
     uint8_t retval = 0;
 
-    memset(min->mce, 0, sizeof(struct md_conn_event));
-    min->mce->md_type = META_TYPE_CONNECTION;
-    //255 is reserved value used to indicate that there is no value to export
-    //(look at writers)
-    min->mce->event_value = UINT8_MAX;
-    retval = md_input_netlink_parse_conn_event(min, obj);
+    init_conn_event(min->mce);
+    retval = parse_conn_info(obj, min->mce, min->parent);
 
     if (retval == RETVAL_FAILURE)
         return;
@@ -300,20 +273,6 @@ static void md_input_netlink_handle_gps_event(struct md_input_netlink *min,
     mde_publish_event_obj(min->parent, (struct md_event *) &gps_event);
 }
 
-static uint8_t md_input_netlink_add_json_key_value(const char *key,
-        int32_t value, struct json_object *obj)
-{
-    struct json_object *obj_add = NULL;
-    obj_add = json_object_new_int(value);
-
-    if (!obj_add)
-        return RETVAL_FAILURE;
-
-    json_object_object_add(obj, key, obj_add);
-
-    return RETVAL_SUCCESS;
-}
-
 static void md_input_netlink_handle_system_event(struct md_input_netlink *min,
         struct json_object *obj)
 {
@@ -321,7 +280,7 @@ static void md_input_netlink_handle_system_event(struct md_input_netlink *min,
     memset(min->mse, 0, sizeof(md_system_event_t));
     min->mse->md_type = META_TYPE_SYSTEM;
 
-    if (md_input_netlink_parse_iface_event(min, obj, min->mse) == RETVAL_FAILURE)
+    if (parse_iface_event(obj, min->mse, min->parent) == RETVAL_FAILURE)
         return;
 
     mde_publish_event_obj(min->parent, (struct md_event*) min->mse);
@@ -360,8 +319,8 @@ static void md_input_netlink_handle_event(void *ptr, int32_t fd, uint32_t events
     //metadata exporter, making it easier to correlate events between
     //applications. The different applications publishing data might also insert
     //their own sequence number
-    if (md_input_netlink_add_json_key_value("md_seq", mde_inc_seq(min->parent), nlh_obj) ||
-        md_input_netlink_add_json_key_value("md_ver", MDE_VERSION, nlh_obj)) {
+    if (add_json_key_value("md_seq", mde_inc_seq(min->parent), nlh_obj) ||
+        add_json_key_value("md_ver", MDE_VERSION, nlh_obj)) {
         json_object_put(nlh_obj);
         return;
     }

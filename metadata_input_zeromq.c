@@ -35,11 +35,37 @@
 #include <zmq.h>
 
 #include "metadata_exporter.h"
+#include "metadata_input_nl_zmq_common.h"
 #include "metadata_input_zeromq.h"
 #include "backend_event_loop.h"
 
 #include "lib/minmea.h"
 #include "metadata_exporter_log.h"
+
+static void md_input_zeromq_handle_iface_event(struct md_input_zeromq *miz,
+        struct json_object *obj)
+{
+    init_iface_event(miz->mie);
+
+    if (parse_iface_event(obj, miz->mie, miz->parent) == RETVAL_FAILURE)
+        return;
+
+    mde_publish_event_obj(miz->parent, (struct md_event*) miz->mie);
+}
+
+static void md_input_zeromq_handle_conn_event(struct md_input_zeromq *miz,
+        struct json_object *obj)
+{
+    uint8_t retval = 0;
+
+    init_conn_event(miz->mce);
+    retval = parse_conn_info(obj, miz->mce, miz->parent);
+
+    if (retval == RETVAL_FAILURE)
+        return;
+
+    mde_publish_event_obj(miz->parent, (struct md_event*) miz->mce);
+}
 
 static int subscribe_for_topic(const char* topic, struct md_input_zeromq *miz)
 {
@@ -52,6 +78,9 @@ static void md_input_zeromq_handle_event(void *ptr, int32_t fd, uint32_t events)
     struct md_input_zeromq *miz = ptr;
     int zmq_events = 0;
     size_t events_len = sizeof(zmq_events);
+    json_object *json_event = NULL, *zmqh_obj = NULL;
+    const char *json_msg;
+    uint8_t event_type = 0;
 
     zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
 
@@ -62,7 +91,71 @@ static void md_input_zeromq_handle_event(void *ptr, int32_t fd, uint32_t events)
 
         META_PRINT_SYSLOG(miz->parent, LOG_DEBUG, "Received message: %s\n", buf);
 
-        zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
+        json_msg = strchr(buf, '{');
+        if (json_msg == NULL)
+        {
+            zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
+            continue;
+        }
+
+        zmqh_obj = json_tokener_parse(json_msg);
+        if (!zmqh_obj) {
+            META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Received invalid JSON object on ZMQ socket\n");
+            zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
+            continue;
+        }
+
+        //We are inserting version and sequence number. Version is so that the
+        //application handling this data knows if it supports the format or not.
+        //Sequence is so that we can see the order in which events arrived at the
+        //metadata exporter, making it easier to correlate events between
+        //applications. The different applications publishing data might also insert
+        //their own sequence number
+        if (add_json_key_value("md_seq", mde_inc_seq(miz->parent), zmqh_obj) ||
+            add_json_key_value("md_ver", MDE_VERSION, zmqh_obj)) {
+            json_object_put(zmqh_obj);
+            zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
+            continue;
+        }
+
+        if (!json_object_object_get_ex(zmqh_obj, "event_type", &json_event)) {
+            META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Missing event type\n");
+            json_object_put(zmqh_obj);
+            zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
+            continue;
+        }
+
+        event_type = (uint8_t) json_object_get_int(json_event);
+
+        if (!(event_type & miz->md_zmq_mask)) {
+            json_object_put(zmqh_obj);
+            return;
+        }
+
+        META_PRINT(miz->parent->logfile, "Got JSON %s\n", json_object_to_json_string(zmqh_obj));
+
+        switch (event_type) {
+            case META_TYPE_INTERFACE:
+                md_input_zeromq_handle_iface_event(miz, zmqh_obj);
+                break;
+            case META_TYPE_CONNECTION:
+                md_input_zeromq_handle_conn_event(miz, zmqh_obj);
+                break;
+            case META_TYPE_POS:
+                //md_input_netlink_handle_gps_event(miz, zmqh_obj);
+                break;
+            case META_TYPE_RADIO:
+                //md_input_netlink_handle_radio_event(miz, zmqh_obj);
+                break;
+            case META_TYPE_SYSTEM:
+                //md_input_netlink_handle_system_event(miz, zmqh_obj);
+                break;
+            default:
+                META_PRINT(miz->parent->logfile, "Unknown event type\n");
+                break;
+    }
+
+    json_object_put(zmqh_obj);
     }
 }
 
@@ -84,32 +177,32 @@ static uint8_t md_input_zeromq_config(struct md_input_zeromq *miz)
         return RETVAL_FAILURE;
     }
 
-    if (((miz->md_nl_mask & META_TYPE_INTERFACE) ||
-        (miz->md_nl_mask & META_TYPE_POS) ||
-        (miz->md_nl_mask & META_TYPE_RADIO)) &&
+    if (((miz->md_zmq_mask & META_TYPE_INTERFACE) ||
+        (miz->md_zmq_mask & META_TYPE_POS) ||
+        (miz->md_zmq_mask & META_TYPE_RADIO)) &&
         zmq_connect(miz->zmq_socket, "ipc:///tmp/nl_pub") == -1)
     {
         META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't connect to NL ZMQ publisher\n");
         return RETVAL_FAILURE;
     }
 
-    if ((miz->md_nl_mask & META_TYPE_CONNECTION) &&
+    if ((miz->md_zmq_mask & META_TYPE_CONNECTION) &&
         zmq_connect(miz->zmq_socket, "ipc:///tmp/dlb_pub") == -1)
     {
         META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't connect to DLB ZMQ publisher\n");
         return RETVAL_FAILURE;
     }
 
-    if (miz->md_nl_mask & META_TYPE_INTERFACE)
+    if (miz->md_zmq_mask & META_TYPE_INTERFACE)
         subscribe_for_topic(ZMQ_NL_INTERFACE_TOPIC, miz);
 
-    if (miz->md_nl_mask & META_TYPE_RADIO)
+    if (miz->md_zmq_mask & META_TYPE_RADIO)
         subscribe_for_topic(ZMQ_NL_RADIOEVENT_TOPIC, miz);
 
-    if (miz->md_nl_mask & META_TYPE_POS)
+    if (miz->md_zmq_mask & META_TYPE_POS)
         subscribe_for_topic(ZMQ_NL_GPS_TOPIC, miz);
 
-    if (miz->md_nl_mask & META_TYPE_CONNECTION) {
+    if (miz->md_zmq_mask & META_TYPE_CONNECTION) {
         subscribe_for_topic(ZMQ_DLB_METADATA_TOPIC, miz);
         subscribe_for_topic(ZMQ_DLB_DATAUSAGE_TOPIC, miz);
     }
@@ -133,23 +226,23 @@ static uint8_t md_input_zeromq_config(struct md_input_zeromq *miz)
 static uint8_t md_input_zeromq_init(void *ptr, json_object* config)
 {
     struct md_input_zeromq *miz = ptr;
-    miz->md_nl_mask = 0;
+    miz->md_zmq_mask = 0;
 
     json_object* subconfig;
     if (json_object_object_get_ex(config, "zmq_input", &subconfig)) {
         json_object_object_foreach(subconfig, key, val) {
             if (!strcmp(key, "conn")) 
-                miz->md_nl_mask |= META_TYPE_CONNECTION;
+                miz->md_zmq_mask |= META_TYPE_CONNECTION;
             else if (!strcmp(key, "pos")) 
-                miz->md_nl_mask |= META_TYPE_POS;
+                miz->md_zmq_mask |= META_TYPE_POS;
             else if (!strcmp(key, "iface")) 
-                miz->md_nl_mask |= META_TYPE_INTERFACE;
+                miz->md_zmq_mask |= META_TYPE_INTERFACE;
             else if (!strcmp(key, "radio"))
-                miz->md_nl_mask |= META_TYPE_RADIO;
+                miz->md_zmq_mask |= META_TYPE_RADIO;
         }
     }
 
-    if (!miz->md_nl_mask) {
+    if (!miz->md_zmq_mask) {
         META_PRINT_SYSLOG(miz->parent, LOG_ERR, "At least one netlink event type must be present\n");
         return RETVAL_FAILURE;
     }

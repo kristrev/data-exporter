@@ -42,7 +42,7 @@ struct backend_epoll_handle;
 struct md_input_zeromq {
     MD_INPUT;
     struct backend_epoll_handle *event_handle;
-    uint32_t md_nl_mask;
+    uint32_t md_zmq_mask;
     void* zmq_ctx;
     void* zmq_socket;
     int zmq_fd;
