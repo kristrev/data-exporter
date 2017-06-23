@@ -12,6 +12,7 @@ set(SOURCE
     metadata_utils.c
     system_helpers.c
     metadata_input_netlink.c
+    metadata_input_nl_zmq_common.c
     lib/minmea.c)
 
 

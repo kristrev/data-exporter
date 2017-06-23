@@ -37,10 +37,6 @@
 
 #define ZMQ_DLB_DATAUSAGE_TOPIC "CELERWAY.DLB.DATAUSAGE"
 
-#define ZMQ_NL_PUBLISHER_PORT "5555"
-
-#define ZMQ_DLB_PUBLISHER_PORT "5557"
-
 struct backend_epoll_handle;
 
 struct md_input_zeromq {
