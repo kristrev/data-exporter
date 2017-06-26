@@ -31,7 +31,7 @@
 #include "metadata_exporter.h"
 
 #define MD_ZMQ_BIND_INTVL   1000
-#define MD_ZMQ_DATA_VERSION 1
+#define MD_ZMQ_DATA_VERSION 3
 
 enum md_zmq_topics {
     MD_ZMQ_TOPIC_SYSEVENT,
