@@ -113,5 +113,5 @@ const char *monroe_keys[MD_ZMQ_KEYS_MAX + 1] = {
     "ChannelMode1",
     "ChannelMode2",
 
-    "InternalInterfaceName"
+    "InternalInterface"
 };
