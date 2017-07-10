@@ -29,11 +29,20 @@
 
 #include "metadata_exporter.h"
 
+#define MD_GPS_NSB_SOCK_INTVL   1000
+
 struct backend_epoll_handle;
 
 struct md_input_gps_nsb {
     MD_INPUT;
     struct backend_epoll_handle *event_handle;
+    struct backend_timeout_handle *sock_timeout_handle;
+    uint32_t sockfd;
+
+    //46 is INET6_ADDRSTRLEN accoding to POSIX, but it does not make sense to
+    //include header here
+    char addr[46];
+    char port[6];
 };
 
 void md_gps_nsb_usage();

@@ -32,6 +32,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include "backend_event_loop.h"
 #include "metadata_exporter.h"
@@ -48,10 +49,22 @@ static void md_input_gps_nsb_handle_event(void *ptr, int32_t fd, uint32_t events
     struct minmea_sentence_rmc rmc;
     int32_t retval;
 
-    retval = recv(fd, rcv_buf, sizeof(rcv_buf), 0);
-
-    if (retval <= 0)
+    if (!mign->sockfd)
         return;
+
+    retval = recv(mign->sockfd, rcv_buf, sizeof(rcv_buf), 0);
+
+    if (retval <= 0) {
+        if (mign->sockfd) {
+            META_PRINT_SYSLOG(mign->parent, LOG_ERR, "NSB GPS error\n");
+            close(mign->sockfd);
+            mign->sockfd = 0;
+            mde_start_timer(mign->parent->event_loop, mign->sock_timeout_handle,
+                    MD_GPS_NSB_SOCK_INTVL);
+        }
+
+        return;
+    }
 
     sentence_id = minmea_sentence_id(rcv_buf, 0);
 
@@ -93,9 +106,7 @@ static void md_input_gps_nsb_handle_event(void *ptr, int32_t fd, uint32_t events
     mde_publish_event_obj(mign->parent, (struct md_event *) &gps_event);
 }
 
-static uint8_t md_input_gps_nsb_config(struct md_input_gps_nsb *mign,
-                                       const char *address,
-                                       const char *port)
+static uint8_t md_input_gps_nsb_create_socket(struct md_input_gps_nsb *mign)
 {
     int32_t sockfd = -1;
     struct addrinfo hints, *res;
@@ -105,7 +116,7 @@ static uint8_t md_input_gps_nsb_config(struct md_input_gps_nsb *mign,
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_protocol = IPPROTO_UDP;
 
-    if (getaddrinfo(address, port, &hints, &res)) {
+    if (getaddrinfo(mign->addr, mign->port, &hints, &res)) {
         META_PRINT_SYSLOG(mign->parent, LOG_ERR, "Could not get address info for NSB GPS\n");
         return RETVAL_FAILURE;
     }
@@ -122,14 +133,41 @@ static uint8_t md_input_gps_nsb_config(struct md_input_gps_nsb *mign,
         return RETVAL_FAILURE;
     }
 
-    if(!(mign->event_handle = backend_create_epoll_handle(mign,
-                    sockfd, md_input_gps_nsb_handle_event)))
-        return RETVAL_FAILURE;
+    if (!(mign->event_handle)) {
+        if(!(mign->event_handle = backend_create_epoll_handle(mign,
+                        sockfd, md_input_gps_nsb_handle_event)))
+            return RETVAL_FAILURE;
+    }
    
     backend_event_loop_update(mign->parent->event_loop, EPOLLIN, EPOLL_CTL_ADD,
         sockfd, mign->event_handle);
 
+    mign->sockfd = sockfd;
     META_PRINT_SYSLOG(mign->parent, LOG_INFO, "NSB GPS socket %d\n", sockfd);
+    return RETVAL_SUCCESS;
+}
+
+static void md_input_gps_nsb_sock_timeout(void *ptr)
+{
+    struct md_input_gps_nsb *mign = ptr;
+
+    if (md_input_gps_nsb_create_socket(mign) == RETVAL_FAILURE) {
+        mign->sock_timeout_handle->intvl = MD_GPS_NSB_SOCK_INTVL;
+    } else {
+        mign->sock_timeout_handle->intvl = 0;
+    }
+}
+
+static uint8_t md_input_gps_nsb_config(struct md_input_gps_nsb *mign,
+                                       const char *address,
+                                       const char *port)
+{
+    //call create_socket
+    if (md_input_gps_nsb_create_socket(mign) == RETVAL_FAILURE) {
+        mde_start_timer(mign->parent->event_loop, mign->sock_timeout_handle,
+                MD_GPS_NSB_SOCK_INTVL);
+    }
+
     return RETVAL_SUCCESS;
 }
 
@@ -153,12 +191,28 @@ static uint8_t md_input_gps_nsb_init(void *ptr, json_object* config)
         return RETVAL_FAILURE;
     }
 
+    if (strlen(address) > (sizeof(mign->addr) - 1) ||
+        strlen(port) > (sizeof(mign->port) - 1)) {
+        META_PRINT_SYSLOG(mign->parent, LOG_ERR, "NSB GPS argument too long\n");
+        return RETVAL_FAILURE;
+    }
+
+    memcpy(mign->addr, address, strlen(address));
+    memcpy(mign->port, port, strlen(port));
+
+    if(!(mign->sock_timeout_handle = backend_event_loop_create_timeout(0,
+                    md_input_gps_nsb_sock_timeout, mign, 0))) {
+        META_PRINT_SYSLOG(mign->parent, LOG_ERR, "Failed to create NSB "
+                "timer\n");
+        return RETVAL_FAILURE;
+    }
+
     return md_input_gps_nsb_config(mign, address, port);
 }
 
 void md_gps_nsb_usage()
 {
-    fprintf(stderr, "\"nsp_gps\": {\t\tNSB GPS input\n");
+    fprintf(stderr, "\"gps_nsb\": {\t\tNSB GPS input\n");
     fprintf(stderr, "  \"address\":\t\tIP NSB broadcasts GPS to\n");
     fprintf(stderr, "  \"port\":\t\tPort NSB broadcasts GPS to\n");
     fprintf(stderr, "},\n");

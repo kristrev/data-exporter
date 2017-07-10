@@ -53,7 +53,7 @@
 #ifdef SYSEVENT_SUPPORT
     #include "metadata_input_sysevent.h"
 #endif
-#ifdef NSB_GPS
+#ifdef GPS_NSB_SUPPORT
     #include "metadata_input_gps_nsb.h"
 #endif
 #include "metadata_input_netlink.h"
@@ -670,8 +670,8 @@ static void print_usage()
 #ifdef MUNIN_SUPPORT
     md_munin_usage();
 #endif
-#ifdef NSB_GPS_SUPPORT
-    md_nsp_gps_usage();
+#ifdef GPS_NSB_SUPPORT
+    md_gps_nsb_usage();
 #endif
 #ifdef SYSEVENT_SUPPORT
     md_sysevent_usage();
@@ -773,7 +773,7 @@ int main(int argc, char *argv[])
             md_netlink_setup(mde, (struct md_input_netlink*) mde->md_inputs[MD_INPUT_NETLINK]);
             num_inputs++;
         }
-#ifdef NSB_GPS
+#ifdef GPS_NSB_SUPPORT
         else if (!strcmp(key, "gps_nsb")) {
             mde->md_inputs[MD_INPUT_GPS_NSB] = calloc(sizeof(struct md_input_gps_nsb), 1);
 
