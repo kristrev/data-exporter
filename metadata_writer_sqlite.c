@@ -69,7 +69,15 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
 
     if (!mws->node_id || !mws->valid_timestamp ||
             (mws->session_id_file && !mws->session_id))
+    {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Can't export DB. # node_id %d "
+                            "# valid_timestamp %u # session_id_file %s # session_id %d\n",
+                            mws->node_id,
+                            mws->valid_timestamp,
+                            mws->session_id_file ? mws->session_id_file : "EMPTY",
+                            mws->session_id);
         return;
+    }
 
     if (mws->timeout_added && !from_timeout) {
         backend_remove_timeout(mws->timeout_handle);
