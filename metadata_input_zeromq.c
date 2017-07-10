@@ -270,10 +270,10 @@ static uint8_t md_input_zeromq_init(void *ptr, json_object* config)
 void md_zeromq_input_usage()
 {
     fprintf(stderr, "\"zmq_input\": {\t\tZeroMQ input (at least one event type must be present)\n");
-    fprintf(stderr, "  \"conn\":\t\tReceive netlink connection events\n");
-    fprintf(stderr, "  \"pos\":\t\tReceive netlink position events\n");
-    fprintf(stderr, "  \"iface\":\t\tReceive netlink interface events\n");
-    fprintf(stderr, "  \"radio\":\t\tReceive netlink radio events (QXDM + neigh. cells)\n");
+    fprintf(stderr, "  \"conn\":\t\tReceive ZeroMQ connection events\n");
+    fprintf(stderr, "  \"pos\":\t\tReceive ZeroMQ position events\n");
+    fprintf(stderr, "  \"iface\":\t\tReceive ZeroMQ interface events\n");
+    fprintf(stderr, "  \"radio\":\t\tReceive ZeroMQ radio events (QXDM + neigh. cells)\n");
     fprintf(stderr, "},\n");
 }
 
