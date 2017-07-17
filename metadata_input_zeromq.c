@@ -201,6 +201,31 @@ static void md_input_zeromq_handle_radio_event(struct md_input_zeromq *miz,
     }
 }
 
+static void md_input_zeromq_handle_gps_event(struct md_input_zeromq *miz,
+                                              struct json_object *json_obj)
+{
+    struct md_gps_event* event = handle_gps_event(json_obj);
+
+    if (!event)
+        return;
+
+    mde_publish_event_obj(miz->parent, (struct md_event *) &event);
+    free(event);
+}
+
+static void md_input_zeromq_handle_system_event(struct md_input_zeromq *miz,
+        struct json_object *obj)
+{
+    //recycle iface event, it contains all fields we need (currently)
+    memset(miz->mse, 0, sizeof(md_system_event_t));
+    miz->mse->md_type = META_TYPE_SYSTEM;
+
+    if (parse_iface_event(obj, miz->mse, miz->parent) == RETVAL_FAILURE)
+        return;
+
+    mde_publish_event_obj(miz->parent, (struct md_event*) miz->mse);
+}
+
 static int subscribe_for_topic(const char* topic, struct md_input_zeromq *miz)
 {
     size_t len = strlen(topic);
@@ -274,13 +299,13 @@ static void md_input_zeromq_handle_event(void *ptr, int32_t fd, uint32_t events)
                 md_input_zeromq_handle_conn_event(miz, zmqh_obj);
                 break;
             case META_TYPE_POS:
-                //md_input_netlink_handle_gps_event(miz, zmqh_obj);
+                md_input_zeromq_handle_gps_event(miz, zmqh_obj);
                 break;
             case META_TYPE_RADIO:
                 md_input_zeromq_handle_radio_event(miz, zmqh_obj);
                 break;
             case META_TYPE_SYSTEM:
-                //md_input_netlink_handle_system_event(miz, zmqh_obj);
+                md_input_zeromq_handle_system_event(miz, zmqh_obj);
                 break;
             default:
                 META_PRINT(miz->parent->logfile, "Unknown event type\n");

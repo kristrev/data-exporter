@@ -59,7 +59,7 @@ uint8_t parse_conn_info(struct json_object *meta_obj, struct md_conn_event *mce,
 
     if (mce->event_param == CONN_EVENT_DATA_USAGE_UPDATE) {
         if (!mce->tstamp || !mce->event_param || !mce->interface_id || (mce->imei && !mce->imsi) ||
-            (mce->imsi && !mce->imei)) {
+                (mce->imsi && !mce->imei)) {
             META_PRINT_SYSLOG(parent, LOG_ERR, "Missing required argument in usage JSON\n");
             return RETVAL_FAILURE;
         } else {
@@ -68,10 +68,10 @@ uint8_t parse_conn_info(struct json_object *meta_obj, struct md_conn_event *mce,
     }
 
     if (!mce->tstamp || !mce->sequence ||
-        !mce->l3_session_id || !mce->event_param ||
-        !mce->interface_type || !mce->network_address_family ||
-        !mce->network_address || !mce->interface_id ||
-        !mce->interface_id_type) {
+            !mce->l3_session_id || !mce->event_param ||
+            !mce->interface_type || !mce->network_address_family ||
+            !mce->network_address || !mce->interface_id ||
+            !mce->interface_id_type) {
         META_PRINT_SYSLOG(parent, LOG_ERR, "Missing required argument in JSON\n");
         return RETVAL_FAILURE;
     }
@@ -448,8 +448,85 @@ struct md_radio_wcdma_cell_id_event* radio_wcdma_cell_id(json_object *obj)
     return event;
 }
 
+struct md_gps_event* handle_gps_event(struct json_object *json_obj)
+{
+    int8_t sentence_id = 0;
+
+    struct md_gps_event *gps_event = calloc(sizeof(struct md_gps_event), 1);
+
+    if (!gps_event)
+        return NULL;
+
+    union {
+        struct minmea_sentence_gga gga;
+        struct minmea_sentence_rmc rmc;
+    } gps;
+
+    gps_event->md_type = META_TYPE_POS;
+
+    json_object_object_foreach(json_obj, key, val) {
+        if (!strcmp(key, "md_seq"))
+            gps_event->sequence = (uint16_t) json_object_get_int(val);
+
+        if (!strcmp(key, "timestamp"))
+            gps_event->tstamp_tv.tv_sec = json_object_get_int64(val);
+
+        if (!strcmp(key, "nmea_string"))
+            gps_event->nmea_raw = json_object_get_string(val);
+    }
+
+    if (!gps_event->sequence || !gps_event->nmea_raw)
+    {
+        free(gps_event);
+        return NULL;
+    }
+
+    sentence_id = minmea_sentence_id(gps_event->nmea_raw, 0);
+
+    if (sentence_id <= 0)
+    {
+        free(gps_event);
+        return NULL;
+    }
+
+    gps_event->minmea_id = sentence_id;
+
+    //We can ignore NMEA checksum
+    switch (sentence_id) {
+    case MINMEA_SENTENCE_GGA:
+        if (minmea_parse_gga(&gps.gga, gps_event->nmea_raw) && !gps.gga.fix_quality) {
+            free(gps_event);
+            return NULL;
+        } else {
+            gps_event->time = gps.gga.time;
+            gps_event->latitude = minmea_tocoord(&gps.gga.latitude);
+            gps_event->longitude = minmea_tocoord(&gps.gga.longitude);
+            gps_event->altitude = minmea_tofloat(&gps.gga.altitude);
+            gps_event->satellites_tracked = gps.gga.satellites_tracked;
+        }
+        break;
+    case MINMEA_SENTENCE_RMC:
+        if (minmea_parse_rmc(&gps.rmc, gps_event->nmea_raw) && !gps.rmc.valid) {
+            free(gps_event);
+            return NULL;
+        } else {
+            gps_event->time = gps.rmc.time;
+            gps_event->latitude = minmea_tocoord(&gps.rmc.latitude);
+            gps_event->longitude = minmea_tocoord(&gps.rmc.longitude);
+            gps_event->speed = minmea_tofloat(&gps.rmc.speed);
+        }
+        break;
+    default:
+        free(gps_event);
+        return NULL;
+        break;
+    }
+
+    return gps_event;
+}
+
 uint8_t add_json_key_value(const char *key,
-        int32_t value, struct json_object *obj)
+                           int32_t value, struct json_object *obj)
 {
     struct json_object *obj_add = NULL;
     obj_add = json_object_new_int(value);

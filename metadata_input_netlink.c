@@ -204,73 +204,13 @@ static void md_input_netlink_handle_conn_event(struct md_input_netlink *min,
 static void md_input_netlink_handle_gps_event(struct md_input_netlink *min,
                                               struct json_object *json_obj)
 {
-    struct md_gps_event gps_event;
-    uint8_t retval = 0;
-    int8_t sentence_id = 0;
+    struct md_gps_event* event = handle_gps_event(json_obj);
 
-    union {
-        struct minmea_sentence_gga gga;
-        struct minmea_sentence_rmc rmc;
-    } gps;
-
-    memset(&gps_event, 0, sizeof(struct md_gps_event));
-    gps_event.md_type = META_TYPE_POS;
-
-    json_object_object_foreach(json_obj, key, val) {
-        if (!strcmp(key, "md_seq"))
-            gps_event.sequence = (uint16_t) json_object_get_int(val);
-
-        if (!strcmp(key, "timestamp"))
-            gps_event.tstamp_tv.tv_sec = json_object_get_int64(val);
-
-        if (!strcmp(key, "nmea_string"))
-            gps_event.nmea_raw = json_object_get_string(val);
-    }
-
-    if (!gps_event.sequence || !gps_event.nmea_raw)
+    if (!event)
         return;
 
-    sentence_id = minmea_sentence_id(gps_event.nmea_raw, 0);
-
-    if (sentence_id <= 0)
-        return;
-
-    gps_event.minmea_id = sentence_id;
-
-    //We can ignore NMEA checksum
-    switch (sentence_id) {
-    case MINMEA_SENTENCE_GGA:
-        retval = minmea_parse_gga(&gps.gga, gps_event.nmea_raw);
-        if (retval && !gps.gga.fix_quality) {
-            retval = 0;
-        } else {
-            gps_event.time = gps.gga.time;
-            gps_event.latitude = minmea_tocoord(&gps.gga.latitude);
-            gps_event.longitude = minmea_tocoord(&gps.gga.longitude);
-            gps_event.altitude = minmea_tofloat(&gps.gga.altitude);
-            gps_event.satellites_tracked = gps.gga.satellites_tracked;
-        }
-        break;
-    case MINMEA_SENTENCE_RMC:
-        retval = minmea_parse_rmc(&gps.rmc, gps_event.nmea_raw);
-
-        if (retval && !gps.rmc.valid) {
-            retval = 0;
-        } else {
-            gps_event.time = gps.rmc.time;
-            gps_event.latitude = minmea_tocoord(&gps.rmc.latitude);
-            gps_event.longitude = minmea_tocoord(&gps.rmc.longitude);
-            gps_event.speed = minmea_tofloat(&gps.rmc.speed);
-        }
-        break;
-    default:
-        break;
-    }
-
-    if (!retval)
-        return;
-
-    mde_publish_event_obj(min->parent, (struct md_event *) &gps_event);
+    mde_publish_event_obj(min->parent, (struct md_event *) &event);
+    free(event);
 }
 
 static void md_input_netlink_handle_system_event(struct md_input_netlink *min,
