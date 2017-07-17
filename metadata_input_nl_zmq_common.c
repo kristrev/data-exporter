@@ -59,7 +59,7 @@ uint8_t parse_conn_info(struct json_object *meta_obj, struct md_conn_event *mce,
 
     if (mce->event_param == CONN_EVENT_DATA_USAGE_UPDATE) {
         if (!mce->tstamp || !mce->event_param || !mce->interface_id || (mce->imei && !mce->imsi) ||
-                (mce->imsi && !mce->imei)) {
+            (mce->imsi && !mce->imei)) {
             META_PRINT_SYSLOG(parent, LOG_ERR, "Missing required argument in usage JSON\n");
             return RETVAL_FAILURE;
         } else {
@@ -68,10 +68,10 @@ uint8_t parse_conn_info(struct json_object *meta_obj, struct md_conn_event *mce,
     }
 
     if (!mce->tstamp || !mce->sequence ||
-            !mce->l3_session_id || !mce->event_param ||
-            !mce->interface_type || !mce->network_address_family ||
-            !mce->network_address || !mce->interface_id ||
-            !mce->interface_id_type) {
+        !mce->l3_session_id || !mce->event_param ||
+        !mce->interface_type || !mce->network_address_family ||
+        !mce->network_address || !mce->interface_id ||
+        !mce->interface_id_type) {
         META_PRINT_SYSLOG(parent, LOG_ERR, "Missing required argument in JSON\n");
         return RETVAL_FAILURE;
     }
