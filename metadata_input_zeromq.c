@@ -67,6 +67,140 @@ static void md_input_zeromq_handle_conn_event(struct md_input_zeromq *miz,
     mde_publish_event_obj(miz->parent, (struct md_event*) miz->mce);
 }
 
+static void md_input_zeromq_radio_cell_loc_geran(struct md_input_zeromq *miz,
+        struct json_object *obj)
+{
+    struct md_radio_cell_loc_geran_event * event = radio_cell_loc_geran(obj);
+
+    if (!event)
+        return;
+
+    mde_publish_event_obj(miz->parent, (struct md_event*) event);
+    free(event);
+}
+
+static void md_input_zeromq_radio_grr_cell_resel(struct md_input_zeromq *miz,
+        struct json_object *obj)
+{
+    struct md_radio_grr_cell_resel_event *event = radio_grr_cell_resel(obj);
+
+    if (!event)
+        return;
+
+    mde_publish_event_obj(miz->parent, (struct md_event*) event);
+    free(event);
+}
+
+static void md_input_zeromq_radio_gsm_rr_cell_sel_reset_param(struct md_input_zeromq *miz,
+        struct json_object *obj)
+{
+    struct md_radio_gsm_rr_cell_sel_reset_param_event *event = radio_gsm_rr_cell_sel_reset_param(obj);
+
+    if (!event)
+        return;
+
+    mde_publish_event_obj(miz->parent, (struct md_event*) event);
+    free(event);
+}
+
+static void md_input_zeromq_radio_gsm_rr_cipher_mode(struct md_input_zeromq *miz,
+        struct json_object *obj)
+{
+   struct md_radio_gsm_rr_cipher_mode_event *event = radio_gsm_rr_cipher_mode(obj);
+
+    if (!event)
+        return;
+
+    mde_publish_event_obj(miz->parent, (struct md_event*) event);
+    free(event);
+}
+
+static void md_input_zeromq_radio_gsm_rr_channel_conf(struct md_input_zeromq *miz,
+        struct json_object *obj)
+{
+    struct md_radio_gsm_rr_channel_conf_event* event = radio_gsm_rr_channel_conf(obj);
+
+    if (!event)
+        return;
+
+    mde_publish_event_obj(miz->parent, (struct md_event*) event);
+    free(event);
+}
+
+static void md_input_zeromq_radio_wcdma_rrc_state(struct md_input_zeromq *miz,
+        struct json_object *obj)
+{
+   struct md_radio_wcdma_rrc_state_event *event = radio_wcdma_rrc_state(obj);
+
+   if (!event)
+       return;
+
+    mde_publish_event_obj(miz->parent, (struct md_event*) event);
+    free(event);
+}
+
+static void md_input_zeromq_radio_wcdma_cell_id(struct md_input_zeromq *miz,
+        struct json_object *obj)
+{
+    struct md_radio_wcdma_cell_id_event *event = radio_wcdma_cell_id(obj);
+
+    if (!event)
+        return;
+
+    mde_publish_event_obj(miz->parent, (struct md_event*) event);
+    free(event);
+}
+
+static void md_input_zeromq_handle_radio_event(struct md_input_zeromq *miz,
+        struct json_object *obj)
+{
+    json_object *event_param_json;
+    uint8_t event_param;
+
+    if (!json_object_object_get_ex(obj, "event_param", &event_param_json)) {
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Missing event type\n");
+        return;
+    }
+
+    memset(miz->mre, 0, sizeof(struct md_radio_event));
+    miz->mre->md_type = META_TYPE_RADIO;
+    event_param = (uint8_t) json_object_get_int(event_param_json);
+
+    switch (event_param) {
+    case RADIO_EVENT_GSM_RR_CIPHER_MODE:
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "GSM_RR_CIPHER_MODE\n");
+        md_input_zeromq_radio_gsm_rr_cipher_mode(miz, obj);
+        break;
+    case RADIO_EVENT_GSM_RR_CHANNEL_CONF:
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "GSM_RR_CHANNEL_CONF\n");
+        md_input_zeromq_radio_gsm_rr_channel_conf(miz, obj);
+        break;
+    case RADIO_EVENT_CELL_LOCATION_GERAN:
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "CELL_LOCATION_GERAN\n");
+        md_input_zeromq_radio_cell_loc_geran(miz, obj);
+        break;
+    case RADIO_EVENT_GSM_RR_CELL_SEL_RESEL_PARAM:
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "GSM_RR_CELL_SEL_RESEL_PARAM\n");
+        md_input_zeromq_radio_gsm_rr_cell_sel_reset_param(miz, obj);
+        break;
+    case RADIO_EVENT_GRR_CELL_RESEL:
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "GRR_CELL_RESEL\n");
+        md_input_zeromq_radio_grr_cell_resel(miz, obj);
+        break;
+    case RADIO_EVENT_WCDMA_RRC_STATE:
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "WCDMA_RRC_STATE\n");
+        md_input_zeromq_radio_wcdma_rrc_state(miz, obj);
+        break;
+    case RADIO_EVENT_WCDMA_CELL_ID:
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "WCDMA_CELL_ID\n");
+        md_input_zeromq_radio_wcdma_cell_id(miz, obj);
+        break;
+
+    default:
+        break;
+    }
+}
+
 static int subscribe_for_topic(const char* topic, struct md_input_zeromq *miz)
 {
     size_t len = strlen(topic);
@@ -88,8 +222,6 @@ static void md_input_zeromq_handle_event(void *ptr, int32_t fd, uint32_t events)
     {
         char buf[2048] = {0};
         zmq_recv(miz->zmq_socket, buf, 2048, 0);
-
-        META_PRINT_SYSLOG(miz->parent, LOG_DEBUG, "Received message: %s\n", buf);
 
         json_msg = strchr(buf, '{');
         if (json_msg == NULL)
@@ -145,7 +277,7 @@ static void md_input_zeromq_handle_event(void *ptr, int32_t fd, uint32_t events)
                 //md_input_netlink_handle_gps_event(miz, zmqh_obj);
                 break;
             case META_TYPE_RADIO:
-                //md_input_netlink_handle_radio_event(miz, zmqh_obj);
+                md_input_zeromq_handle_radio_event(miz, zmqh_obj);
                 break;
             case META_TYPE_SYSTEM:
                 //md_input_netlink_handle_system_event(miz, zmqh_obj);

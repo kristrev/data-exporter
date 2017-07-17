@@ -77,7 +77,7 @@ static void md_input_netlink_radio_grr_cell_resel(struct md_input_netlink *min,
     free(event);
 }
 
-static void md_input_netlink_radio_gsm_rr_cell_sel_reset_param(struct md_input_netlink *min, 
+static void md_input_netlink_radio_gsm_rr_cell_sel_reset_param(struct md_input_netlink *min,
         struct json_object *obj)
 {
     struct md_radio_gsm_rr_cell_sel_reset_param_event *event = radio_gsm_rr_cell_sel_reset_param(obj);
