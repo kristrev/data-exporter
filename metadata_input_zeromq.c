@@ -153,9 +153,10 @@ static void md_input_zeromq_handle_event(void *ptr, int32_t fd, uint32_t events)
             default:
                 META_PRINT(miz->parent->logfile, "Unknown event type\n");
                 break;
-    }
+        }
 
-    json_object_put(zmqh_obj);
+        json_object_put(zmqh_obj);
+        zmq_getsockopt(miz->zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
     }
 }
 
