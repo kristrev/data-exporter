@@ -187,5 +187,5 @@ struct md_writer_zeromq {
     char zmq_addr[INET6_ADDRSTRLEN + 5 + 6];
 };
 
-void md_zeromq_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz);
-void md_zeromq_usage();
+void md_zeromq_writer_setup(struct md_exporter *mde, struct md_writer_zeromq* mwz);
+void md_zeromq_writer_usage();
