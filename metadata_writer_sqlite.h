@@ -227,7 +227,7 @@
 
 #define UPDATE_SYSTEM_SESSION_ID "UPDATE RebootEvent SET "\
                                   "BootCount=?,BootMultiplier=? "\
-                                  "WHERE SessionId = 0"
+                                  "WHERE BootCount = 0"
 
 #define DELETE_TABLE         "DELETE FROM NetworkEvent"
 
