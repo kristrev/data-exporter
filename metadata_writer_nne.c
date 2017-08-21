@@ -654,6 +654,8 @@ static uint32_t md_find_network_id(uint32_t imsi_mccmnc, const char *iccid)
                 network_id = 18;
             else if (strncmp(iccid, "894707150000014", 15) == 0)
                 network_id = 19;
+            else if (strncmp(iccid, "894707150000015", 15) == 0)
+                network_id = 19;
         }
         break; 
     case 26001:
