@@ -17,15 +17,15 @@
 #include "backend_event_loop.h"
 
 /* polling interval in seconds */
-#define MUNIN_POLLING_INTERVAL 60 
+#define MUNIN_POLLING_INTERVAL 60
 
 /* TODO
-- handle socket disconnect/reconnect 
+- handle socket disconnect/reconnect
 */
 ssize_t md_munin_readLine(int fd, void *buffer, size_t n)
 {
-    ssize_t numRead;                   
-    size_t totRead;                  
+    ssize_t numRead;
+    size_t totRead;
     char *buf;
     char ch;
 
@@ -33,26 +33,26 @@ ssize_t md_munin_readLine(int fd, void *buffer, size_t n)
         errno = EINVAL;
         return -1;
     }
-    buf = buffer;     
+    buf = buffer;
 
     totRead = 0;
     for (;;) {
         numRead = read(fd, &ch, 1);
 
         if (numRead == -1) {
-            if (errno == EINTR)    
+            if (errno == EINTR)
                 continue;
             else
-                return -1;         
+                return -1;
 
-        } else if (numRead == 0) {      
-            if (totRead == 0)          
+        } else if (numRead == 0) {
+            if (totRead == 0)
                 return 0;
-            else                     
+            else
                 break;
 
-        } else {                       
-            if (totRead < n - 1) {  
+        } else {
+            if (totRead < n - 1) {
                 totRead++;
                 *buf++ = ch;
             }
@@ -80,24 +80,24 @@ uint8_t md_munin_reconnect (struct md_input_munin *mim, const char *address, con
       fprintf(stderr, "No such host: %s\n", address);
       return RETVAL_FAILURE;
     }
-    
+
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
     serv_addr.sin_port = htons(atoi(port));
-  
+
     if (connect(mim->munin_socket_fd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) {
       fprintf(stderr, "Could not connect to munin.\n");
       return RETVAL_FAILURE;
-    } 
-    
+    }
+
     if ((n = md_munin_readLine(mim->munin_socket_fd, buffer, 255))<0) {
       fprintf(stderr, "Could not read munin welcome string.\n");
       close(mim->munin_socket_fd);
       return RETVAL_FAILURE;
     }
     printf("%s", buffer);
-    
+
     return RETVAL_SUCCESS;
 }
 
@@ -115,9 +115,9 @@ void md_munin_json_add_key_value(char* kv, json_object* blob) {
     return;
   }
   char *value   = strsep(&running, "\n");
-  
+
   struct json_object *obj_add = NULL;
-  if ((obj_add = json_object_new_string(value))==NULL) 
+  if ((obj_add = json_object_new_string(value))==NULL)
     return;
   json_object_object_add(blob, key, obj_add);
 }
@@ -127,12 +127,13 @@ static void md_input_munin_handle_event(void *ptr, int32_t fd, uint32_t events)
     struct md_input_munin *mim = ptr;
     int i=0,n;
     uint64_t exp;
+    struct md_gps_event gps_event;
 
     if ((n=read(fd, &exp, sizeof(uint64_t))) < sizeof(uint64_t)) {
         fprintf(stderr, "Munin timer failed.\n");
         return;
     }
-     
+
     setsockopt( mim->munin_socket_fd, IPPROTO_TCP, TCP_NODELAY, (void *)&i, sizeof(i));
 
     struct json_object *blob = NULL;
@@ -161,12 +162,12 @@ static void md_input_munin_handle_event(void *ptr, int32_t fd, uint32_t events)
             fprintf(stderr, "Reading from munin failed.\n");
             return;
         }
-        if ((buffer[0] == '#') || (buffer[0] == '.')) 
+        if ((buffer[0] == '#') || (buffer[0] == '.'))
           break;
         md_munin_json_add_key_value(buffer, obj_mod);
       }
     }
-       
+
     struct md_munin_event munin_event;
     memset(&munin_event, 0, sizeof(struct md_munin_event));
     gettimeofday(&tv, NULL);
@@ -179,18 +180,57 @@ static void md_input_munin_handle_event(void *ptr, int32_t fd, uint32_t events)
     //fprintf(stderr, "JSON dump: %s\n", json_object_to_json_string(blob));
     mde_publish_event_obj(mim->parent, (struct md_event *) &munin_event);
     json_object_put(blob);
+
+    if (mim->nsb_gps == 1) {
+        char cmd[256];
+        char buffer[256];
+        memset(&gps_event, 0, sizeof(struct md_gps_event));
+        gps_event.md_type = META_TYPE_POS;
+        gps_event.minmea_id = MINMEA_UNKNOWN;
+
+
+        snprintf(cmd, 255, "fetch nsb");
+        if ((n=write(mim->munin_socket_fd, cmd, strlen(cmd)))<0) {
+            fprintf(stderr, "Writing to munin failed.\n");
+            return;
+        }
+
+        while (1) {
+          if ((n=md_munin_readLine(mim->munin_socket_fd, buffer, 255))<0) {
+              fprintf(stderr, "Reading from munin failed.\n");
+              return;
+          }
+          if ((buffer[0] == '#') || (buffer[0] == '.'))
+              break;
+          if (strncmp(buffer, "lat.value", 9)==0)
+              gps_event.latitude = atof(buffer + 10);
+          if (strncmp(buffer, "lon.value", 9)==0)
+              gps_event.longitude = atof(buffer + 10);
+          if (strncmp(buffer, "sats.value", 10)==0)
+              gps_event.satellites_tracked = atoi(buffer + 11);
+          if (strncmp(buffer, "speed.value", 9)==0)
+              gps_event.speed = atof(buffer + 12);
+        }
+
+        if (gps_event.latitude != 0.0) {
+            gps_event.tstamp    = tv.tv_sec;
+            gps_event.sequence  = mde_inc_seq(mim->parent);
+            mde_publish_event_obj(mim->parent, (struct md_event *) &gps_event);
+        }
+    }
 }
 
 static uint8_t md_munin_config(struct md_input_munin *mim,
                               const char *address,
                               const char *port,
-                              const char *modules)
+                              const char *modules,
+                              int nsb_gps)
 {
     int timer;
     struct itimerspec delay;
 
     if (md_munin_reconnect(mim, address, port) == RETVAL_SUCCESS) {
- 
+
       char *running;
       if ((running = strdup(modules)) == NULL) {
           fprintf(stderr, "Memory allocation failed.");
@@ -214,12 +254,13 @@ static uint8_t md_munin_config(struct md_input_munin *mim,
 
       mim->module_count = n_tokens;
       mim->modules      = tokens;
+      mim->nsb_gps      = nsb_gps;
 
       if ((timer = timerfd_create(CLOCK_REALTIME, 0)) < 0) {
         fprintf(stderr, "Could not create munin polling timer.");
         return RETVAL_FAILURE;
       }
-      
+
       delay.it_value.tv_sec     = MUNIN_POLLING_INTERVAL;
       delay.it_value.tv_nsec    = 0;
       delay.it_interval.tv_sec  = MUNIN_POLLING_INTERVAL;
@@ -242,10 +283,10 @@ static uint8_t md_munin_config(struct md_input_munin *mim,
     }
 }
 
-void md_input_munin_destroy(void *ptr) 
+void md_input_munin_destroy(void *ptr)
 {
     struct md_input_munin *mim = ptr;
-    if ((mim != NULL) && (mim->module_count > 0)) { 
+    if ((mim != NULL) && (mim->module_count > 0)) {
       free(mim->modules);
       mim->module_count = 0;
     }
@@ -256,6 +297,7 @@ static uint8_t md_input_munin_init(void *ptr, json_object* config)
     struct md_input_munin *mim = ptr;
     const char *address = NULL, *port = NULL;
     const char *modules = "memory,cpu";
+    int nsb_gps = 0;
 
     json_object* subconfig;
     if (json_object_object_get_ex(config, "munin", &subconfig)) {
@@ -266,6 +308,8 @@ static uint8_t md_input_munin_init(void *ptr, json_object* config)
                 port = json_object_get_string(val);
             else if (!strcmp(key, "modules"))
                 modules = json_object_get_string(val);
+            else if (!strcmp(key, "nsb_gps"))
+                nsb_gps = json_object_get_boolean(val);
         }
     }
 
@@ -274,7 +318,7 @@ static uint8_t md_input_munin_init(void *ptr, json_object* config)
         return RETVAL_FAILURE;
     }
 
-    return md_munin_config(mim, address, port, modules);
+    return md_munin_config(mim, address, port, modules, nsb_gps);
 }
 
 void md_munin_usage()
@@ -285,6 +329,7 @@ void md_munin_usage()
     fprintf(stderr, "  \"port\":\t\tmunin port\n");
     // TODO: change comma separated modules into a JSON array
     fprintf(stderr, "  \"modules\":\t\tcomma separated, modules to export\n");
+    fprintf(stderr, "  \"nsb_gps\":\t\tif 1, generate gps events from nsb sensor\n");
     fprintf(stderr, "},\n");
 }
 

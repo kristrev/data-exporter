@@ -206,7 +206,7 @@ static void md_zeromq_writer_handle_munin(struct md_writer_zeromq *mwz,
     int retval;
 
     json_object_object_foreach(mge->json_blob, key, val) {
-        md_zeromq_add_default_fields(mwz, val, mge->sequence, mge->tstamp, mwz->topics[MD_ZMQ_TOPIC_SENSOR]);
+        md_zeromq_writer_add_default_fields(mwz, val, mge->sequence, mge->tstamp, mwz->topics[MD_ZMQ_TOPIC_SENSOR]);
 
         retval = snprintf(topic, sizeof(topic), "%s.%s %s",
                 mwz->topics[MD_ZMQ_TOPIC_SENSOR],
