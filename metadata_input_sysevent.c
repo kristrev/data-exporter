@@ -18,7 +18,7 @@
 #include "backend_event_loop.h"
 
 /* TODO
-- clean header list 
+- clean header list
 */
 
 static uint8_t md_sysevent_reconnect(struct md_input_sysevent *mis)
@@ -28,10 +28,10 @@ static uint8_t md_sysevent_reconnect(struct md_input_sysevent *mis)
 
     int rc = zmq_bind(mis->responder, "ipc:///tmp/sysevent");
     if (rc != 0) return RETVAL_FAILURE;
-    
+
     size_t len=-1;
     mis->zmq_fd = 0;
-    if (zmq_getsockopt(mis->responder, ZMQ_FD, &(mis->zmq_fd), &len) != 0) { 
+    if (zmq_getsockopt(mis->responder, ZMQ_FD, &(mis->zmq_fd), &len) != 0) {
         fprintf(stderr, "zmq_getsockopt failed to get file descriptor.\n");
         return RETVAL_FAILURE;
     }
@@ -44,7 +44,7 @@ static void md_input_sysevent_handle_event(void *ptr, int32_t fd, uint32_t event
     char buffer[8192] = {0};
 
     int zevents = 0;
-    size_t zevents_len = sizeof(zevents);    
+    size_t zevents_len = sizeof(zevents);
     zmq_getsockopt(mis->responder, ZMQ_EVENTS, &zevents, &zevents_len);
 
     if (!(zevents & ZMQ_POLLIN)) return;
@@ -53,7 +53,7 @@ static void md_input_sysevent_handle_event(void *ptr, int32_t fd, uint32_t event
     do {
         int nbytes = zmq_recv(mis->responder, &buffer, 8192, ZMQ_NOBLOCK);
         if (nbytes>=sizeof(buffer)) break;
-                           
+
 	struct md_sysevent sys_event = {0};
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
@@ -90,9 +90,9 @@ static uint8_t md_sysevent_config(struct md_input_sysevent *mis)
 
       backend_event_loop_update(
           mis->parent->event_loop, EPOLLIN, EPOLL_CTL_ADD, mis->zmq_fd, mis->event_handle);
-        
+
       return RETVAL_SUCCESS;
-    } 
+    }
     return RETVAL_FAILURE;
 }
 
@@ -104,7 +104,7 @@ static uint8_t md_input_sysevent_init(void *ptr, json_object* config)
 
 void md_sysevent_usage()
 {
-    fprintf(stderr, "\"sysevent\": {},\t\tSysevent input (no parameters)\n"); 
+    fprintf(stderr, "\"sysevent\": {},\t\tSysevent input (no parameters)\n");
 }
 
 static void md_input_sysevent_destroy()
