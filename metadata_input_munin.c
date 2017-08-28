@@ -189,7 +189,7 @@ static void md_input_munin_handle_event(void *ptr, int32_t fd, uint32_t events)
         gps_event.minmea_id = MINMEA_UNKNOWN;
 
 
-        snprintf(cmd, 255, "fetch nsb");
+        snprintf(cmd, 255, "fetch nsb\n");
         if ((n=write(mim->munin_socket_fd, cmd, strlen(cmd)))<0) {
             fprintf(stderr, "Writing to munin failed.\n");
             return;
