@@ -969,6 +969,8 @@ static void md_zeromq_writer_handle_radio(struct md_writer_zeromq *mwz,
                 (struct md_radio_grr_cell_resel_event*) mre);
         break;
     default:
+        META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "ZMQ writer does not support event %u\n",
+                                    mre->md_type);  
         break;
 
     }
@@ -1021,6 +1023,8 @@ static void md_zeromq_writer_handle(struct md_writer *writer, struct md_event *e
         md_zeromq_writer_handle_radio(mwz, (struct md_radio_event*) event);
         break;
     default:
+        META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "ZMQ writer does not support event %u\n",
+                                    event->md_type);  
         break;
     }
 }
