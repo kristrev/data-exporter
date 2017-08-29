@@ -209,7 +209,7 @@ static void md_input_netlink_handle_gps_event(struct md_input_netlink *min,
     if (!event)
         return;
 
-    mde_publish_event_obj(min->parent, (struct md_event *) &event);
+    mde_publish_event_obj(min->parent, (struct md_event *) event);
     free(event);
 }
 
