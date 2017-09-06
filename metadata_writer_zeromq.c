@@ -96,10 +96,12 @@ static json_object *md_zeromq_writer_create_json_int64(json_object *obj,
 static json_object *md_zeromq_writer_create_json_double(json_object *obj,
         const char *key, double value)
 {
-    struct json_object *obj_add = json_object_new_double(value);
-
-    if (!obj_add)
-        return NULL;
+    struct json_object *obj_add = NULL;
+    if (!isnan(value)) {   
+        obj_add = json_object_new_double(value);
+        if (!obj_add)
+	    return NULL;
+    } // but if value is NaN (not valid in JSON), add a NULL object
 
     json_object_object_add(obj, key, obj_add);
     return obj;
