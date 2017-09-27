@@ -67,6 +67,12 @@ if (ZEROMQ_WRITER)
     add_definitions("-DZEROMQ_SUPPORT_WRITER")
 endif()
 
+if (FILE)
+    set(SOURCE ${SOURCE}
+        metadata_writer_file.c)
+    add_definitions("-DFILE_SUPPORT")
+endif()
+
 if (ZEROMQ_INPUT)
     set(LIBS ${LIBS} zmq)
     set(SOURCE ${SOURCE}
