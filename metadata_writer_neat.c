@@ -234,11 +234,11 @@ static void md_neat_handle_iface_event(struct md_writer_neat *mwn,
     md_neat_add_property_int(properties, "device_mode", mie->device_mode, 2);
     md_neat_add_property_int(properties, "device_submode", mie->device_submode, 2);
 
-    if (mie->device_mode == 5) { // LTE
+    if (mie->device_mode != 5) {
         md_neat_add_property_int(properties, "rssi", mie->rssi, 2);
         md_neat_add_property_int(properties, "rscp", mie->rscp, 2);
         md_neat_add_property_int(properties, "ecio", mie->ecio, 2);
-    } else {
+    } else { // LTE
         md_neat_add_property_int(properties, "lte_rssi", mie->lte_rssi, 2);
         md_neat_add_property_int(properties, "lte_rsrp", mie->lte_rsrp, 2);
         md_neat_add_property_int(properties, "lte_rsrq", mie->lte_rsrq, 2);
