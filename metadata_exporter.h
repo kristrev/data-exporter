@@ -45,8 +45,6 @@
 #define MD_INPUT_MAX (__MD_INPUT_MAX - 1)
 #define MD_WRITER_MAX (__MD_WRITER_MAX - 1)
 
-#define META_IFACE_INVALID   0x81
-
 #define META_TYPE_INTERFACE  0x01
 #define META_TYPE_CONNECTION 0x02
 #define META_TYPE_POS        0x04
@@ -54,6 +52,23 @@
 #define META_TYPE_SYSEVENT   0x06
 #define META_TYPE_RADIO      0x08
 #define META_TYPE_SYSTEM     0x10
+
+#define DEFAULT_RSSI       -127
+#define DEFAULT_RSRQ          0
+#define DEFAULT_RSRP          0
+#define DEFAULT_LTE_BAND      0
+#define DEFAULT_LTE_FREQ      0
+#define DEFAULT_LTE_PCI      -1
+#define DEFAULT_ENODEBID     -1
+#define DEFAULT_ECIO          0
+#define DEFAULT_RSCP          0
+#define DEFAULT_MCCMNC        0
+#define DEFAULT_LAC          -1
+#define DEFAULT_CID          -1
+#define DEFAULT_LTE_PCI      -1
+#define DEFAULT_MODE         -1
+#define DEFAULT_SUBMODE      -1
+#define DEFAULT_DEVICE_STATE -1
 
 enum iface_event {
     IFACE_EVENT_DEV_STATE=1,

@@ -119,32 +119,32 @@ static void md_file_handle_iface_event(struct md_writer_file *mwf,
         md_file_add_json_string(obj, "imsi", mie->imsi) ||
         md_file_add_json_string(obj, "imei", mie->imei) ||
         md_file_add_json_string(obj, "isp_name", mie->isp_name) ||
-        md_file_add_json_int(obj, "mode", mie->device_mode) ||
-        md_file_add_json_int(obj, "submode", mie->device_submode) ||
-        md_file_add_json_int(obj, "cid", mie->cid) ||
-        md_file_add_json_int(obj, "enodeb_id", mie->enodeb_id) ||
-        md_file_add_json_int(obj, "lac", mie->lac) ||
-        md_file_add_json_int(obj, "device_state", mie->device_state)) {
+        (mie->device_mode != DEFAULT_MODE && md_file_add_json_int(obj, "mode", mie->device_mode)) ||
+        (mie->device_submode != DEFAULT_SUBMODE &&  md_file_add_json_int(obj, "submode", mie->device_submode)) ||
+        (mie->cid != DEFAULT_CID && md_file_add_json_int(obj, "cid", mie->cid)) ||
+        (mie->enodeb_id != DEFAULT_ENODEBID && md_file_add_json_int(obj, "enodeb_id", mie->enodeb_id)) ||
+        (mie->lac != DEFAULT_LAC && md_file_add_json_int(obj, "lac", mie->lac)) ||
+        (mie->device_state != DEFAULT_DEVICE_STATE && md_file_add_json_int(obj, "device_state", mie->device_state))) {
         META_PRINT_SYSLOG(mwf->parent, LOG_ERR, "md_file_handle_iface_event: Can't create iface values to object!");
         json_object_put(obj);
         return;
     }
 
     if (mie->device_mode != 5) {
-        if (md_file_add_json_int(obj, "rssi", mie->rssi) ||
-            md_file_add_json_int(obj, "rscp", mie->rscp) ||
-            md_file_add_json_int(obj, "ecio", mie->ecio)) {
+        if ((mie->rssi != DEFAULT_RSSI && md_file_add_json_int(obj, "rssi", mie->rssi)) ||
+            (mie->rscp != DEFAULT_RSCP && md_file_add_json_int(obj, "rscp", mie->rscp)) ||
+            (mie->ecio != DEFAULT_ECIO && md_file_add_json_int(obj, "ecio", mie->ecio))) {
             META_PRINT_SYSLOG(mwf->parent, LOG_ERR, "md_file_handle_iface_event: Can't add non-LTE values to object!");
             json_object_put(obj);
             return;
         }
     } else { // LTE
-        if (md_file_add_json_int(obj, "lte_rssi", mie->lte_rssi) ||
-            md_file_add_json_int(obj, "lte_rsrp", mie->lte_rsrp) ||
-            md_file_add_json_int(obj, "lte_rsrq", mie->lte_rsrq) ||
-            md_file_add_json_int(obj, "lte_freq", mie->lte_freq) ||
-            md_file_add_json_int(obj, "lte_pci", mie->lte_pci) ||
-            md_file_add_json_int(obj, "lte_band", mie->lte_band)) {
+        if ((mie->lte_rssi != DEFAULT_RSSI && md_file_add_json_int(obj, "lte_rssi", mie->lte_rssi)) ||
+            (mie->lte_rsrp != DEFAULT_RSRP && md_file_add_json_int(obj, "lte_rsrp", mie->lte_rsrp)) ||
+            (mie->lte_rsrq != DEFAULT_RSRQ && md_file_add_json_int(obj, "lte_rsrq", mie->lte_rsrq)) ||
+            (mie->lte_freq != DEFAULT_LTE_FREQ && md_file_add_json_int(obj, "lte_freq", mie->lte_freq)) ||
+            (mie->lte_pci != DEFAULT_LTE_PCI && md_file_add_json_int(obj, "lte_pci", mie->lte_pci)) ||
+            (mie->lte_band != DEFAULT_LTE_BAND && md_file_add_json_int(obj, "lte_band", mie->lte_band))) {
             META_PRINT_SYSLOG(mwf->parent, LOG_ERR, "md_file_handle_iface_event: Can't add LTE values to object!");
             json_object_put(obj);
             return;

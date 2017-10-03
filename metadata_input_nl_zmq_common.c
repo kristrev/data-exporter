@@ -545,14 +545,16 @@ void init_iface_event(struct md_iface_event *mie)
     mie->md_type = META_TYPE_INTERFACE;
     mie->lac = -1;
     mie->cid = -1;
-    mie->rscp = (int16_t) META_IFACE_INVALID;
-    mie->lte_rsrp = (int16_t) META_IFACE_INVALID;
-    mie->rssi = (int8_t) META_IFACE_INVALID;
-    mie->ecio = (int8_t) META_IFACE_INVALID;
-    mie->lte_rssi = (int8_t) META_IFACE_INVALID;
-    mie->lte_rsrq = (int8_t) META_IFACE_INVALID;
-    mie->lte_pci = 0xFFFF;
-    mie->enodeb_id = -1;
+    mie->rscp = DEFAULT_RSCP;
+    mie->lte_rsrp = DEFAULT_RSRP;
+    mie->rssi = DEFAULT_RSSI;
+    mie->ecio = DEFAULT_ECIO;
+    mie->lte_rssi = DEFAULT_RSSI;
+    mie->lte_rsrq = DEFAULT_RSRQ;
+    mie->lte_pci = DEFAULT_LTE_PCI;
+    mie->enodeb_id = DEFAULT_ENODEBID;
+    mie->device_mode = DEFAULT_MODE;
+    mie->device_submode = DEFAULT_SUBMODE;
 }
 
 void init_conn_event(struct md_conn_event* mce)
