@@ -33,9 +33,11 @@
 
 struct md_writer_file {
     MD_WRITER;
-    char prefix[128];
-    size_t prefix_len;
     FILE *output_fd;
+    char modem_prefix[128];
+    char gps_prefix[128];
+    uint8_t modem_prefix_len;
+    uint8_t gps_prefix_len;
 };
 
 void md_file_setup(struct md_exporter *mde, struct md_writer_file* mwf);

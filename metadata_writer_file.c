@@ -65,12 +65,19 @@ static int md_file_add_json_string(struct json_object *obj,
 static int md_file_save(struct md_writer_file *mwf, int event_type, const char *content)
 {
     int output_fd;
-    char dst_filename[256];
+    char dst_filename[128] = {0};
+    char *prefix;
     FILE *output;
 
-    memset(mwf->prefix + mwf->prefix_len, 'X', 6);
+    if (event_type == META_TYPE_INTERFACE) {
+        memset(mwf->modem_prefix + mwf->modem_prefix_len, 'X', 6);
+        prefix = mwf->modem_prefix;
+    } else {
+        memset(mwf->gps_prefix + mwf->gps_prefix_len, 'X', 6);
+        prefix = mwf->gps_prefix;
+    }
 
-    output_fd = mkstemp(mwf->prefix);
+    output_fd = mkstemp(prefix);
     if (output_fd == -1) {
         META_PRINT_SYSLOG(mwf->parent, LOG_ERR, "Could not create temporary filename. Error: %s\n", strerror(errno));
         return RETVAL_FAILURE;
@@ -80,19 +87,19 @@ static int md_file_save(struct md_writer_file *mwf, int event_type, const char *
 
     if (!output) {
         META_PRINT_SYSLOG(mwf->parent, LOG_ERR, "Could not open random file as FILE*. Error: %s\n", strerror(errno));
-        remove(mwf->prefix);
+        remove(prefix);
         return RETVAL_FAILURE;
     }
 
     fprintf(output, "%s", content);
     fclose(output);
 
-    snprintf(dst_filename, 256, "%s_%d.json", mwf->prefix, event_type);
+    snprintf(dst_filename, sizeof(dst_filename), "%s.json", prefix);
     META_PRINT_SYSLOG(mwf->parent, LOG_INFO, "Done with tmpfile %s\n", dst_filename);
 
-    if (link(mwf->prefix, dst_filename) || unlink(mwf->prefix)) {
+    if (link(prefix, dst_filename) || unlink(prefix)) {
         META_PRINT_SYSLOG(mwf->parent, LOG_ERR, "Could not link/unlink dump-file: %s\n", strerror(errno));
-        remove(mwf->prefix);
+        remove(prefix);
         remove(dst_filename);
         return RETVAL_FAILURE;
     }
@@ -207,21 +214,48 @@ static void md_file_handle_gps_event(struct md_writer_file *mwf,
 static int32_t md_file_init(void *ptr, json_object* config)
 {
     struct md_writer_file *mwf = ptr;
-    memset(mwf->prefix, 0, 128);
+    const char *modem_prefix = NULL, *gps_prefix = NULL;
 
     json_object* subconfig;
     if (json_object_object_get_ex(config, "file", &subconfig)) {
         json_object_object_foreach(subconfig, key, val) {
-            if (!strcmp(key, "prefix") && json_object_is_type(val, json_type_string)) {
-                strncpy(mwf->prefix, json_object_get_string(val), json_object_get_string_len(val));
-                mwf->prefix_len = strlen(mwf->prefix);
-                return RETVAL_SUCCESS;
+            if (!json_object_is_type(val, json_type_string)) {
+                continue;
+            }
+
+            if (!strcmp(key, "modem_prefix")) {
+                modem_prefix = json_object_get_string(val);
+            } else if (!strcmp(key, "gps_prefix")) {
+                gps_prefix = json_object_get_string(val);
             }
         }
     }
 
-    META_PRINT_SYSLOG(mwf->parent, LOG_INFO, "md_file_init: Can't initialize writer!");
-    return RETVAL_FAILURE;
+    if (!modem_prefix && !gps_prefix) {
+        META_PRINT_SYSLOG(mwf->parent, LOG_INFO,
+                "md_file_init: missing both file prefixes");
+        return RETVAL_FAILURE;
+    }
+
+    //116 is 128 - '\0' - '.json' - 6*'X'
+    if ((modem_prefix && strlen(modem_prefix) > 116) ||
+        (gps_prefix && strlen(gps_prefix) > 116)) {
+        META_PRINT_SYSLOG(mwf->parent, LOG_INFO,
+                "md_file_init: one or both prefixes exceeds size limit");
+       return RETVAL_FAILURE; 
+    }
+
+    if (modem_prefix) {
+        memcpy(mwf->modem_prefix, modem_prefix, strlen(modem_prefix));
+        mwf->modem_prefix_len = strlen(modem_prefix);
+    }
+
+    if (gps_prefix) {
+        memcpy(mwf->gps_prefix, gps_prefix, strlen(gps_prefix));
+        mwf->gps_prefix_len = strlen(gps_prefix);
+    }
+
+    return RETVAL_SUCCESS;
 }
 
 static void md_file_handle(struct md_writer *writer, struct md_event *event)
@@ -230,13 +264,16 @@ static void md_file_handle(struct md_writer *writer, struct md_event *event)
     META_PRINT_SYSLOG(mwf->parent, LOG_INFO, "md_file_handle: event type %u\n", event->md_type);
 
     switch (event->md_type) {
-        case META_TYPE_INTERFACE:
+    case META_TYPE_INTERFACE:
+        if (mwf->modem_prefix[0]) {
             md_file_handle_iface_event(mwf, (struct md_iface_event*) event);
-            break;
-        case META_TYPE_POS:
+        }
+        break;
+    case META_TYPE_POS:
+        if (mwf->gps_prefix[0]) {
             md_file_handle_gps_event(mwf, (struct md_gps_event*) event);
-            break;
-
+        }
+        break;
     default:
         return;
     }
@@ -245,7 +282,8 @@ static void md_file_handle(struct md_writer *writer, struct md_event *event)
 void md_file_usage()
 {
     fprintf(stderr, "\"file\": {\t\tFile writer.\n");
-    fprintf(stderr, "  \"prefix\":\tOutput file name prefix\n");
+    fprintf(stderr, "  \"modem_prefix\":\tOutput file name prefix (modem metadata)\n");
+    fprintf(stderr, "  \"gps_prefix\":\tOutput file name prefix (gps position)\n");
     fprintf(stderr, "}\n");
 }
 
