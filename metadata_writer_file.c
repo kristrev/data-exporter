@@ -157,50 +157,6 @@ static void md_file_handle_iface_event(struct md_writer_file *mwf,
     json_object_put(obj);
 }
 
-static void md_file_handle_conn_event(struct md_writer_file *mwf,
-                                      struct md_conn_event *mce)
-{
-    const char *json_string;
-    struct json_object *obj = json_object_new_object();
-
-    if (obj == NULL) {
-        META_PRINT_SYSLOG(mwf->parent, LOG_ERR, "md_file_handle_conn_event: Can't allocate iface json object!");
-        return;
-    }
-
-    if (md_file_add_json_int(obj, "timestamp", mce->tstamp) ||
-        md_file_add_json_int(obj, "event_type", mce->md_type) ||
-        md_file_add_json_int(obj, "event_param", mce->event_param) ||
-        md_file_add_json_int(obj, "event_value", mce->event_value) ||
-        md_file_add_json_int(obj, "sequence", mce->sequence) ||
-        md_file_add_json_string(obj, "imei", mce->imei) ||
-        md_file_add_json_string(obj, "imsi", mce->imsi) ||
-        md_file_add_json_int(obj, "interface_type", mce->interface_type) ||
-        md_file_add_json_int(obj, "network_address_family", mce->network_address_family) ||
-        md_file_add_json_int(obj, "network_provider_type", mce->network_provider_type) ||
-        md_file_add_json_int(obj, "signal_strength", mce->signal_strength) ||
-        md_file_add_json_int(obj, "l3_session_id", mce->l3_session_id) ||
-        md_file_add_json_int(obj, "l4_session_id", mce->l4_session_id) ||
-        md_file_add_json_int(obj, "rx_bytes", mce->rx_bytes) ||
-        md_file_add_json_int(obj, "tx_bytes", mce->tx_bytes) ||
-        md_file_add_json_string(obj, "interface_id", mce->interface_id) ||
-        md_file_add_json_string(obj, "interface_name", mce->interface_name) ||
-        md_file_add_json_int(obj, "network_provider", mce->network_provider) ||
-        md_file_add_json_string(obj, "network_address", mce->network_address) ||
-        md_file_add_json_int(obj, "connectivity", mce->connectivity) ||
-        md_file_add_json_int(obj, "connection_mode", mce->connection_mode) ||
-        md_file_add_json_int(obj, "quality", mce->quality)) {
-        META_PRINT_SYSLOG(mwf->parent, LOG_ERR, "md_file_handle_conn_event: Can't add conn values to object!");
-        json_object_put(obj);
-        return;
-    }
-
-    json_string = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_PLAIN);
-    md_file_save(mwf, mce->event_type, json_string);
-
-    json_object_put(obj);
-}
-
 static const char* md_file_convert_float_to_string(const float number)
 {
     static char text[32];
@@ -276,9 +232,6 @@ static void md_file_handle(struct md_writer *writer, struct md_event *event)
     switch (event->md_type) {
         case META_TYPE_INTERFACE:
             md_file_handle_iface_event(mwf, (struct md_iface_event*) event);
-            break;
-        case META_TYPE_CONNECTION:
-            md_file_handle_conn_event(mwf, (struct md_conn_event*) event);
             break;
         case META_TYPE_POS:
             md_file_handle_gps_event(mwf, (struct md_gps_event*) event);
