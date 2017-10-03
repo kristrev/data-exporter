@@ -114,7 +114,8 @@ static void md_file_handle_iface_event(struct md_writer_file *mwf,
     struct json_object *obj = json_object_new_object();
 
     if (obj == NULL) {
-        META_PRINT_SYSLOG(mwf->parent, LOG_ERR, "md_file_handle_iface_event: Can't allocate iface json object!");
+        META_PRINT_SYSLOG(mwf->parent, LOG_ERR,
+                "md_file_handle_iface_event: Can't allocate iface json object!");
         return;
     }
 
@@ -233,7 +234,7 @@ static int32_t md_file_init(void *ptr, json_object* config)
 
     if (!modem_prefix && !gps_prefix) {
         META_PRINT_SYSLOG(mwf->parent, LOG_INFO,
-                "md_file_init: missing both file prefixes");
+                "md_file_init: missing both file prefixes\n");
         return RETVAL_FAILURE;
     }
 
@@ -241,7 +242,7 @@ static int32_t md_file_init(void *ptr, json_object* config)
     if ((modem_prefix && strlen(modem_prefix) > 116) ||
         (gps_prefix && strlen(gps_prefix) > 116)) {
         META_PRINT_SYSLOG(mwf->parent, LOG_INFO,
-                "md_file_init: one or both prefixes exceeds size limit");
+                "md_file_init: one or both prefixes exceeds size limit\n");
        return RETVAL_FAILURE; 
     }
 
