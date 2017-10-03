@@ -120,6 +120,7 @@ enum md_writers {
     MD_WRITER_ZEROMQ,
     MD_WRITER_NNE,
     MD_WRITER_NEAT,
+    MD_WRITER_FILE,
     __MD_WRITER_MAX
 };
 

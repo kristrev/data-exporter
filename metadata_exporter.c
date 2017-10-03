@@ -71,10 +71,15 @@
     #include "metadata_writer_neat.h"
 #endif
 
+#ifdef FILE_SUPPORT
+    #include "metadata_writer_file.h"
+#endif
+
 #include "netlink_helpers.h"
 #include "backend_event_loop.h"
 #include "metadata_exporter_log.h"
 
+struct md_writer_file;
 struct md_input_gpsd;
 struct md_input_munin;
 struct md_input_sysevent;
@@ -882,11 +887,24 @@ int main(int argc, char *argv[])
             mde->md_writers[MD_WRITER_ZEROMQ] = calloc(sizeof(struct md_writer_zeromq), 1);
 
             if (mde->md_writers[MD_WRITER_ZEROMQ] == NULL) {
-                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate SQLite writer\n");
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate ZMQ writer\n");
                 exit(EXIT_FAILURE);
             }
 
             md_zeromq_writer_setup(mde, (struct md_writer_zeromq*) mde->md_writers[MD_WRITER_ZEROMQ]);
+            num_writers++;
+        }
+#endif
+#ifdef FILE_SUPPORT
+        else if (!strcmp(key, "file")) {
+            mde->md_writers[MD_WRITER_FILE] = calloc(sizeof(struct md_writer_file), 1);
+
+            if (mde->md_writers[MD_WRITER_FILE] == NULL) {
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate file writer\n");
+                exit(EXIT_FAILURE);
+            }
+
+            md_file_setup(mde, (struct md_writer_file*) mde->md_writers[MD_WRITER_FILE]);
             num_writers++;
         }
 #endif
