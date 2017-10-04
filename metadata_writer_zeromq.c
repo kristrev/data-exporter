@@ -408,44 +408,44 @@ static json_object *md_zeromq_writer_create_iface_json(const struct md_writer_ze
         (mie->nw_mccmnc &&
             !md_zeromq_writer_create_json_int64(obj, mwz->keys[MD_ZMQ_KEY_NW_MCCMNC],
                 mie->nw_mccmnc)) ||
-        ((mie->cid > -1 && mie->lac > -1) &&
+        ((mie->cid != DEFAULT_CID && mie->lac != DEFAULT_LAC) &&
             (!md_zeromq_writer_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_LAC],
                                         mie->lac) ||
              !md_zeromq_writer_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_CID],
                  mie->cid))) ||
-        (mie->rscp != (int16_t) META_IFACE_INVALID &&
+        (mie->rscp != DEFAULT_RSCP &&
             !md_zeromq_writer_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_RSCP],
                 mie->rscp)) ||
-        (mie->lte_rsrp != (int16_t) META_IFACE_INVALID &&
+        (mie->lte_rsrp != DEFAULT_RSRP &&
             !md_zeromq_writer_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_LTE_RSRP],
                 mie->lte_rsrp)) ||
-        (mie->lte_freq &&
+        (mie->lte_freq != DEFAULT_LTE_FREQ &&
             !md_zeromq_writer_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_LTE_FREQ],
                 mie->lte_freq)) ||
-        (mie->rssi != (int8_t) META_IFACE_INVALID &&
+        (mie->rssi != DEFAULT_RSSI &&
             !md_zeromq_writer_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_RSSI],
                 mie->rssi)) ||
-        (mie->ecio != (int8_t) META_IFACE_INVALID &&
+        (mie->ecio != DEFAULT_ECIO &&
             !md_zeromq_writer_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_ECIO],
                 mie->ecio)) ||
-        (mie->lte_rssi != (int8_t) META_IFACE_INVALID &&
+        (mie->lte_rssi != DEFAULT_RSSI &&
             !md_zeromq_writer_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_LTE_RSSI],
                 mie->lte_rssi)) ||
-        (mie->lte_rsrq != (int8_t) META_IFACE_INVALID &&
+        (mie->lte_rsrq != DEFAULT_RSRQ &&
             !md_zeromq_writer_create_json_int(obj, mwz->keys[MD_ZMQ_KEY_LTE_RSRQ],
                 mie->lte_rsrq)) ||
-        (mie->device_mode && !md_zeromq_writer_create_json_int(obj,
+        (mie->device_mode != DEFAULT_MODE && !md_zeromq_writer_create_json_int(obj,
                 mwz->keys[MD_ZMQ_KEY_DEVICE_MODE], mie->device_mode)) ||
-        (mie->device_submode && !md_zeromq_writer_create_json_int(obj,
+        (mie->device_submode != DEFAULT_SUBMODE && !md_zeromq_writer_create_json_int(obj,
                 mwz->keys[MD_ZMQ_KEY_DEVICE_SUBMODE], mie->device_submode)) ||
-        (mie->lte_band && !md_zeromq_writer_create_json_int(obj,
+        (mie->lte_band != DEFAULT_LTE_BAND && !md_zeromq_writer_create_json_int(obj,
                 mwz->keys[MD_ZMQ_KEY_LTE_BAND], mie->lte_band)) ||
-        (mie->device_state && !md_zeromq_writer_create_json_int(obj,
+        (mie->device_state != DEFAULT_DEVICE_STATE && !md_zeromq_writer_create_json_int(obj,
                 mwz->keys[MD_ZMQ_KEY_DEVICE_STATE], mie->device_state)) ||
-        (mie->lte_pci != 0xFFFF &&
+        (mie->lte_pci != DEFAULT_LTE_PCI &&
             !md_zeromq_writer_create_json_int(obj,
                 mwz->keys[MD_ZMQ_KEY_LTE_PCI], mie->lte_pci)) ||
-        (mie->enodeb_id >= 0 &&
+        (mie->enodeb_id != DEFAULT_ENODEBID &&
             !md_zeromq_writer_create_json_int(obj,
                 mwz->keys[MD_ZMQ_KEY_ENODEB_ID], mie->enodeb_id))) {
         json_object_put(obj);
