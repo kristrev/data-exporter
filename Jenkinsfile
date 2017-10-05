@@ -1,6 +1,6 @@
 import java.text.SimpleDateFormat
 jobName = "metadata-exporter"
-version = "0.1.48"
+version = "0.1.49"
 build_dir = "build"
 buildPackageName = "meta-exporter"
 
@@ -9,12 +9,12 @@ node ('dockerslave') {
     deleteDir()
     stage ('Git') {
         git branch: 'master', url: 'git@github.com:MONROE-PROJECT/Utilities.git'
-        
-        checkout([$class: 'GitSCM', 
-            branches: [[name: 'master']], 
-            doGenerateSubmoduleConfigurations: false, 
-            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'metadata-exporter-alt']], 
-            submoduleCfg: [], 
+
+        checkout([$class: 'GitSCM',
+            branches: [[name: 'master']],
+            doGenerateSubmoduleConfigurations: false,
+            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'metadata-exporter-alt']],
+            submoduleCfg: [],
             userRemoteConfigs: [[url: 'git@github.com:kristrev/data-exporter.git']]])
         gitCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
         shortCommit = gitCommit.take(6)
@@ -57,7 +57,7 @@ node ('dockerslave') {
             sh "rm meta-exporter*.deb"
         }
     }
-    
+
     stage ('Archive artifacts') {
         archiveArtifacts "${build_dir}/*.deb"
     }
