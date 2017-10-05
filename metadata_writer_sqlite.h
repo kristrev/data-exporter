@@ -103,7 +103,7 @@
                             "Longitude REAL NOT NULL," \
                             "Altitude REAL," \
                             "Speed REAL," \
-                            "NumOfSatelites INTEGER," \
+                            "SatelliteCount INTEGER," \
                             "PRIMARY KEY(NodeId) ON CONFLICT REPLACE)"
 
 #define CREATE_MONITOR_SQL  "CREATE TABLE IF NOT EXISTS MonitorEvents(" \
@@ -151,7 +151,7 @@
 #define INSERT_GPS_EVENT    "INSERT INTO GpsUpdate(NodeId,BootCount" \
                             ",BootMultiplier,Timestamp" \
                             ",Sequence,EventType,EventParam,Latitude,Longitude" \
-                            ",Altitude,Speed,NumOfSatelites) " \
+                            ",Altitude,Speed,SatelliteCount) " \
                             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_MONITOR_EVENT "INSERT INTO MonitorEvents(NodeId,Timestamp" \
@@ -285,7 +285,7 @@
                             "quote(\"BootMultiplier\"), quote(\"Timestamp\"), "\
                             "quote(\"Sequence\"), quote(\"Latitude\"), "\
                             "quote(\"Longitude\"), quote(\"Altitude\"), "\
-                            "quote(\"Speed\"), quote(\"NumOfSatelites\") "\
+                            "quote(\"Speed\"), quote(\"SatelliteCount\") "\
                             "|| \")\" FROM \"GpsUpdate\" ORDER BY Timestamp;"
 
 #define DUMP_MONITOR        "SELECT \"REPLACE INTO MonitorEvents" \
