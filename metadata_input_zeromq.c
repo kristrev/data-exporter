@@ -209,7 +209,7 @@ static void md_input_zeromq_handle_gps_event(struct md_input_zeromq *miz,
     if (!event)
         return;
 
-    mde_publish_event_obj(miz->parent, (struct md_event *) &event);
+    mde_publish_event_obj(miz->parent, (struct md_event *) event);
     free(event);
 }
 

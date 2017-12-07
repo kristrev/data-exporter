@@ -519,7 +519,6 @@ struct md_gps_event* handle_gps_event(struct json_object *json_obj)
     default:
         free(gps_event);
         return NULL;
-        break;
     }
 
     return gps_event;
