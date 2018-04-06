@@ -325,6 +325,21 @@ struct backend_timeout_handle;
 struct md_writer_sqlite {
     MD_WRITER;
 
+    uint64_t dump_tstamp;
+    uint64_t last_msg_tstamp;
+    uint64_t last_gps_insert;
+
+    //TODO: Consider moving this to the generic writer struct if need be
+    //These values keep track of the unique session id (and multiplier), which
+    //are normally assumed to be the boot counter (+ multiplier)
+    uint64_t session_id;
+    uint64_t session_id_multip;
+
+    float gps_speed;
+
+    size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len,
+           usage_prefix_len, system_prefix_len;
+
     sqlite3 *db_handle;
 
     sqlite3_stmt *insert_event, *insert_update;
@@ -342,6 +357,8 @@ struct md_writer_sqlite {
     char *session_id_file;
     char *node_id_file;
     const char *last_conn_tstamp_path;
+    struct backend_timeout_handle *timeout_handle;
+    struct timeval first_fake_update;
 
     uint32_t node_id;
     uint32_t db_interval;
@@ -356,25 +373,9 @@ struct md_writer_sqlite {
     uint8_t file_failed;
     uint8_t do_fake_updates;
     uint8_t valid_timestamp;
-    struct timeval first_fake_update;
 
-    uint64_t dump_tstamp;
-    uint64_t last_msg_tstamp;
-    uint64_t last_gps_insert;
-
-    //TODO: Consider moving this to the generic writer struct if need be
-    //These values keep track of the unique session id (and multiplier), which
-    //are normally assumed to be the boot counter (+ multiplier)
-    uint64_t session_id;
-    uint64_t session_id_multip;
-
-    float gps_speed;
-
-    struct backend_timeout_handle *timeout_handle;
     char meta_prefix[128], gps_prefix[128], monitor_prefix[128],
         usage_prefix[128], system_prefix[128];
-    size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len,
-           usage_prefix_len, system_prefix_len;
 
     uint8_t api_version;
     uint8_t delete_conn_update;
