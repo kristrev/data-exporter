@@ -71,7 +71,7 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
             (mws->session_id_file && !mws->session_id))
     {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Can't export DB. # node_id %d "
-                            "# valid_timestamp %u # session_id_file %s # session_id %d\n",
+                            "# valid_timestamp %u # session_id_file %s # session_id %lu\n",
                             mws->node_id,
                             mws->valid_timestamp,
                             mws->session_id_file ? mws->session_id_file : "EMPTY",
@@ -291,6 +291,21 @@ static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char 
     return db_handle;
 }
 
+static int md_sqlite_read_boot_time(uint64_t *boot_time)
+{
+    struct timeval tv;
+    uint64_t uptime;
+    gettimeofday(&tv, NULL);
+
+    //read uptime
+    if (system_helpers_read_uint64_from_file("/proc/uptime", &uptime)) {
+        return RETVAL_FAILURE;
+    }
+
+    *boot_time = tv.tv_sec - uptime;
+    return RETVAL_SUCCESS;
+}
+
 static int md_sqlite_configure(struct md_writer_sqlite *mws,
         const char *db_filename, uint32_t node_id, uint32_t db_interval,
         uint32_t db_events, const char *meta_prefix, const char *gps_prefix,
@@ -454,7 +469,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         system_helpers_read_uint64_from_file(mws->last_conn_tstamp_path,
                 &(mws->dump_tstamp));
 
-    return RETVAL_SUCCESS;
+    return md_sqlite_read_boot_time(&(mws->orig_boot_time));
 }
 
 void md_sqlite_usage()
@@ -569,18 +584,21 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
 static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
 {
     struct timeval tv;
-    uint64_t real_boot_time, uptime;
+    uint64_t real_boot_time, boot_diff;
+
     gettimeofday(&tv, NULL);
 
     //We have yet to get proper timestamp, so do not export any events
     if (tv.tv_sec < FIRST_VALID_TIMESTAMP)
         return RETVAL_FAILURE;
 
-    //read uptime
-    if (system_helpers_read_uint64_from_file("/proc/uptime", &uptime))
+    if (md_sqlite_read_boot_time(&real_boot_time)) {
         return RETVAL_FAILURE;
+    }
 
-    real_boot_time = tv.tv_sec - uptime;
+    boot_diff = real_boot_time - mws->orig_boot_time;
+
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Real boot %lu orig boot %lu tdiff %lu\n", real_boot_time, mws->orig_boot_time, boot_diff);
 
     if (md_sqlite_update_timestamp_db(mws, UPDATE_EVENT_TSTAMP,
                 real_boot_time) ||

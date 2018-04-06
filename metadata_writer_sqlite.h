@@ -328,6 +328,7 @@ struct md_writer_sqlite {
     uint64_t dump_tstamp;
     uint64_t last_msg_tstamp;
     uint64_t last_gps_insert;
+    uint64_t orig_boot_time;
 
     //TODO: Consider moving this to the generic writer struct if need be
     //These values keep track of the unique session id (and multiplier), which
