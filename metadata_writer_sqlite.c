@@ -300,14 +300,16 @@ static int md_sqlite_read_boot_time(struct md_writer_sqlite *mws, uint64_t *boot
 {
     struct timeval tv;
     uint64_t uptime;
-    gettimeofday(&tv, NULL);
 
     //read uptime
     if (system_helpers_read_uint64_from_file("/proc/uptime", &uptime)) {
         return RETVAL_FAILURE;
     }
 
+    gettimeofday(&tv, NULL);
+
     *boot_time = tv.tv_sec - uptime;
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "%" PRIu64 " %ld %" PRIu64 "\n", *boot_time, tv.tv_sec, uptime);
     return RETVAL_SUCCESS;
 }
 
