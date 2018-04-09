@@ -206,15 +206,15 @@
                             "WHERE NodeId=0"
 
 #define UPDATE_EVENT_TSTAMP "UPDATE NetworkEvent SET " \
-                            "Timestamp = Timestamp + ? "\
+                            "Timestamp = (Timestamp - ?) + ? "\
                             "WHERE Timestamp < ?"
 
 #define UPDATE_UPDATES_TSTAMP     "UPDATE NetworkUpdates SET " \
-                                  "Timestamp = Timestamp + ? "\
+                                  "Timestamp = (Timestamp - ?) + ? "\
                                   "WHERE Timestamp < ?"
 
 #define UPDATE_SYSTEM_TSTAMP     "UPDATE RebootEvent SET " \
-                                  "Timestamp = Timestamp + ? "\
+                                  "Timestamp = (Timestamp - ?) + ? "\
                                   "WHERE Timestamp < ?"
 
 #define UPDATE_EVENT_SESSION_ID "UPDATE NetworkEvent SET "\

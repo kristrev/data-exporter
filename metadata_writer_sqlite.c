@@ -163,7 +163,7 @@ static uint8_t md_sqlite_update_nodeid_db(struct md_writer_sqlite *mws, const ch
 }
 
 static uint8_t md_sqlite_update_timestamp_db(struct md_writer_sqlite *mws,
-        const char *sql_str, uint64_t tstamp_offset)
+        const char *sql_str, uint64_t orig_boot_time, uint64_t real_boot_time)
 {
     int32_t retval;
     sqlite3_stmt *update_timestamp;
@@ -174,12 +174,17 @@ static uint8_t md_sqlite_update_timestamp_db(struct md_writer_sqlite *mws,
         return RETVAL_FAILURE;
     }
 
-    if ((retval = sqlite3_bind_int64(update_timestamp, 1, tstamp_offset))) {
+    if ((retval = sqlite3_bind_int64(update_timestamp, 1, orig_boot_time))) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Bind failed %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
 
-    if ((retval = sqlite3_bind_int64(update_timestamp, 2, FIRST_VALID_TIMESTAMP))) {
+    if ((retval = sqlite3_bind_int64(update_timestamp, 2, real_boot_time))) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Bind failed %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    if ((retval = sqlite3_bind_int64(update_timestamp, 3, real_boot_time))) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Bind failed %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
@@ -584,7 +589,7 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
 static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
 {
     struct timeval tv;
-    uint64_t real_boot_time, boot_diff;
+    uint64_t real_boot_time;
 
     gettimeofday(&tv, NULL);
 
@@ -596,16 +601,14 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
         return RETVAL_FAILURE;
     }
 
-    boot_diff = real_boot_time - mws->orig_boot_time;
-
-    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Real boot %lu orig boot %lu tdiff %lu\n", real_boot_time, mws->orig_boot_time, boot_diff);
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Real boot %lu orig boot %lu\n", real_boot_time, mws->orig_boot_time);
 
     if (md_sqlite_update_timestamp_db(mws, UPDATE_EVENT_TSTAMP,
-                real_boot_time) ||
+                mws->orig_boot_time, real_boot_time) ||
         md_sqlite_update_timestamp_db(mws, UPDATE_UPDATES_TSTAMP,
-            real_boot_time) ||
+            mws->orig_boot_time, real_boot_time) ||
         md_sqlite_update_timestamp_db(mws, UPDATE_SYSTEM_TSTAMP,
-            real_boot_time)) {
+            mws->orig_boot_time, real_boot_time)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update tstamp in database\n");
         return RETVAL_FAILURE;
     }

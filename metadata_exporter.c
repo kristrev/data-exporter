@@ -590,7 +590,7 @@ static void test_netlink(uint32_t packets)
     while(1) {
         gettimeofday(&tv, NULL);
 
-        /*if (i == 0)
+        if (i == 0)
             obj_to_send = create_fake_conn_obj(0, 0, CONN_EVENT_META_UPDATE, "1,2,1,", i+1);
         else
             obj_to_send = create_fake_conn_obj(0, 0, CONN_EVENT_META_UPDATE, "1,2,1,4", i+1);
@@ -598,7 +598,7 @@ static void test_netlink(uint32_t packets)
         if (i < 4)
             obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, "1,2,1", i+1);
         else
-            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_DATA_USAGE_UPDATE, "1,2,1,4", tv.tv_sec);*/
+            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_DATA_USAGE_UPDATE, "1,2,1,4", tv.tv_sec);
 
         //obj_to_send = create_fake_restart_obj();
 
