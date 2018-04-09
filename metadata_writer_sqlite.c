@@ -308,7 +308,6 @@ static int md_sqlite_read_boot_time(struct md_writer_sqlite *mws, uint64_t *boot
     }
 
     *boot_time = tv.tv_sec - uptime;
-    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "%" PRIu64 " %ld %" PRIu64 "\n", *boot_time, tv.tv_sec, uptime);
     return RETVAL_SUCCESS;
 }
 
