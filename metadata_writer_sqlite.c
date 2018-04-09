@@ -315,7 +315,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         const char *db_filename, uint32_t node_id, uint32_t db_interval,
         uint32_t db_events, const char *meta_prefix, const char *gps_prefix,
         const char *monitor_prefix, const char *usage_prefix,
-        const char *system_prefix)
+        const char *system_prefix, const char *ntp_fix_file)
 {
     sqlite3 *db_handle = md_sqlite_configure_db(mws, db_filename);
     const char *dump_events, *dump_updates, *dump_gps, *dump_monitor,
@@ -459,6 +459,11 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         mws->system_prefix_len = strlen(system_prefix);
     }
 
+    if (ntp_fix_file) {
+        memset(mws->ntp_fix_file, 0, sizeof(mws->ntp_fix_file));
+        memcpy(mws->ntp_fix_file, ntp_fix_file, strlen(ntp_fix_file));
+    }
+
     if (mws->node_id && (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
         md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID) ||
         md_sqlite_update_nodeid_db(mws, UPDATE_SYSTEM_ID))) {
@@ -494,6 +499,7 @@ void md_sqlite_usage()
     fprintf(stderr, "  \"api_version\":\tbackend API version (default: 1)\n");
     fprintf(stderr, "  \"last_conn_tstamp_path\":\toptional path to file where we read/store timestamp of last conn dump\n");
     fprintf(stderr, "  \"output_format\":\tJSON/SQL (default SQL)\n");
+    fprintf(stderr, "  \"ntp_fix_file\":\tFile to check for NTP fix\n");
     fprintf(stderr, "}\n");
 }
 
@@ -503,7 +509,7 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
     uint32_t node_id = 0, interval = DEFAULT_TIMEOUT, num_events = EVENT_LIMIT;
     const char *db_filename = NULL, *meta_prefix = NULL, *gps_prefix = NULL,
                *monitor_prefix = NULL, *usage_prefix = NULL,
-               *output_format = NULL, *system_prefix = NULL;
+               *output_format = NULL, *system_prefix = NULL, *ntp_fix_file = NULL;
 
     json_object* subconfig;
     if (json_object_object_get_ex(config, "sqlite", &subconfig)) {
@@ -535,7 +541,9 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
             else if (!strcmp(key, "last_conn_tstamp_path"))
                 mws->last_conn_tstamp_path = strdup(json_object_get_string(val));
             else if (!strcmp(key, "output_format"))
-                output_format = json_object_get_string(val);    
+                output_format = json_object_get_string(val);
+            else if (!strcmp(key, "ntp_fix_file"))
+                ntp_fix_file = json_object_get_string(val);
         }
     }
 
@@ -548,7 +556,8 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
         (gps_prefix     && strlen(gps_prefix)     > 117) ||
         (monitor_prefix && strlen(monitor_prefix) > 117) ||
         (usage_prefix   && strlen(usage_prefix) > 117)   ||
-        (system_prefix  && strlen(system_prefix) > 117)) {
+        (system_prefix  && strlen(system_prefix) > 117) ||
+        (ntp_fix_file   && strlen(ntp_fix_file) > 127)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "SQLite temp file prefix too long\n");
         return RETVAL_FAILURE;
     }
@@ -583,7 +592,7 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
 
     return md_sqlite_configure(mws, db_filename, node_id, interval,
             num_events, meta_prefix, gps_prefix, monitor_prefix, usage_prefix,
-            system_prefix);
+            system_prefix, ntp_fix_file);
 }
 
 static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
@@ -593,8 +602,7 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
 
     gettimeofday(&tv, NULL);
 
-    //We have yet to get proper timestamp, so do not export any events
-    if (tv.tv_sec < FIRST_VALID_TIMESTAMP)
+    if (mws->ntp_fix_file[0] && access(mws->ntp_fix_file, F_OK))
         return RETVAL_FAILURE;
 
     if (md_sqlite_read_boot_time(&real_boot_time)) {
@@ -701,7 +709,7 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
 
     //We have received an indication that a valid timestamp is present, so
     //check and update
-    if (!mws->valid_timestamp && event->tstamp > FIRST_VALID_TIMESTAMP) {
+    if (!mws->valid_timestamp) {
         if (md_sqlite_check_valid_tstamp(mws)) {
             printf("Invalid timestamp\n");
             return;
