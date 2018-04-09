@@ -36,14 +36,6 @@
 #define MAX_PATH_LEN 128
 #define FAKE_UPDATE_LIMIT 120
 
-//This the first valid timestamp of an event and the value is not randomly
-//chosen, it is the time when this piece of code was written. And
-//since time is never supposed to move backwards ... Note that this check
-//assumes that all nodes will have some offset time lower than this, and
-//then ntp (or something else) will set a correct time. A good starting
-//point is epoch
-#define FIRST_VALID_TIMESTAMP 1455740094
-
 #define CREATE_SQL          "CREATE TABLE IF NOT EXISTS NetworkEvent(" \
                             "NodeId INTEGER NOT NULL," \
                             "SessionId INTEGER NOT NULL," \
@@ -206,15 +198,15 @@
                             "WHERE NodeId=0"
 
 #define UPDATE_EVENT_TSTAMP "UPDATE NetworkEvent SET " \
-                            "Timestamp = Timestamp + ? "\
+                            "Timestamp = (Timestamp - ?) + ? "\
                             "WHERE Timestamp < ?"
 
 #define UPDATE_UPDATES_TSTAMP     "UPDATE NetworkUpdates SET " \
-                                  "Timestamp = Timestamp + ? "\
+                                  "Timestamp = (Timestamp - ?) + ? "\
                                   "WHERE Timestamp < ?"
 
 #define UPDATE_SYSTEM_TSTAMP     "UPDATE RebootEvent SET " \
-                                  "Timestamp = Timestamp + ? "\
+                                  "Timestamp = (Timestamp - ?) + ? "\
                                   "WHERE Timestamp < ?"
 
 #define UPDATE_EVENT_SESSION_ID "UPDATE NetworkEvent SET "\
@@ -325,6 +317,22 @@ struct backend_timeout_handle;
 struct md_writer_sqlite {
     MD_WRITER;
 
+    uint64_t dump_tstamp;
+    uint64_t last_msg_tstamp;
+    uint64_t last_gps_insert;
+    uint64_t orig_boot_time;
+
+    //TODO: Consider moving this to the generic writer struct if need be
+    //These values keep track of the unique session id (and multiplier), which
+    //are normally assumed to be the boot counter (+ multiplier)
+    uint64_t session_id;
+    uint64_t session_id_multip;
+
+    float gps_speed;
+
+    size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len,
+           usage_prefix_len, system_prefix_len;
+
     sqlite3 *db_handle;
 
     sqlite3_stmt *insert_event, *insert_update;
@@ -342,6 +350,8 @@ struct md_writer_sqlite {
     char *session_id_file;
     char *node_id_file;
     const char *last_conn_tstamp_path;
+    struct backend_timeout_handle *timeout_handle;
+    struct timeval first_fake_update;
 
     uint32_t node_id;
     uint32_t db_interval;
@@ -356,25 +366,9 @@ struct md_writer_sqlite {
     uint8_t file_failed;
     uint8_t do_fake_updates;
     uint8_t valid_timestamp;
-    struct timeval first_fake_update;
 
-    uint64_t dump_tstamp;
-    uint64_t last_msg_tstamp;
-    uint64_t last_gps_insert;
-
-    //TODO: Consider moving this to the generic writer struct if need be
-    //These values keep track of the unique session id (and multiplier), which
-    //are normally assumed to be the boot counter (+ multiplier)
-    uint64_t session_id;
-    uint64_t session_id_multip;
-
-    float gps_speed;
-
-    struct backend_timeout_handle *timeout_handle;
     char meta_prefix[128], gps_prefix[128], monitor_prefix[128],
-        usage_prefix[128], system_prefix[128];
-    size_t meta_prefix_len,  gps_prefix_len,  monitor_prefix_len,
-           usage_prefix_len, system_prefix_len;
+        usage_prefix[128], system_prefix[128], ntp_fix_file[128];
 
     uint8_t api_version;
     uint8_t delete_conn_update;

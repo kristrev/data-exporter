@@ -71,7 +71,7 @@ static void md_sqlite_copy_db(struct md_writer_sqlite *mws, uint8_t from_timeout
             (mws->session_id_file && !mws->session_id))
     {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Can't export DB. # node_id %d "
-                            "# valid_timestamp %u # session_id_file %s # session_id %d\n",
+                            "# valid_timestamp %u # session_id_file %s # session_id %lu\n",
                             mws->node_id,
                             mws->valid_timestamp,
                             mws->session_id_file ? mws->session_id_file : "EMPTY",
@@ -163,7 +163,7 @@ static uint8_t md_sqlite_update_nodeid_db(struct md_writer_sqlite *mws, const ch
 }
 
 static uint8_t md_sqlite_update_timestamp_db(struct md_writer_sqlite *mws,
-        const char *sql_str, uint64_t tstamp_offset)
+        const char *sql_str, uint64_t orig_boot_time, uint64_t real_boot_time)
 {
     int32_t retval;
     sqlite3_stmt *update_timestamp;
@@ -174,12 +174,17 @@ static uint8_t md_sqlite_update_timestamp_db(struct md_writer_sqlite *mws,
         return RETVAL_FAILURE;
     }
 
-    if ((retval = sqlite3_bind_int64(update_timestamp, 1, tstamp_offset))) {
+    if ((retval = sqlite3_bind_int64(update_timestamp, 1, orig_boot_time))) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Bind failed %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
 
-    if ((retval = sqlite3_bind_int64(update_timestamp, 2, FIRST_VALID_TIMESTAMP))) {
+    if ((retval = sqlite3_bind_int64(update_timestamp, 2, real_boot_time))) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Bind failed %s\n", sqlite3_errstr(retval));
+        return RETVAL_FAILURE;
+    }
+
+    if ((retval = sqlite3_bind_int64(update_timestamp, 3, real_boot_time))) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Bind failed %s\n", sqlite3_errstr(retval));
         return RETVAL_FAILURE;
     }
@@ -291,11 +296,32 @@ static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char 
     return db_handle;
 }
 
+static int md_sqlite_read_boot_time(struct md_writer_sqlite *mws, uint64_t *boot_time)
+{
+    struct timeval tv;
+    uint64_t uptime;
+
+    //read uptime
+    if (system_helpers_read_uint64_from_file("/proc/uptime", &uptime)) {
+        return RETVAL_FAILURE;
+    }
+
+    gettimeofday(&tv, NULL);
+
+    *boot_time = tv.tv_sec - uptime;
+    
+    if (*boot_time < mws->orig_boot_time) {
+        return RETVAL_FAILURE;
+    }
+
+    return RETVAL_SUCCESS;
+}
+
 static int md_sqlite_configure(struct md_writer_sqlite *mws,
         const char *db_filename, uint32_t node_id, uint32_t db_interval,
         uint32_t db_events, const char *meta_prefix, const char *gps_prefix,
         const char *monitor_prefix, const char *usage_prefix,
-        const char *system_prefix)
+        const char *system_prefix, const char *ntp_fix_file)
 {
     sqlite3 *db_handle = md_sqlite_configure_db(mws, db_filename);
     const char *dump_events, *dump_updates, *dump_gps, *dump_monitor,
@@ -439,6 +465,11 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         mws->system_prefix_len = strlen(system_prefix);
     }
 
+    if (ntp_fix_file) {
+        memset(mws->ntp_fix_file, 0, sizeof(mws->ntp_fix_file));
+        memcpy(mws->ntp_fix_file, ntp_fix_file, strlen(ntp_fix_file));
+    }
+
     if (mws->node_id && (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
         md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID) ||
         md_sqlite_update_nodeid_db(mws, UPDATE_SYSTEM_ID))) {
@@ -454,7 +485,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         system_helpers_read_uint64_from_file(mws->last_conn_tstamp_path,
                 &(mws->dump_tstamp));
 
-    return RETVAL_SUCCESS;
+    return md_sqlite_read_boot_time(mws, &(mws->orig_boot_time));
 }
 
 void md_sqlite_usage()
@@ -474,6 +505,7 @@ void md_sqlite_usage()
     fprintf(stderr, "  \"api_version\":\tbackend API version (default: 1)\n");
     fprintf(stderr, "  \"last_conn_tstamp_path\":\toptional path to file where we read/store timestamp of last conn dump\n");
     fprintf(stderr, "  \"output_format\":\tJSON/SQL (default SQL)\n");
+    fprintf(stderr, "  \"ntp_fix_file\":\tFile to check for NTP fix\n");
     fprintf(stderr, "}\n");
 }
 
@@ -483,7 +515,7 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
     uint32_t node_id = 0, interval = DEFAULT_TIMEOUT, num_events = EVENT_LIMIT;
     const char *db_filename = NULL, *meta_prefix = NULL, *gps_prefix = NULL,
                *monitor_prefix = NULL, *usage_prefix = NULL,
-               *output_format = NULL, *system_prefix = NULL;
+               *output_format = NULL, *system_prefix = NULL, *ntp_fix_file = NULL;
 
     json_object* subconfig;
     if (json_object_object_get_ex(config, "sqlite", &subconfig)) {
@@ -515,7 +547,9 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
             else if (!strcmp(key, "last_conn_tstamp_path"))
                 mws->last_conn_tstamp_path = strdup(json_object_get_string(val));
             else if (!strcmp(key, "output_format"))
-                output_format = json_object_get_string(val);    
+                output_format = json_object_get_string(val);
+            else if (!strcmp(key, "ntp_fix_file"))
+                ntp_fix_file = json_object_get_string(val);
         }
     }
 
@@ -528,7 +562,8 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
         (gps_prefix     && strlen(gps_prefix)     > 117) ||
         (monitor_prefix && strlen(monitor_prefix) > 117) ||
         (usage_prefix   && strlen(usage_prefix) > 117)   ||
-        (system_prefix  && strlen(system_prefix) > 117)) {
+        (system_prefix  && strlen(system_prefix) > 117) ||
+        (ntp_fix_file   && strlen(ntp_fix_file) > 127)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "SQLite temp file prefix too long\n");
         return RETVAL_FAILURE;
     }
@@ -563,31 +598,31 @@ int32_t md_sqlite_init(void *ptr, json_object* config)
 
     return md_sqlite_configure(mws, db_filename, node_id, interval,
             num_events, meta_prefix, gps_prefix, monitor_prefix, usage_prefix,
-            system_prefix);
+            system_prefix, ntp_fix_file);
 }
 
 static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
 {
     struct timeval tv;
-    uint64_t real_boot_time, uptime;
+    uint64_t real_boot_time;
+
     gettimeofday(&tv, NULL);
 
-    //We have yet to get proper timestamp, so do not export any events
-    if (tv.tv_sec < FIRST_VALID_TIMESTAMP)
+    if (mws->ntp_fix_file[0] && access(mws->ntp_fix_file, F_OK))
         return RETVAL_FAILURE;
 
-    //read uptime
-    if (system_helpers_read_uint64_from_file("/proc/uptime", &uptime))
+    if (md_sqlite_read_boot_time(mws, &real_boot_time)) {
         return RETVAL_FAILURE;
+    }
 
-    real_boot_time = tv.tv_sec - uptime;
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Real boot %" PRIu64 " orig boot %" PRIu64 "\n", real_boot_time, mws->orig_boot_time);
 
     if (md_sqlite_update_timestamp_db(mws, UPDATE_EVENT_TSTAMP,
-                real_boot_time) ||
+                mws->orig_boot_time, real_boot_time) ||
         md_sqlite_update_timestamp_db(mws, UPDATE_UPDATES_TSTAMP,
-            real_boot_time) ||
+            mws->orig_boot_time, real_boot_time) ||
         md_sqlite_update_timestamp_db(mws, UPDATE_SYSTEM_TSTAMP,
-            real_boot_time)) {
+            mws->orig_boot_time, real_boot_time)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update tstamp in database\n");
         return RETVAL_FAILURE;
     }
@@ -680,7 +715,7 @@ static void md_sqlite_handle(struct md_writer *writer, struct md_event *event)
 
     //We have received an indication that a valid timestamp is present, so
     //check and update
-    if (!mws->valid_timestamp && event->tstamp > FIRST_VALID_TIMESTAMP) {
+    if (!mws->valid_timestamp) {
         if (md_sqlite_check_valid_tstamp(mws)) {
             printf("Invalid timestamp\n");
             return;
