@@ -308,7 +308,7 @@ static int md_sqlite_read_boot_time(struct md_writer_sqlite *mws, uint64_t *boot
     }
 
     *boot_time = tv.tv_sec - uptime;
-    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "%lu %lu %lu\n", *boot_time, tv.tv_sec, uptime);
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "%" PRIu64 "%" PRIu64 "%" PRIu64 "\n", *boot_time, tv.tv_sec, uptime);
     return RETVAL_SUCCESS;
 }
 
@@ -610,7 +610,7 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
         return RETVAL_FAILURE;
     }
 
-    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Real boot %lu orig boot %lu\n", real_boot_time, mws->orig_boot_time);
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "Real boot %" PRIu64 " orig boot %" PRIu64 "\n", real_boot_time, mws->orig_boot_time);
 
     if (md_sqlite_update_timestamp_db(mws, UPDATE_EVENT_TSTAMP,
                 mws->orig_boot_time, real_boot_time) ||
