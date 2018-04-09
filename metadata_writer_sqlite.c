@@ -309,7 +309,11 @@ static int md_sqlite_read_boot_time(struct md_writer_sqlite *mws, uint64_t *boot
     gettimeofday(&tv, NULL);
 
     *boot_time = tv.tv_sec - uptime;
-    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "%" PRIu64 " %ld %" PRIu64 "\n", *boot_time, tv.tv_sec, uptime);
+    
+    if (*boot_time < mws->orig_boot_time) {
+        return RETVAL_FAILURE;
+    }
+
     return RETVAL_SUCCESS;
 }
 
