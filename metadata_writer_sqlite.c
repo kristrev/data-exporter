@@ -296,7 +296,7 @@ static sqlite3* md_sqlite_configure_db(struct md_writer_sqlite *mws, const char 
     return db_handle;
 }
 
-static int md_sqlite_read_boot_time(uint64_t *boot_time)
+static int md_sqlite_read_boot_time(struct md_writer_sqlite *mws, uint64_t *boot_time)
 {
     struct timeval tv;
     uint64_t uptime;
@@ -308,6 +308,7 @@ static int md_sqlite_read_boot_time(uint64_t *boot_time)
     }
 
     *boot_time = tv.tv_sec - uptime;
+    META_PRINT_SYSLOG(mws->parent, LOG_INFO, "%lu %lu %lu\n", *boot_time, tv.tv_sec, uptime);
     return RETVAL_SUCCESS;
 }
 
@@ -479,7 +480,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
         system_helpers_read_uint64_from_file(mws->last_conn_tstamp_path,
                 &(mws->dump_tstamp));
 
-    return md_sqlite_read_boot_time(&(mws->orig_boot_time));
+    return md_sqlite_read_boot_time(mws, &(mws->orig_boot_time));
 }
 
 void md_sqlite_usage()
@@ -605,7 +606,7 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
     if (mws->ntp_fix_file[0] && access(mws->ntp_fix_file, F_OK))
         return RETVAL_FAILURE;
 
-    if (md_sqlite_read_boot_time(&real_boot_time)) {
+    if (md_sqlite_read_boot_time(mws, &real_boot_time)) {
         return RETVAL_FAILURE;
     }
 
