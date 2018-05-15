@@ -82,62 +82,65 @@ uint8_t parse_conn_info(struct json_object *meta_obj, struct md_conn_event *mce,
 uint8_t parse_iface_event(struct json_object *meta_obj, struct md_iface_event *mie, struct md_exporter *parent)
 {
     json_object_object_foreach(meta_obj, key, val) {
-        if (!strcmp(key, "md_seq"))
+        if (!strcmp(key, "md_seq")) {
             mie->sequence = (uint16_t) json_object_get_int(val);
-        else if (!strcmp(key, "timestamp"))
+        } else if (!strcmp(key, "timestamp")) {
             mie->tstamp = json_object_get_int64(val);
-        else if (!strcmp(key, "event_param"))
+        } else if (!strcmp(key, "event_param")) {
             mie->event_param = (uint8_t) json_object_get_int(val);
-        else if (!strcmp(key, "event_type"))
+        } else if (!strcmp(key, "event_type")) {
             mie->event_type = (uint8_t) json_object_get_int(val);
-        else if (!strcmp(key, "iccid"))
+        } else if (!strcmp(key, "iccid")) {
             mie->iccid = json_object_get_string(val);
-        else if (!strcmp(key, "imsi"))
+        } else if (!strcmp(key, "imsi")) {
             mie->imsi = json_object_get_string(val);
-        else if (!strcmp(key, "imei"))
+        } else if (!strcmp(key, "imei")) {
             mie->imei = json_object_get_string(val);
-        else if (!strcmp(key, "ip_addr"))
+        } else if (!strcmp(key, "ip_addr")) {
             mie->ip_addr = json_object_get_string(val);
-        else if (!strcmp(key, "internal_ip_addr"))
+        } else if (!strcmp(key, "internal_ip_addr")) {
             mie->internal_ip_addr = json_object_get_string(val);
-        else if (!strcmp(key, "isp_name"))
+        } else if (!strcmp(key, "isp_name")) {
             mie->isp_name = json_object_get_string(val);
-        else if (!strcmp(key, "ifname"))
+        } else if (!strcmp(key, "ifname")) {
             mie->ifname = json_object_get_string(val);
-        else if (!strcmp(key, "imsi_mccmnc"))
+        } else if (!strcmp(key, "imsi_mccmnc")) {
             mie->imsi_mccmnc = (uint32_t) json_object_get_int(val);
-        else if (!strcmp(key, "network_mccmnc"))
+        } else if (!strcmp(key, "network_mccmnc")) {
             mie->nw_mccmnc = (uint32_t) json_object_get_int(val);
-        else if (!strcmp(key, "cid"))
+        } else if (!strcmp(key, "cid")) {
             mie->cid = json_object_get_int(val);
-        else if (!strcmp(key, "device_mode"))
+        } else if (!strcmp(key, "device_mode")) {
             mie->device_mode = (uint8_t) json_object_get_int(val);
-        else if (!strcmp(key, "device_sub_mode"))
+        } else if (!strcmp(key, "device_sub_mode")) {
             mie->device_submode = (uint8_t) json_object_get_int(val);
-        else if (!strcmp(key, "rssi"))
+        } else if (!strcmp(key, "rssi")) {
             mie->rssi = (int8_t) json_object_get_int(val);
-        else if (!strcmp(key, "ecio"))
+        } else if (!strcmp(key, "ecio")) {
             mie->ecio = (int8_t) json_object_get_int(val);
-        else if (!strcmp(key, "rscp"))
+        } else if (!strcmp(key, "rscp")) {
             mie->rscp = (int16_t) json_object_get_int(val);
-        else if (!strcmp(key, "lte_rssi"))
+        } else if (!strcmp(key, "lte_rssi")) {
             mie->lte_rssi = (int8_t) json_object_get_int(val);
-        else if (!strcmp(key, "lte_rsrp"))
+        } else if (!strcmp(key, "lte_rsrp")) {
             mie->lte_rsrp = (int16_t) json_object_get_int(val);
-        else if (!strcmp(key, "lte_rsrq"))
+        } else if (!strcmp(key, "lte_rsrq")) {
             mie->lte_rsrq = (int8_t) json_object_get_int(val);
-        else if (!strcmp(key, "lac"))
+        } else if (!strcmp(key, "lac")) {
             mie->lac = (uint16_t) json_object_get_int(val);
-        else if (!strcmp(key, "lte_band"))
+        } else if (!strcmp(key, "lte_band")) {
             mie->lte_band = (uint8_t) json_object_get_int(val);
-        else if (!strcmp(key, "lte_freq"))
+        } else if (!strcmp(key, "lte_freq")) {
             mie->lte_freq = (uint16_t) json_object_get_int(val);
-        else if (!strcmp(key, "lte_pci"))
+        } else if (!strcmp(key, "lte_pci")) {
             mie->lte_pci = (uint16_t) json_object_get_int(val);
-        else if (!strcmp(key, "device_state"))
+        } else if (!strcmp(key, "device_state")) {
             mie->device_state = (uint8_t) json_object_get_int(val);
-        else if (!strcmp(key, "enodeb_id"))
+        } else if (!strcmp(key, "enodeb_id")) {
             mie->enodeb_id = json_object_get_int(val);
+        } else if (!strcmp(key, "ca_info")) {
+            mie->ca_info = json_object_to_json_string_ext(val, JSON_C_TO_STRING_PLAIN);
+        }
     }
 
     return RETVAL_SUCCESS;

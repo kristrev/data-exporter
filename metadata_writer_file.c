@@ -62,6 +62,20 @@ static int md_file_add_json_string(struct json_object *obj,
     return RETVAL_SUCCESS;
 }
 
+static int md_file_add_json_obj(struct json_object *obj,
+        const char *key, const char *value)
+{
+    struct json_object *obj_to_add = json_tokener_parse(value);
+
+    if (!obj_to_add) {
+        return RETVAL_FAILURE;
+    }
+
+    json_object_object_add(obj, key, obj_to_add);
+
+    return RETVAL_SUCCESS;
+}
+
 static int md_file_save(struct md_writer_file *mwf, int event_type, const char *content)
 {
     int output_fd;
@@ -132,7 +146,8 @@ static void md_file_handle_iface_event(struct md_writer_file *mwf,
         (mie->cid != DEFAULT_CID && md_file_add_json_int(obj, "cid", mie->cid)) ||
         (mie->enodeb_id != DEFAULT_ENODEBID && md_file_add_json_int(obj, "enodeb_id", mie->enodeb_id)) ||
         (mie->lac != DEFAULT_LAC && md_file_add_json_int(obj, "lac", mie->lac)) ||
-        (mie->device_state != DEFAULT_DEVICE_STATE && md_file_add_json_int(obj, "device_state", mie->device_state))) {
+        (mie->device_state != DEFAULT_DEVICE_STATE && md_file_add_json_int(obj, "device_state", mie->device_state)) ||
+        (mie->ca_info && md_file_add_json_obj(obj, "ca_info", mie->ca_info))) {
         META_PRINT_SYSLOG(mwf->parent, LOG_ERR, "md_file_handle_iface_event: Can't create iface values to object!");
         json_object_put(obj);
         return;

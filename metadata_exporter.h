@@ -187,6 +187,7 @@ struct md_iface_event {
     const char *ip_addr;
     const char *internal_ip_addr;
     const char *ifname;
+    const char *ca_info;
     uint32_t imsi_mccmnc;
     uint32_t nw_mccmnc;
     int32_t cid;
