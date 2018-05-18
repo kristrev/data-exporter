@@ -110,6 +110,8 @@ struct nne_modem
     struct nne_metadata metadata[NNE_IDX_MAX + 1];
 };
 
+#define NNE_EXTRA_FIELD_MAX_LEN (500)
+
 struct nne_metadata_descr
 {
     enum nne_metadata_idx idx;
@@ -117,7 +119,7 @@ struct nne_metadata_descr
     int mode_dependent;
     enum nne_type type;
     enum iface_event event; // iface event that updates this metadata
-    struct nne_value (*parse_cb)(struct nne_modem *modem, struct md_iface_event *mie);
+    struct nne_value (*parse_cb)(struct nne_modem *modem, struct md_iface_event *mie, char *extra, size_t extra_len);
 };
 
 struct nne_radio_descr
