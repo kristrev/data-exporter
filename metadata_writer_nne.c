@@ -44,7 +44,6 @@ static struct nne_value md_iface_parse_cid(struct nne_modem *modem, struct md_if
 static struct nne_value md_iface_parse_oper(struct nne_modem *modem, struct md_iface_event *mie, char *extra, size_t extra_len);
 static struct nne_value md_iface_parse_ipaddr(struct nne_modem *modem, struct md_iface_event *mie, char *extra, size_t extra_len);
 static struct nne_value md_iface_parse_dev_state(struct nne_modem *modem, struct md_iface_event *mie, char *extra, size_t extra_len);
-static struct nne_value md_iface_parse_imsi(struct nne_modem *modem, struct md_iface_event *mie, char *extra, size_t extra_len);
 
 static struct nne_metadata_descr NNE_METADATA_DESCR[] = {
     { NNE_IDX_MODE,      "mode",         0, NNE_TYPE_UINT8,  IFACE_EVENT_MODE_CHANGE, md_iface_parse_mode },
@@ -58,8 +57,7 @@ static struct nne_metadata_descr NNE_METADATA_DESCR[] = {
     { NNE_IDX_CID,       "cid",          0, NNE_TYPE_STRING, IFACE_EVENT_LOC_CHANGE, md_iface_parse_cid },
     { NNE_IDX_OPER,      "oper",         0, NNE_TYPE_UINT32, IFACE_EVENT_NW_MCCMNC_CHANGE, md_iface_parse_oper },
     { NNE_IDX_IPADDR,    "ipaddr",       0, NNE_TYPE_STRING, IFACE_EVENT_IP_ADDR_CHANGE, md_iface_parse_ipaddr },
-    { NNE_IDX_DEV_STATE, "device_state", 0, NNE_TYPE_UINT8,  IFACE_EVENT_DEV_STATE, md_iface_parse_dev_state },
-    { NNE_IDX_IMSI,      "imsi",         0, NNE_TYPE_STRING, 0, md_iface_parse_imsi }
+    { NNE_IDX_DEV_STATE, "device_state", 0, NNE_TYPE_UINT8,  IFACE_EVENT_DEV_STATE, md_iface_parse_dev_state }
 };
 
 #define NNE_METADATA_DESCR_LEN (sizeof(NNE_METADATA_DESCR) / sizeof(struct nne_metadata_descr))
@@ -276,19 +274,6 @@ static struct nne_value md_iface_parse_dev_state(struct nne_modem *modem, struct
     struct nne_value value;
     value.type = NNE_TYPE_UINT8;
     value.u.v_int8 = mie->device_state;
-    return value;
-}
-
-static struct nne_value md_iface_parse_imsi(struct nne_modem *modem, struct md_iface_event *mie, char *extra, size_t extra_len)
-{
-    struct nne_value value;
-    value.type = NNE_TYPE_STRING;
-    if (mie->imsi != NULL) {
-        value.u.v_str = strdup(mie->imsi);
-    }
-    else {
-        value.type = NNE_TYPE_NULL;
-    }
     return value;
 }
 
@@ -786,7 +771,7 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
         msg.network_id = network_id;
         msg.key = "usbmodem";
         msg.value = nne_value_init_str("UP");
-        msg.extra = NULL;
+        msg.extra = mie->imsi;
         msg.source = NNE_MESSAGE_SOURCE_REPORT;
         msg.delta = 0;
 
@@ -804,7 +789,7 @@ static void md_nne_handle_iface_event(struct md_writer_nne *mwn,
 
     // Process metadata; only related to this iface event
     for (i = 0; i < NNE_METADATA_DESCR_LEN; i++) {
-        if (NNE_METADATA_DESCR[i].event > 0 && mie->event_param == NNE_METADATA_DESCR[i].event) {
+        if (mie->event_param == NNE_METADATA_DESCR[i].event) {
             md_nne_process_iface_event(mwn, &(NNE_METADATA_DESCR[i]), modem, mie, NNE_MESSAGE_SOURCE_REPORT);
         }
     }
