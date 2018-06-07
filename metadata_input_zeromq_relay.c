@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, Celerway, Kristian Evensen <kristrev@celerway.com>
+/* Copyright (c) 2018, Karlstad Universitet, Jonas Karlsson <jonas.karlsson@kau.se>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
