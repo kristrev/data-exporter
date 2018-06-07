@@ -32,7 +32,6 @@ struct backend_epoll_handle;
 struct md_input_zeromq_relay {
     MD_INPUT;
     struct backend_epoll_handle *event_handle;
-    uint32_t md_zmq_mask;
     const char *zmq_pub_url;
     void* zmq_ctx;
     void* zmq_socket;
