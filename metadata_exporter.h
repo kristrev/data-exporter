@@ -54,6 +54,7 @@
 #define META_TYPE_SYSEVENT   0x06
 #define META_TYPE_RADIO      0x08
 #define META_TYPE_SYSTEM     0x10
+#define META_TYPE_ZEROMQ     0x11
 
 enum iface_event {
     IFACE_EVENT_DEV_STATE=1,
@@ -112,6 +113,7 @@ enum md_inputs {
     MD_INPUT_MUNIN,
     MD_INPUT_SYSEVENT,
     MD_INPUT_ZEROMQ,
+    MD_INPUT_ZEROMQ_RELAY,
     __MD_INPUT_MAX
 };
 
@@ -236,6 +238,13 @@ struct md_gps_event {
 struct md_munin_event {
     MD_EVENT;
     json_object* json_blob;
+};
+
+struct md_zeromq_event {
+    MD_EVENT;
+    const char *msg;
+    //const char *topic;
+    //json_object* json_blob;
 };
 
 struct md_radio_event {

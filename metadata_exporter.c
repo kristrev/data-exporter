@@ -47,6 +47,9 @@
 #ifdef ZEROMQ_SUPPORT_INPUT
     #include "metadata_input_zeromq.h"
 #endif
+#ifdef ZEROMQ_SUPPORT_INPUT_RELAY
+    #include "metadata_input_zeromq_relay.h"
+#endif
 #ifdef MUNIN_SUPPORT
     #include "metadata_input_munin.h"
 #endif
@@ -796,6 +799,19 @@ int main(int argc, char *argv[])
             }
 
             md_zeromq_input_setup(mde, (struct md_input_zeromq*) mde->md_inputs[MD_INPUT_ZEROMQ]);
+            num_inputs++;
+        }
+#endif
+#ifdef ZEROMQ_SUPPORT_INPUT_RELAY
+        else if (!strcmp(key, "zmq_input_relay")) {
+            mde->md_inputs[MD_INPUT_ZEROMQ_RELAY] = calloc(sizeof(struct md_input_zeromq), 1);
+
+            if (mde->md_inputs[MD_INPUT_ZEROMQ_RELAY] == NULL) {
+                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate ZeroMQ Relay input\n");
+                exit(EXIT_FAILURE);
+            }
+
+            md_zeromq_input_setup(mde, (struct md_input_zeromq*) mde->md_inputs[MD_INPUT_ZEROMQ_RELAY]);
             num_inputs++;
         }
 #endif

@@ -219,6 +219,18 @@ static void md_zeromq_writer_handle_munin(struct md_writer_zeromq *mwz,
     }
 }
 
+static void md_zeromq_writer_handle_zeromq(struct md_writer_zeromq *mwz,
+                                   struct md_zeromq_event *mge)
+{
+    char topic[8192];  //In reality this is the message not the topic
+    int retval;
+
+    retval = snprintf(topic, sizeof(topic), "%s", mge->msg);
+    if (retval < sizeof(topic)) {
+        zmq_send(mwz->zmq_publisher, topic, strlen(topic), 0);
+    }
+}
+
 
 static void md_zeromq_writer_handle_sysevent(struct md_writer_zeromq *mwz,
                                    struct md_sysevent *mge)
@@ -1023,6 +1035,9 @@ static void md_zeromq_writer_handle(struct md_writer *writer, struct md_event *e
         break;
     case META_TYPE_RADIO:
         md_zeromq_writer_handle_radio(mwz, (struct md_radio_event*) event);
+        break;
+    case META_TYPE_ZEROMQ:
+        md_zeromq_writer_handle_zeromq(mwz, (struct md_zeromq_event*) event);
         break;
     default:
         META_PRINT_SYSLOG(mwz->parent, LOG_INFO, "ZMQ writer does not support event %u\n",
