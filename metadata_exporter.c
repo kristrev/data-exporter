@@ -804,14 +804,14 @@ int main(int argc, char *argv[])
 #endif
 #ifdef ZEROMQ_SUPPORT_INPUT_RELAY
         else if (!strcmp(key, "zmq_input_relay")) {
-            mde->md_inputs[MD_INPUT_ZEROMQ_RELAY] = calloc(sizeof(struct md_input_zeromq), 1);
+            mde->md_inputs[MD_INPUT_ZEROMQ_RELAY] = calloc(sizeof(struct md_input_zeromq_relay), 1);
 
             if (mde->md_inputs[MD_INPUT_ZEROMQ_RELAY] == NULL) {
                 META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate ZeroMQ Relay input\n");
                 exit(EXIT_FAILURE);
             }
 
-            md_zeromq_input_setup(mde, (struct md_input_zeromq*) mde->md_inputs[MD_INPUT_ZEROMQ_RELAY]);
+            md_zeromq_relay_setup(mde, (struct md_input_zeromq_relay*) mde->md_inputs[MD_INPUT_ZEROMQ_RELAY]);
             num_inputs++;
         }
 #endif

@@ -112,9 +112,7 @@ static uint8_t md_input_zeromq_relay_config(struct md_input_zeromq_relay *miz)
     //Connect to user defined publiser $URL 
     if (zmq_connect(miz->zmq_socket, miz->zmq_pub_url) == -1)
     {
-        char buf[1024] = {0};
-        snprintf(buf. sizeof(buf), "Can't connect to %s ZMQ publisher\n",miz->zmq_pub_url )
-        META_PRINT_SYSLOG(miz->parent, LOG_ERR, buf);
+        META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't connect to %s ZMQ publisher\n",miz->zmq_pub_url );
         return RETVAL_FAILURE;
     }
 
@@ -147,7 +145,7 @@ static uint8_t md_input_zeromq_relay_init(void *ptr, json_object* config)
     if (json_object_object_get_ex(config, "zmq_input_relay", &subconfig)) {
         json_object_object_foreach(subconfig, key, val) {
             if (!strcmp(key, "url"))
-                miz->zmq_pub_url = strncpy(url,val, sizeof(url));
+                miz->zmq_pub_url = strncpy(url,json_object_get_string(val), sizeof(url));
         }
     }
 

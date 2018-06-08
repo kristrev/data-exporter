@@ -74,6 +74,13 @@ if (ZEROMQ_INPUT)
     add_definitions("-DZEROMQ_SUPPORT_INPUT")
 endif()
 
+if (ZEROMQ_RELAY)
+    set(LIBS ${LIBS} zmq)
+    set(SOURCE ${SOURCE}
+        metadata_input_zeromq_relay.c)
+    add_definitions("-DZEROMQ_SUPPORT_INPUT_RELAY")
+endif()
+
 if (GPSD)
     set(LIBS ${LIBS} gps)
     set(SOURCE ${SOURCE}
