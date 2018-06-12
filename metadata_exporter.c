@@ -673,6 +673,9 @@ static void print_usage()
 #ifdef MUNIN_SUPPORT
     md_munin_usage();
 #endif
+#ifdef ZEROMQ_SUPPORT_INPUT_RELAY
+    md_zeromq_relay_usage();
+#endif
 #ifdef GPS_NSB_SUPPORT
     md_gps_nsb_usage();
 #endif

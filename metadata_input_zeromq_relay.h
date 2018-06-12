@@ -26,16 +26,33 @@
 
 #pragma once
 #include "metadata_exporter.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+struct node{
+    int key;   //zmq_fd
+    struct zmq_connection *val;
+    struct node *next;
+};
+
+struct table{
+    int size;
+    struct node **list;
+};
 
 struct backend_epoll_handle;
+
+struct zmq_connection {
+    void* zmq_ctx;
+    void* zmq_socket;
+};
 
 struct md_input_zeromq_relay {
     MD_INPUT;
     struct backend_epoll_handle *event_handle;
-    const char *zmq_pub_url;
-    void* zmq_ctx;
-    void* zmq_socket;
-    int zmq_fd;
+    struct table *zmq_connections;
+    const char **urls;
+    int nr_of_connections;
     struct md_zeromq_event *mse;
 };
 

@@ -54,7 +54,7 @@
 #define META_TYPE_SYSEVENT   0x06
 #define META_TYPE_RADIO      0x08
 #define META_TYPE_SYSTEM     0x10
-#define META_TYPE_ZEROMQ     0x11
+#define META_TYPE_ZEROMQ     0xA
 
 enum iface_event {
     IFACE_EVENT_DEV_STATE=1,
@@ -243,8 +243,6 @@ struct md_munin_event {
 struct md_zeromq_event {
     MD_EVENT;
     const char *msg;
-    //const char *topic;
-    //json_object* json_blob;
 };
 
 struct md_radio_event {
