@@ -15,7 +15,7 @@ node ('dockerslave') {
             doGenerateSubmoduleConfigurations: false,
             extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'metadata-exporter-alt']],
             submoduleCfg: [],
-            userRemoteConfigs: [[url: 'git@github.com:kristrev/data-exporter.git']]])
+            userRemoteConfigs: [[url: 'git@github.com:MONROE-PROJECT/data-exporter.git']]])
         gitCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
         shortCommit = gitCommit.take(6)
         commitChangeset = sh(returnStdout: true, script: 'git diff-tree --no-commit-id --name-status -r HEAD').trim()
