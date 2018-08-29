@@ -76,12 +76,13 @@
                             "Quality INTEGER," \
                             "InterfaceType INTEGER NOT NULL," \
                             "InterfaceId TEXT NOT NULL," \
+                            "NetworkAddressFamily INTEGER NOT NULL," \
                             "NetworkAddress TEXT NOT NULL," \
                             "NetworkProvider INT," \
                             "EventValueStr TEXT, " \
                             "PRIMARY KEY(SessionId,SessionIdMultip,"\
                             "L3SessionId,L4SessionId,InterfaceId,"\
-                            "NetworkAddress))"
+                            "NetworkAddressFamily,NetworkAddress))"
 
 #define CREATE_GPS_SQL      "CREATE TABLE IF NOT EXISTS GpsUpdate(" \
                             "NodeId INTEGER NOT NULL," \
@@ -137,8 +138,8 @@
 #define INSERT_UPDATE       "INSERT INTO NetworkUpdates(NodeId,SessionId,"\
                             "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
                             "L4SessionId,EventType,EventParam,HasIp,Connectivity,ConnectionMode,Quality"\
-                            ",InterfaceType,InterfaceId,NetworkAddress,NetworkProvider,EventValueStr) " \
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                            ",InterfaceType,InterfaceId,NetworkAddressFamily,NetworkAddress,NetworkProvider,EventValueStr) " \
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_GPS_EVENT    "INSERT INTO GpsUpdate(NodeId,BootCount" \
                             ",BootMultiplier,Timestamp" \
@@ -163,6 +164,7 @@
                             " FROM NetworkUpdates WHERE "\
                             "L3SessionId=? AND "\
                             "L4SessionId=? AND InterfaceId=? AND "\
+                            "NetworkAddressFamily=? AND "\
                             "NetworkAddress=? ORDER BY Timestamp DESC LIMIT 1;"
 
 //The reason NetworkAddress is used here, is that we first identify by L3/L4
@@ -178,7 +180,8 @@
                             "Quality=?,EventValueStr=? " \
                             "WHERE "\
                             "L3SessionId=? AND L4SessionId=? " \
-                            "AND NetworkAddress=? AND InterfaceId=?"
+                            "AND NetworkAddressFamily=? AND "\
+                            "NetworkAddress=? AND InterfaceId=?"
 
 #define UPDATE_USAGE        "UPDATE DataUse SET " \
                             "RxData = RxData + ?, TxData = TxData + ? " \
@@ -372,7 +375,6 @@ struct md_writer_sqlite {
 
     uint8_t api_version;
     uint8_t delete_conn_update;
-    uint8_t output_format;
 };
 
 void md_sqlite_usage();
