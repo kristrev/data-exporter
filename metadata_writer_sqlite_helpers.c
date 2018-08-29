@@ -36,34 +36,6 @@
 #include "metadata_writer_sqlite_helpers.h"
 #include "metadata_exporter_log.h"
 
-uint8_t md_sqlite_helpers_dump_write(sqlite3_stmt *stmt, FILE *output)
-{
-    int32_t retval = sqlite3_step(stmt);
-    int32_t column_count, i = 0;
-
-    while (retval == SQLITE_ROW) {
-        column_count = sqlite3_column_count(stmt);
-
-        if (fprintf(output, "%s", sqlite3_column_text(stmt, 0)) < 0)
-            return RETVAL_FAILURE;
-
-        for (i = 1; i<column_count; i++) {
-            if (fprintf(output, ",%s", sqlite3_column_text(stmt, i)) < 0)
-                return RETVAL_FAILURE;
-        }
-
-        if (fprintf(output, ";\n") < 0)
-            return RETVAL_FAILURE;
-
-        retval = sqlite3_step(stmt);
-    }
-
-    if (retval != SQLITE_DONE)
-        return RETVAL_FAILURE;
-    else
-        return RETVAL_SUCCESS;
-}
-
 uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
         dump_db_cb dump_db, struct md_writer_sqlite *mws,
         delete_db_cb delete_db)
@@ -81,12 +53,7 @@ uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
         return RETVAL_FAILURE;
     }
 
-    //Length check has already been made when we received command line argument,
-    //so I know there is room
-    if (mws->output_format == FORMAT_SQL)
-        snprintf(dst_filename, 128, "%s_%d.sql", prefix, mws->node_id);
-    else
-        snprintf(dst_filename, 128, "%s_%d.json", prefix, mws->node_id);
+    snprintf(dst_filename, 128, "%s_%d.json", prefix, mws->node_id);
 
     output = fdopen(output_fd, "w");
 

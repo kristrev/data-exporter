@@ -568,21 +568,6 @@ uint8_t md_inventory_handle_conn_event(struct md_writer_sqlite *mws,
     return retval;
 }
 
-static uint8_t md_inventory_conn_dump_db_sql(struct md_writer_sqlite *mws, FILE *output)
-{
-    sqlite3_reset(mws->dump_table);
-    sqlite3_reset(mws->dump_update);
-
-    sqlite3_bind_int64(mws->dump_table, 1, mws->dump_tstamp);
-    sqlite3_bind_int64(mws->dump_update, 1, mws->dump_tstamp);
-
-    if (md_sqlite_helpers_dump_write(mws->dump_table, output) ||
-        md_sqlite_helpers_dump_write(mws->dump_update, output))
-        return RETVAL_FAILURE;
-    else
-        return RETVAL_SUCCESS;
-}
-
 static uint8_t md_inventory_conn_dump_db_json(struct md_writer_sqlite *mws, FILE *output)
 {
     const char *json_str;
@@ -661,16 +646,6 @@ static uint8_t md_inventory_conn_delete_db(struct md_writer_sqlite *mws)
     return RETVAL_SUCCESS;
 }
 
-static uint8_t md_inventory_usage_dump_db_sql(struct md_writer_sqlite *mws, FILE *output)
-{
-    sqlite3_reset(mws->dump_usage);
-
-    if (md_sqlite_helpers_dump_write(mws->dump_usage, output))
-        return RETVAL_FAILURE;
-    else
-        return RETVAL_SUCCESS;
-}
-
 static uint8_t md_inventory_usage_dump_db_json(struct md_writer_sqlite *mws, FILE *output)
 {
     const char *json_str;
@@ -709,16 +684,9 @@ static uint8_t md_inventory_usage_delete_db(struct md_writer_sqlite *mws)
 uint8_t md_inventory_conn_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = 0;
-    dump_db_cb dump_cb = NULL;
-
-    if (mws->output_format == FORMAT_SQL) {
-        dump_cb = md_inventory_conn_dump_db_sql;
-    } else {
-        dump_cb = md_inventory_conn_dump_db_json;
-    }
 
     md_writer_helpers_copy_db(mws->meta_prefix,
-            mws->meta_prefix_len, dump_cb, mws,
+            mws->meta_prefix_len, md_inventory_conn_dump_db_json, mws,
             md_inventory_conn_delete_db);
 
     if (retval == RETVAL_SUCCESS) {
@@ -736,16 +704,9 @@ uint8_t md_inventory_conn_copy_db(struct md_writer_sqlite *mws)
 uint8_t md_inventory_conn_usage_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = 0;
-    dump_db_cb dump_cb = NULL;
-
-    if (mws->output_format == FORMAT_SQL) {
-        dump_cb = md_inventory_usage_dump_db_sql;
-    } else {
-        dump_cb = md_inventory_usage_dump_db_json;
-    }
 
     md_writer_helpers_copy_db(mws->usage_prefix,
-            mws->usage_prefix_len, dump_cb, mws,
+            mws->usage_prefix_len, md_inventory_usage_dump_db_json, mws,
             md_inventory_usage_delete_db);
 
     if (retval == RETVAL_SUCCESS)

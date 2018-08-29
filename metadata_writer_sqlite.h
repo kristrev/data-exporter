@@ -375,7 +375,6 @@ struct md_writer_sqlite {
 
     uint8_t api_version;
     uint8_t delete_conn_update;
-    uint8_t output_format;
 };
 
 void md_sqlite_usage();

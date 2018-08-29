@@ -7,11 +7,9 @@ set(CMAKE_C_FLAGS "-O1 -Wall -std=gnu99 -g")
 set(LIBS pthread mnl)
 set(SOURCE
     metadata_exporter.c
-    netlink_helpers.c
     backend_event_loop.c
     metadata_utils.c
     system_helpers.c
-    metadata_input_netlink.c
     metadata_input_nl_zmq_common.c
     lib/minmea.c)
 
