@@ -80,7 +80,8 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 11, mce->connectivity) ||
         sqlite3_bind_int(stmt, 13, mce->quality) ||
         sqlite3_bind_int(stmt, 14, mce->interface_type) ||
-        sqlite3_bind_text(stmt, 16, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)){
+        sqlite3_bind_int(stmt, 16, mce->network_address_family) ||
+        sqlite3_bind_text(stmt, 17, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)){
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
     }
@@ -201,18 +202,19 @@ static int32_t md_inventory_update_event(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 5, mce->quality) ||
         sqlite3_bind_int(stmt, 7, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 8, mce->l4_session_id) ||
-        sqlite3_bind_text(stmt, 9, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
+        sqlite3_bind_int(stmt, 9, mce->network_address_family) ||
+        sqlite3_bind_text(stmt, 10, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE query\n");
         return SQLITE_ERROR;
     }
 
     if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
-        if (sqlite3_bind_text(stmt, 10, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 11, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
             return SQLITE_ERROR;
         }
     } else {
-        if (sqlite3_bind_text(stmt, 10, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 11, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
             return SQLITE_ERROR;
         }
@@ -349,7 +351,8 @@ static int16_t md_inventory_get_last_update(struct md_writer_sqlite *mws,
 
     if (sqlite3_bind_int(stmt, 1, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 2, mce->l4_session_id) ||
-        sqlite3_bind_text(stmt, 4, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
+        sqlite3_bind_int(stmt, 4, mce->network_address_family) ||
+        sqlite3_bind_text(stmt, 5, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to SELECT query\n");
         return retval;
     }
