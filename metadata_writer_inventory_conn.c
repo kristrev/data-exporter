@@ -104,12 +104,7 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
         return SQLITE_ERROR;
     }
 
-    if (mce->network_provider) {
-        META_PRINT_SYSLOG(mws->parent, LOG_INFO, "WE HAVE NETWORK PROVIDER %u\n", mce->network_provider);
-    }
-
-    if (mce->network_provider &&
-        sqlite3_bind_int(stmt, 18, mce->network_provider)) {
+    if (sqlite3_bind_int(stmt, 18, mce->network_provider ? mce->network_provider : NULL)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind network provider\n");
         return SQLITE_ERROR;
     }
