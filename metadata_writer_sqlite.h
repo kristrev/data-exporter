@@ -236,6 +236,69 @@
 
 #define DELETE_SYSTEM_TABLE "DELETE FROM RebootEvent"
 
+//This statement is a static version of what the .dump command does. A dynamic
+//version would query the master table to get tables and then PRAGMA to get
+//rows. The actualy query is simpler than it looks. It seems SQLite supports
+//prepending/appending random text to the result of a query, and that is what we
+//do here. quote() gives a quoted string of the row content, suitable for
+//inclusion in another SQL query. The || is string concation. So, the query
+//queries for all columns, and each row is prefixed with some string
+#define DUMP_EVENTS      "SELECT \"INSERT IGNORE INTO NetworkEvent"\
+                            "(NodeId,BootCount,BootMultiplier,Timestamp,"\
+                            "Sequence,L3SessionId,L4SessionId,DeviceId,"\
+                            "DeviceTypeId,NetworkAddress,NetworkAddressFamily,"\
+                            "EventType,EventParam,EventValue) "\
+                            "VALUES(\" "\
+                            "|| quote(\"NodeId\"), quote(\"SessionId\"),"\
+                            "quote(\"SessionIdMultip\"),quote(\"Timestamp\"), "\
+                            "quote(\"Sequence\"), quote(\"L3SessionId\"), "\
+                            "quote(\"L4SessionId\"), quote(\"InterfaceId\"), "\
+                            "quote(\"InterfaceType\"), quote(\"NetworkAddress\"), "\
+                            "quote(\"NetworkAddressFamily\"), quote(\"EventType\"), "\
+                            "quote(\"EventParam\"), quote(\"EventValue\") "\
+                            "|| \")\" FROM  \"NetworkEvent\" WHERE Timestamp>=? ORDER BY Timestamp;"
+
+#define DUMP_UPDATES     "SELECT \"REPLACE INTO NetworkUpdate"\
+                            "(NodeId,BootCount,BootMultiplier,L3SessionId,"\
+                            "L4SessionId,DeviceId,NetworkAddress,DeviceTypeId,"\
+                            "Timestamp,Sequence,EventValueStr,"\
+                            "ServerTimestamp) VALUES(\" ||"\
+                            "quote(\"NodeId\"), quote(\"SessionId\"),"\
+                            "quote(\"SessionIdMultip\"), quote(\"L3SessionId\"),"\
+                            "quote(\"L4SessionId\"), quote(\"InterfaceId\"),"\
+                            "quote(\"NetworkAddress\"), quote(\"InterfaceType\"),"\
+                            "quote(\"Timestamp\"), quote(\"Sequence\"), "\
+                            "quote(\"EventValueStr\") ||"\
+                            "\", Now())\" FROM \"NetworkUpdates\" WHERE "\
+                            "Timestamp>=? ORDER BY Timestamp;"
+
+#define DUMP_GPS            "SELECT \"REPLACE INTO GpsUpdates" \
+                            "(NodeId,BootCount,BootMultiplier"\
+                            ",Timestamp,Sequence,Latitude,Longitude" \
+                            ",Altitude,Speed,SatelliteCount) VALUES(\" "\
+                            "|| quote(\"NodeId\"), quote(\"BootCount\"), "\
+                            "quote(\"BootMultiplier\"), quote(\"Timestamp\"), "\
+                            "quote(\"Sequence\"), quote(\"Latitude\"), "\
+                            "quote(\"Longitude\"), quote(\"Altitude\"), "\
+                            "quote(\"Speed\"), quote(\"SatelliteCount\") "\
+                            "|| \")\" FROM \"GpsUpdate\" ORDER BY Timestamp;"
+
+#define DUMP_MONITOR        "SELECT \"REPLACE INTO MonitorEvents" \
+                            "(NodeId,Timestamp,Sequence,Boottime) VALUES(\" "\
+                            "|| quote(\"NodeId\"), quote(\"Timestamp\"), "\
+                            "quote(\"Sequence\"), quote(\"Boottime\") "\
+                            "|| \")\" FROM \"MonitorEvents\" ORDER BY Timestamp;"
+
+#define DUMP_USAGE          "SELECT \"INSERT INTO DataUse" \
+                            "(DeviceId,SimCardIccid,SimCardImsi,Timestamp,RxData,TxData) VALUES(\" "\
+                            "|| quote(\"DeviceId\"), quote(\"SimCardIccid\"), " \
+                            "quote(\"SimCardImsi\") || \",FROM_UNIXTIME(\" "\
+                            "|| quote(\"Timestamp\") || \"),\" || "\
+                            "quote(\"RxData\"), quote(\"TxData\") "\
+                            "|| \") ON DUPLICATE KEY UPDATE RxData=RxData+\"" \
+                            "|| quote(\"RxData\") || \", TxData=TxData+\"" \
+                            "|| quote(\"TxData\") FROM \"DataUse\";"
+
 //Define statements for JSON export
 #define DUMP_EVENTS_JSON    "SELECT * FROM NetworkEvent WHERE Timestamp>=? ORDER BY TimeStamp"
 
