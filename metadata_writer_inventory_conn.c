@@ -105,13 +105,13 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
     }
 
     if (mce->network_provider &&
-        sqlite3_bind_int(stmt, 17, mce->network_provider)) {
+        sqlite3_bind_int(stmt, 18, mce->network_provider)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind network provider\n");
         return SQLITE_ERROR;
     }
 
     if (csv_valid &&
-            sqlite3_bind_text(stmt, 18, csv_buf, -1, NULL)) {
+            sqlite3_bind_text(stmt, 19, csv_buf, -1, NULL)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind network provider\n");
         return SQLITE_ERROR;
     }
