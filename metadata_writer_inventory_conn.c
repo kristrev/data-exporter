@@ -64,8 +64,8 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
 
     sqlite3_stmt *stmt = mws->insert_update;
 
-    sqlite3_reset(stmt);
     sqlite3_clear_bindings(stmt);
+    sqlite3_reset(stmt);
 
     if (sqlite3_bind_int(stmt, 1, mws->node_id) ||
         sqlite3_bind_int64(stmt, 2, mws->session_id) ||
