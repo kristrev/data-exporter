@@ -108,6 +108,7 @@
 
 #define CREATE_USAGE_SQL    "CREATE TABLE IF NOT EXISTS DataUse(" \
                             "DeviceId TEXT NOT NULL," \
+                            "NetworkAddressFamily INTEGER NOT NULL," \
                             "EventType INTEGER NOT NULL," \
                             "EventParam INTEGER NOT NULL," \
                             "SimCardIccid TEXT NOT NULL," \
@@ -115,7 +116,7 @@
                             "Timestamp INTEGER NOT NULL," \
                             "RxData INTEGER NOT NULL,"\
                             "TxData INTEGER NOT NULL," \
-                            "PRIMARY KEY(DeviceId,SimCardIccid,SimCardImsi,Timestamp))"
+                            "PRIMARY KEY(DeviceId,NetworkAddressFamily,SimCardIccid,SimCardImsi,Timestamp))"
 
 #define CREATE_REBOOT_SQL   "CREATE TABLE IF NOT EXISTS RebootEvent(" \
                             "NodeId INTEGER NOT NULL," \
@@ -151,10 +152,10 @@
                              ",Sequence,Boottime) " \
                              "VALUES (?,?,?,?)"
 
-#define INSERT_USAGE        "INSERT INTO DataUse(DeviceId,EventType,EventParam" \
+#define INSERT_USAGE        "INSERT INTO DataUse(DeviceId,NetworkAddressFamily,EventType,EventParam" \
                             ",SimCardIccid" \
                             ",SimCardImsi,Timestamp,RxData,TxData) " \
-                            "VALUES (?,?,?,?,?,?,?,?)"
+                            "VALUES (?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_REBOOT_EVENT "INSERT INTO RebootEvent(NodeId, BootCount," \
                             "BootMultiplier, Timestamp, Sequence, EventType, DeviceId)"\

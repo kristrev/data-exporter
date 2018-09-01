@@ -250,15 +250,15 @@ static int32_t md_inventory_execute_insert_usage(struct md_writer_sqlite *mws,
     //interface_id variable, so some special handling is needed for now
     if (mce->imei) {
         if (sqlite3_bind_text(stmt, 1, mce->imei, strlen(mce->imei), SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 5, mce->imsi, strlen(mce->imsi), SQLITE_STATIC)) {
+            sqlite3_bind_text(stmt, 6, mce->imsi, strlen(mce->imsi), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI/IMSI\n");
             return SQLITE_ERROR;
         }
 
-        interface_id_idx = 4;
+        interface_id_idx = 5;
     } else {
-        if (sqlite3_bind_text(stmt, 4, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 5, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 5, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 6, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind empty IMEI/IMSI\n");
             return SQLITE_ERROR;
         }
@@ -266,11 +266,12 @@ static int32_t md_inventory_execute_insert_usage(struct md_writer_sqlite *mws,
 
     if (sqlite3_bind_text(stmt, interface_id_idx, mce->interface_id,
             strlen(mce->interface_id), SQLITE_STATIC) ||
-        sqlite3_bind_int(stmt, 2, mce->event_type) ||
-        sqlite3_bind_int(stmt, 3, mce->event_param) ||
-        sqlite3_bind_int64(stmt, 6, date_start) ||
-        sqlite3_bind_int64(stmt, 7, mce->rx_bytes) ||
-        sqlite3_bind_int64(stmt, 8, mce->tx_bytes)) {
+        sqlite3_bind_int(stmt, 2, mce->network_address_family) ||
+        sqlite3_bind_int(stmt, 3, mce->event_type) ||
+        sqlite3_bind_int(stmt, 4, mce->event_param) ||
+        sqlite3_bind_int64(stmt, 7, date_start) ||
+        sqlite3_bind_int64(stmt, 8, mce->rx_bytes) ||
+        sqlite3_bind_int64(stmt, 9, mce->tx_bytes)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT usage query\n");
         return SQLITE_ERROR;
     }
