@@ -187,7 +187,7 @@
 #define UPDATE_USAGE        "UPDATE DataUse SET " \
                             "RxData = RxData + ?, TxData = TxData + ? " \
                             "WHERE " \
-                            "DeviceId=? AND SimCardIccid=? AND SimCardImsi=? AND Timestamp=?"
+                            "DeviceId=? AND NetworkAddressFamily=? AND SimCardIccid=? AND SimCardImsi=? AND Timestamp=?"
 
 #define UPDATE_EVENT_ID     "UPDATE NetworkEvent SET " \
                             "NodeId=? "\
