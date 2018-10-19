@@ -139,12 +139,12 @@ static void md_input_zeromq_relay_handle_event(void *ptr, int32_t fd, uint32_t e
         json_object_put(zmqh_obj);
         
         //Yay we have a valid object lets store that and publish it.
-        
-        //Create a zeromq event
 
+        //Create a zeromq event
+        //This works all work as the consuming function(s) are called sync, could mde_publish_event_obj ever be asynch?
         memset(miz->mse, 0, sizeof(struct md_zeromq_event));
         miz->mse->md_type = META_TYPE_ZEROMQ;
-        miz->mse->msg = buf;  //This works as next line will call the consuming function sync, could mde_publish_event_obj ever be asynch?
+        miz->mse->msg = buf;  //this will fail if next line is async
         mde_publish_event_obj(miz->parent, (struct md_event*) miz->mse);
 
         zmq_getsockopt(zmq_socket, ZMQ_EVENTS, &zmq_events, &events_len);
@@ -157,6 +157,11 @@ static uint8_t md_input_zeromq_relay_config(struct md_input_zeromq_relay *miz)
     size_t len = 0;
     struct zmq_connection *zmq_con; 
     miz->zmq_connections = createTable(miz->nr_of_connections);  //len of miz->urls
+
+    //We only handle one message at a time even if we listen to multiple publishers
+    miz->mse = calloc(1, sizeof(struct md_zeromq_event));
+    if (miz->mse == NULL)
+        return RETVAL_FAILURE;
 
     // Connect to ZMQ publisher(s)
     for (int i = 0; i < miz->nr_of_connections; i++) {
@@ -192,10 +197,6 @@ static uint8_t md_input_zeromq_relay_config(struct md_input_zeromq_relay *miz)
 
         if(!(miz->event_handle = backend_create_epoll_handle(miz,
                         zmq_fd, md_input_zeromq_relay_handle_event)))
-            return RETVAL_FAILURE;
-
-        miz->mse = calloc(1, sizeof(struct md_zeromq_event));
-        if (miz->mse == NULL)
             return RETVAL_FAILURE;
 
         backend_event_loop_update(miz->parent->event_loop, EPOLLIN, EPOLL_CTL_ADD,
