@@ -80,7 +80,8 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 11, mce->connectivity) ||
         sqlite3_bind_int(stmt, 13, mce->quality) ||
         sqlite3_bind_int(stmt, 14, mce->interface_type) ||
-        sqlite3_bind_text(stmt, 16, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)){
+        sqlite3_bind_int(stmt, 16, mce->network_address_family) ||
+        sqlite3_bind_text(stmt, 17, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)){
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT query\n");
         return SQLITE_ERROR;
     }
@@ -104,13 +105,13 @@ static int32_t md_inventory_execute_insert_update(struct md_writer_sqlite *mws,
     }
 
     if (mce->network_provider &&
-        sqlite3_bind_int(stmt, 17, mce->network_provider)) {
+        sqlite3_bind_int(stmt, 18, mce->network_provider)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind network provider\n");
         return SQLITE_ERROR;
     }
 
     if (csv_valid &&
-            sqlite3_bind_text(stmt, 18, csv_buf, -1, NULL)) {
+            sqlite3_bind_text(stmt, 19, csv_buf, -1, NULL)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind network provider\n");
         return SQLITE_ERROR;
     }
@@ -201,18 +202,19 @@ static int32_t md_inventory_update_event(struct md_writer_sqlite *mws,
         sqlite3_bind_int(stmt, 5, mce->quality) ||
         sqlite3_bind_int(stmt, 7, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 8, mce->l4_session_id) ||
-        sqlite3_bind_text(stmt, 9, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
+        sqlite3_bind_int(stmt, 9, mce->network_address_family) ||
+        sqlite3_bind_text(stmt, 10, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE query\n");
         return SQLITE_ERROR;
     }
 
     if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
-        if (sqlite3_bind_text(stmt, 10, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 11, mce->imei, strlen(mce->imei), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
             return SQLITE_ERROR;
         }
     } else {
-        if (sqlite3_bind_text(stmt, 10, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 11, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
             return SQLITE_ERROR;
         }
@@ -248,15 +250,15 @@ static int32_t md_inventory_execute_insert_usage(struct md_writer_sqlite *mws,
     //interface_id variable, so some special handling is needed for now
     if (mce->imei) {
         if (sqlite3_bind_text(stmt, 1, mce->imei, strlen(mce->imei), SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 5, mce->imsi, strlen(mce->imsi), SQLITE_STATIC)) {
+            sqlite3_bind_text(stmt, 6, mce->imsi, strlen(mce->imsi), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI/IMSI\n");
             return SQLITE_ERROR;
         }
 
-        interface_id_idx = 4;
+        interface_id_idx = 5;
     } else {
-        if (sqlite3_bind_text(stmt, 4, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 5, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC)) {
+        if (sqlite3_bind_text(stmt, 5, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 6, no_iccid_str, strlen(no_iccid_str), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind empty IMEI/IMSI\n");
             return SQLITE_ERROR;
         }
@@ -264,11 +266,12 @@ static int32_t md_inventory_execute_insert_usage(struct md_writer_sqlite *mws,
 
     if (sqlite3_bind_text(stmt, interface_id_idx, mce->interface_id,
             strlen(mce->interface_id), SQLITE_STATIC) ||
-        sqlite3_bind_int(stmt, 2, mce->event_type) ||
-        sqlite3_bind_int(stmt, 3, mce->event_param) ||
-        sqlite3_bind_int64(stmt, 6, date_start) ||
-        sqlite3_bind_int64(stmt, 7, mce->rx_bytes) ||
-        sqlite3_bind_int64(stmt, 8, mce->tx_bytes)) {
+        sqlite3_bind_int(stmt, 2, mce->network_address_family) ||
+        sqlite3_bind_int(stmt, 3, mce->event_type) ||
+        sqlite3_bind_int(stmt, 4, mce->event_param) ||
+        sqlite3_bind_int64(stmt, 7, date_start) ||
+        sqlite3_bind_int64(stmt, 8, mce->rx_bytes) ||
+        sqlite3_bind_int64(stmt, 9, mce->tx_bytes)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT usage query\n");
         return SQLITE_ERROR;
     }
@@ -288,6 +291,7 @@ static int32_t md_inventory_execute_update_usage(struct md_writer_sqlite *mws,
 
     if (sqlite3_bind_int64(stmt, 1, mce->rx_bytes) ||
         sqlite3_bind_int64(stmt, 2, mce->tx_bytes) ||
+        sqlite3_bind_int(stmt, 4, mce->network_address_family) ||
         sqlite3_bind_int64(stmt, 6, date_start)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query\n");
         return SQLITE_ERROR;
@@ -296,9 +300,9 @@ static int32_t md_inventory_execute_update_usage(struct md_writer_sqlite *mws,
     if (mce->imei) {
         if (sqlite3_bind_text(stmt, 3, mce->imei, strlen(mce->imei),
                 SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 4, mce->interface_id,
+            sqlite3_bind_text(stmt, 5, mce->interface_id,
                 strlen(mce->interface_id), SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 5, mce->imsi,
+            sqlite3_bind_text(stmt, 6, mce->imsi,
                 strlen(mce->imsi), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query #2\n");
             return SQLITE_ERROR;
@@ -306,9 +310,9 @@ static int32_t md_inventory_execute_update_usage(struct md_writer_sqlite *mws,
     } else {
         if (sqlite3_bind_text(stmt, 3, mce->interface_id,
                 strlen(mce->interface_id), SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 4, no_iccid_str,
-                strlen(no_iccid_str), SQLITE_STATIC) ||
             sqlite3_bind_text(stmt, 5, no_iccid_str,
+                strlen(no_iccid_str), SQLITE_STATIC) ||
+            sqlite3_bind_text(stmt, 6, no_iccid_str,
                 strlen(no_iccid_str), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to UPDATE usage query #2\n");
             return SQLITE_ERROR;
@@ -349,7 +353,8 @@ static int16_t md_inventory_get_last_update(struct md_writer_sqlite *mws,
 
     if (sqlite3_bind_int(stmt, 1, mce->l3_session_id) ||
         sqlite3_bind_int(stmt, 2, mce->l4_session_id) ||
-        sqlite3_bind_text(stmt, 4, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
+        sqlite3_bind_int(stmt, 4, mce->network_address_family) ||
+        sqlite3_bind_text(stmt, 5, mce->network_address, strlen(mce->network_address), SQLITE_STATIC)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to SELECT query\n");
         return retval;
     }
@@ -565,21 +570,6 @@ uint8_t md_inventory_handle_conn_event(struct md_writer_sqlite *mws,
     return retval;
 }
 
-static uint8_t md_inventory_conn_dump_db_sql(struct md_writer_sqlite *mws, FILE *output)
-{
-    sqlite3_reset(mws->dump_table);
-    sqlite3_reset(mws->dump_update);
-
-    sqlite3_bind_int64(mws->dump_table, 1, mws->dump_tstamp);
-    sqlite3_bind_int64(mws->dump_update, 1, mws->dump_tstamp);
-
-    if (md_sqlite_helpers_dump_write(mws->dump_table, output) ||
-        md_sqlite_helpers_dump_write(mws->dump_update, output))
-        return RETVAL_FAILURE;
-    else
-        return RETVAL_SUCCESS;
-}
-
 static uint8_t md_inventory_conn_dump_db_json(struct md_writer_sqlite *mws, FILE *output)
 {
     const char *json_str;
@@ -658,16 +648,6 @@ static uint8_t md_inventory_conn_delete_db(struct md_writer_sqlite *mws)
     return RETVAL_SUCCESS;
 }
 
-static uint8_t md_inventory_usage_dump_db_sql(struct md_writer_sqlite *mws, FILE *output)
-{
-    sqlite3_reset(mws->dump_usage);
-
-    if (md_sqlite_helpers_dump_write(mws->dump_usage, output))
-        return RETVAL_FAILURE;
-    else
-        return RETVAL_SUCCESS;
-}
-
 static uint8_t md_inventory_usage_dump_db_json(struct md_writer_sqlite *mws, FILE *output)
 {
     const char *json_str;
@@ -706,16 +686,9 @@ static uint8_t md_inventory_usage_delete_db(struct md_writer_sqlite *mws)
 uint8_t md_inventory_conn_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = 0;
-    dump_db_cb dump_cb = NULL;
-
-    if (mws->output_format == FORMAT_SQL) {
-        dump_cb = md_inventory_conn_dump_db_sql;
-    } else {
-        dump_cb = md_inventory_conn_dump_db_json;
-    }
 
     md_writer_helpers_copy_db(mws->meta_prefix,
-            mws->meta_prefix_len, dump_cb, mws,
+            mws->meta_prefix_len, md_inventory_conn_dump_db_json, mws,
             md_inventory_conn_delete_db);
 
     if (retval == RETVAL_SUCCESS) {
@@ -733,16 +706,9 @@ uint8_t md_inventory_conn_copy_db(struct md_writer_sqlite *mws)
 uint8_t md_inventory_conn_usage_copy_db(struct md_writer_sqlite *mws)
 {
     uint8_t retval = 0;
-    dump_db_cb dump_cb = NULL;
-
-    if (mws->output_format == FORMAT_SQL) {
-        dump_cb = md_inventory_usage_dump_db_sql;
-    } else {
-        dump_cb = md_inventory_usage_dump_db_json;
-    }
 
     md_writer_helpers_copy_db(mws->usage_prefix,
-            mws->usage_prefix_len, dump_cb, mws,
+            mws->usage_prefix_len, md_inventory_usage_dump_db_json, mws,
             md_inventory_usage_delete_db);
 
     if (retval == RETVAL_SUCCESS)

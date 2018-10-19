@@ -39,6 +39,4 @@ uint8_t md_writer_helpers_copy_db(char *prefix, size_t prefix_len,
         dump_db_cb dump_db, struct md_writer_sqlite *mws,
         delete_db_cb delete_cb);
 
-uint8_t md_sqlite_helpers_dump_write(sqlite3_stmt *stmt, FILE *output);
-
 #endif

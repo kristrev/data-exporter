@@ -59,7 +59,6 @@
 #ifdef GPS_NSB_SUPPORT
     #include "metadata_input_gps_nsb.h"
 #endif
-#include "metadata_input_netlink.h"
 #include "metadata_input_iface_test.h"
 #ifdef SQLITE_SUPPORT
     #include "metadata_writer_sqlite.h"
@@ -78,7 +77,6 @@
     #include "metadata_writer_file.h"
 #endif
 
-#include "netlink_helpers.h"
 #include "backend_event_loop.h"
 #include "metadata_exporter_log.h"
 
@@ -170,492 +168,6 @@ static int configure_core(struct md_exporter **mde)
     return RETVAL_SUCCESS;
 }
 
-#if 0
-static struct json_object *create_fake_gps_gga_obj()
-{
-    struct json_object *obj = NULL, *obj_add = NULL;
-    struct timeval tv;
-
-    if (!(obj = json_object_new_object()))
-        return NULL;
-
-    gettimeofday(&tv, NULL);
-	if (!(obj_add = json_object_new_int64(tv.tv_sec))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "timestamp", obj_add);
-
-    if (!(obj_add = json_object_new_int(META_TYPE_POS))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "event_type", obj_add);
-
-    if (!(obj_add = json_object_new_string("$GPGGA,190406.0,5103.732280,N,01701.493660,E,1,05,1.7,130.0,M,42.0,M,,*53"))) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    json_object_object_add(obj, "nmea_string", obj_add);
-
-    return obj;
-}
-
-static struct json_object *create_fake_gps_rmc_obj()
-{
-    struct json_object *obj = NULL, *obj_add = NULL;
-    struct timeval tv;
-
-    if (!(obj = json_object_new_object()))
-        return NULL;
-
-    gettimeofday(&tv, NULL);
-	if (!(obj_add = json_object_new_int64(tv.tv_sec))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "timestamp", obj_add);
-
-    if (!(obj_add = json_object_new_int(META_TYPE_POS))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "event_type", obj_add);
-
-    if (!(obj_add = json_object_new_string("$GPRMC,225446,A,4916.45,N,12311.12,W,000.5,054.7,191194,020.3,E*68"))) {
-        json_object_put(obj);
-        return NULL;
-    }
-
-    json_object_object_add(obj, "nmea_string", obj_add);
-
-    return obj;
-}
-#endif
-
-static struct json_object *create_fake_restart_obj()
-{
-    struct json_object *obj = NULL, *obj_add = NULL;
-    struct timeval tv;
-
-    if (!(obj = json_object_new_object())) {
-        return NULL;
-    }
-
-    gettimeofday(&tv, NULL);
-	if (!(obj_add = json_object_new_int64(tv.tv_sec))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "timestamp", obj_add);
-
-    if (!(obj_add = json_object_new_int(META_TYPE_SYSTEM))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "event_type", obj_add);
-
-    if (!(obj_add = json_object_new_string("861107030230685"))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "imei", obj_add);
-
-    return obj;
-}
-
-static struct json_object *create_fake_conn_obj(uint64_t l3_id, uint64_t l4_id,
-        uint8_t event_param, char *event_value_str, uint64_t tstamp)
-{
-    struct json_object *obj = NULL, *obj_add = NULL;
-    uint8_t rand_value = 0;
-    uint64_t rand_value_64 = 0;
-    struct timeval tv;
-
-    if (!(obj = json_object_new_object()))
-        return NULL;
-
-    gettimeofday(&tv, NULL);
-    if (!(obj_add = json_object_new_int64(tv.tv_sec))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "timestamp", obj_add);
-
-    if (l3_id)
-        rand_value_64 = l3_id;
-    else
-        rand_value_64 = (uint64_t) random();
-
-    if (!(obj_add = json_object_new_int64(rand_value_64))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "l3_session_id", obj_add);
-
-    if (l4_id)
-        rand_value_64 = l4_id;
-    else
-        rand_value_64 = (uint64_t) random();
-
-    if (!(obj_add = json_object_new_int64(rand_value_64))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "l4_session_id", obj_add);
-
-    if (!(obj_add = json_object_new_int(META_TYPE_CONNECTION))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "event_type", obj_add);
-
-    rand_value = (uint8_t) random();
-    if (!(obj_add = json_object_new_int(rand_value))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "interface_type", obj_add);
-
-    rand_value = (uint8_t) random();
-    if (!(obj_add = json_object_new_int(rand_value))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "network_address_family", obj_add);
-
-    if (!event_param)
-        rand_value = (uint8_t) random();
-    else
-        rand_value = event_param;
-
-    if (!(obj_add = json_object_new_int(rand_value))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "event_param", obj_add);
-
-    if (event_value_str) {
-        if (!(obj_add = json_object_new_string(event_value_str))) {
-            json_object_put(obj);
-            return NULL;
-        }
-        json_object_object_add(obj, "event_value_str", obj_add);
-    } else {
-        rand_value = (uint8_t) random();
-        if (!(obj_add = json_object_new_int(rand_value))) {
-            json_object_put(obj);
-            return NULL;
-        }
-        json_object_object_add(obj, "event_value", obj_add);
-    }
-
-    rand_value = (uint8_t) random();
-    if (!(obj_add = json_object_new_int(rand_value))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "interface_id_type", obj_add);
-
-    if (!(obj_add = json_object_new_string("89470000140710276612"))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "interface_id", obj_add);
-
-    if (!(obj_add = json_object_new_string("1234567"))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "imei", obj_add);
-
-    if (!(obj_add = json_object_new_string("22222"))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "imsi", obj_add);
-
-    if (!(obj_add = json_object_new_string("192.168.0.153/24"))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "network_address", obj_add);
-
-    rand_value = (uint8_t) random();
-    if (rand_value % 2) {
-        obj_add = json_object_new_int(24201);
-
-        if (!obj_add) {
-            json_object_put(obj);
-            return NULL;
-        }
-
-        json_object_object_add(obj, "network_provider", obj_add);
-    }
-
-    if (!(obj_add = json_object_new_int(-99))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "signal_strength", obj_add);
-
-    if (!(obj_add = json_object_new_int(100))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "rx_bytes", obj_add);
-
-    if (!(obj_add = json_object_new_int(100))) {
-        json_object_put(obj);
-        return NULL;
-    }
-    json_object_object_add(obj, "tx_bytes", obj_add);
-
-	return obj;	
-}
-
-static ssize_t send_netlink_json(uint8_t *snd_buf,
-        struct json_object *parsed_obj, int32_t sock_fd,
-        struct sockaddr *netlink_addr)
-{
-    struct nlmsghdr *netlink_hdr = (struct nlmsghdr*) snd_buf;
-    const char *json_str = json_object_to_json_string_ext(parsed_obj,
-            JSON_C_TO_STRING_PLAIN);
-    socklen_t netlink_addrlen = sizeof(netlink_addr);
-
-    memcpy(netlink_hdr + 1, json_str, strlen(json_str) + 1);
-    netlink_hdr->nlmsg_len = mnl_nlmsg_size(MNL_ALIGN(strlen(json_str)));
-
-    return sendto(sock_fd, snd_buf, netlink_hdr->nlmsg_len, 0, netlink_addr,
-            netlink_addrlen);
-}
-
-#if 0
-static void test_modem_metadata(uint8_t *snd_buf, int32_t sock_fd,
-        struct sockaddr *netlink_addr)
-{
-    struct json_object *parsed_obj = NULL;
-
-    parsed_obj = json_tokener_parse(IFACE_REGISTER_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface register object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_UNREGISTER_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface unregister object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_CONNECT_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface connect object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_DISCONNECT_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface connect object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_MODE_CHANGED_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface mode changed object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_SUBMODE_CHANGED_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface submode changed object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_RSSI_CHANGED_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface rssi changed object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_LTE_RSSI_CHANGED_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface lte rssi changed object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_LTE_BAND_CHANGED_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface lte rssi changed object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_ISP_NAME_CHANGED_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface isp name changed object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_EXTERNAL_ADDR_CHANGED_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface addr changed object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_LOCATION_CHANGED_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface location changed object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_UPDATE_TEST);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface lte rssi changed object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-    parsed_obj = json_tokener_parse(IFACE_NETWORK_MCC_CHANGED);
-    if (parsed_obj == NULL) {
-        fprintf(stderr, "Failed to create iface lte rssi changed object\n");
-    } else {
-        send_netlink_json(snd_buf, parsed_obj, sock_fd, netlink_addr);
-        json_object_put(parsed_obj);
-    }
-
-}
-#endif
-//Test function which just generates some netlink messages that are sent to our
-//group
-static void test_netlink(uint32_t packets)
-{
-    struct mnl_socket *mnl_sock = NULL;
-    struct sockaddr_nl netlink_addr;
-	uint8_t snd_buf[MNL_SOCKET_BUFFER_SIZE];
-    struct nlmsghdr *netlink_hdr;
-    uint32_t i = 0;
-	struct json_object *obj_to_send = NULL;
-    struct timeval tv;
-
-
-    mnl_sock = nlhelper_create_socket(NETLINK_USERSOCK, 0);
-
-    if (mnl_sock == NULL) {
-        fprintf(stderr, "Could not create netlink socket used for testing\n");
-        return;
-    }
-
-    memset(&netlink_addr, 0, sizeof(netlink_addr));
-    memset(snd_buf, 0, sizeof(snd_buf));
-
-    netlink_hdr = mnl_nlmsg_put_header(snd_buf);
-    netlink_hdr->nlmsg_type = 1;
-
-    netlink_addr.nl_family = AF_NETLINK;
-
-    //A message is broadcasted (multicasted) to all members of the group, except
-    //the one where portid equals nl_pid (if any). Then it is unicasted to the
-    //socket where portid equals nl_pid (if any). See af_netlink.c and
-    //netlink_unicast()/netlink_broadcast().
-    //
-    //When testing, there is no need to multicast. We can just send to the PID
-    netlink_addr.nl_pid = getpid();
-
-    srand(time(NULL));
-
-    //TODO: Specify number of packets from command line
-    while(1) {
-        gettimeofday(&tv, NULL);
-
-        if (i == 0)
-            obj_to_send = create_fake_conn_obj(0, 0, CONN_EVENT_META_UPDATE, "1,2,1,", i+1);
-        else
-            obj_to_send = create_fake_conn_obj(0, 0, CONN_EVENT_META_UPDATE, "1,2,1,4", i+1);
-
-        if (i < 4)
-            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_L3_UP, "1,2,1", i+1);
-        else
-            obj_to_send = create_fake_conn_obj(1, 2, CONN_EVENT_DATA_USAGE_UPDATE, "1,2,1,4", tv.tv_sec);
-
-        //obj_to_send = create_fake_restart_obj();
-
-        if (!obj_to_send)
-            continue;
-
-        send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
-                (struct sockaddr*) &netlink_addr);
-        json_object_put(obj_to_send);
-
-#if 0
-        obj_to_send = create_fake_gps_gga_obj();
-        send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
-                (struct sockaddr*) &netlink_addr);
-        json_object_put(obj_to_send);
-
-        obj_to_send = create_fake_gps_rmc_obj();
-        send_netlink_json(snd_buf, obj_to_send, mnl_socket_get_fd(mnl_sock),
-                (struct sockaddr*) &netlink_addr);
-        json_object_put(obj_to_send);
-        test_modem_metadata(snd_buf, mnl_socket_get_fd(mnl_sock),
-                (struct sockaddr*) &netlink_addr);
-#endif
-        if (packets && (++i >= packets))
-            break;
-
-        usleep(1000000);
-    }
-}
-
-static void *mde_run(void *ptr)
-{
-    struct md_exporter *mde = ptr;
-    backend_event_loop_run(mde->event_loop);
-    return NULL;
-}
-
-static void run_test_mode(struct md_exporter *mde, uint32_t packets)
-{
-    pthread_t thread;
-    pthread_attr_t attr;
-
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-    pthread_create(&thread, &attr, mde_run, mde);
-
-    test_netlink(packets);
-
-    pthread_join(thread, NULL);
-
-    META_PRINT_SYSLOG(mde, LOG_ERR, "Threads should NEVER exit\n");
-}
-
 static void default_usage()
 {
     fprintf(stderr, "Parameters. At least one input and one writer must be specified in the configuration.\n");
@@ -669,7 +181,6 @@ static void print_usage()
     default_usage();
     fprintf(stderr, "Configuration file syntax:\n");
     fprintf(stderr, "INPUTS:\n");
-    md_netlink_usage();
 #ifdef GPSD_SUPPORT
     md_gpsd_usage();
 #endif
@@ -742,8 +253,7 @@ int main(int argc, char *argv[])
 {
     struct md_exporter *mde;
     int32_t i;
-    uint32_t packets = 0;
-    uint8_t test_mode = 0, num_writers = 0, num_inputs = 0;
+    uint8_t num_writers = 0, num_inputs = 0;
     const char *logfile_path = NULL;
     json_object *config = NULL;
 
@@ -770,17 +280,11 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    json_object_object_foreach(config, key, val) { 
-        if (!strcmp(key, "netlink")) {
-            mde->md_inputs[MD_INPUT_NETLINK] = calloc(sizeof(struct md_input_netlink),1);
-
-            if (mde->md_inputs[MD_INPUT_NETLINK] == NULL) {
-                META_PRINT_SYSLOG(mde, LOG_ERR, "Could not allocate Netlink input\n");
-                exit(EXIT_FAILURE);
-            }
-
-            md_netlink_setup(mde, (struct md_input_netlink*) mde->md_inputs[MD_INPUT_NETLINK]);
-            num_inputs++;
+    json_object_object_foreach(config, key, val) {
+        if (!strcmp(key, "logfile")) {
+            logfile_path = json_object_get_string(val); 
+        } else if (!strcmp(key, "syslog")) {
+            mde->use_syslog = json_object_get_int(val);
         }
 #ifdef GPS_NSB_SUPPORT
         else if (!strcmp(key, "gps_nsb")) {
@@ -925,18 +429,6 @@ int main(int argc, char *argv[])
             num_writers++;
         }
 #endif
-        else if (!strcmp(key, "test")) {
-            test_mode = 1;
-        } 
-        else if (!strcmp(key, "packets")) {
-            packets = (uint32_t) json_object_get_int(val);
-        } 
-        else if (!strcmp(key, "logfile")) {
-            logfile_path = json_object_get_string(val); 
-        } 
-        else if (!strcmp(key, "syslog")) {
-            mde->use_syslog = json_object_get_int(val);
-        }
     }
 
     if (num_writers == 0 || num_inputs == 0) {
@@ -977,10 +469,7 @@ int main(int argc, char *argv[])
 
     json_object_put(config);
 
-    if (test_mode)
-        run_test_mode(mde, packets);
-    else
-        backend_event_loop_run(mde->event_loop);
+    backend_event_loop_run(mde->event_loop);
 
     META_PRINT_SYSLOG(mde, LOG_ERR, "Threads should NEVER exit\n");
     exit(EXIT_FAILURE);
