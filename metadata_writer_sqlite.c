@@ -480,6 +480,7 @@ static int md_sqlite_configure(struct md_writer_sqlite *mws,
 
     if (mws->node_id && (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
         md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID) ||
+        md_sqlite_update_nodeid_db(mws, UPDATE_GPS_ID) ||
         md_sqlite_update_nodeid_db(mws, UPDATE_SYSTEM_ID))) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update old ements with id 0\n");
         return RETVAL_FAILURE;
@@ -615,6 +616,8 @@ static uint8_t md_sqlite_check_valid_tstamp(struct md_writer_sqlite *mws)
         md_sqlite_update_timestamp_db(mws, UPDATE_UPDATES_TSTAMP,
             mws->orig_boot_time, real_boot_time) ||
         md_sqlite_update_timestamp_db(mws, UPDATE_SYSTEM_TSTAMP,
+            mws->orig_boot_time, real_boot_time) ||
+        md_sqlite_update_timestamp_db(mws, UPDATE_GPS_TSTAMP,
             mws->orig_boot_time, real_boot_time)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update tstamp in database\n");
         return RETVAL_FAILURE;
@@ -636,6 +639,7 @@ static uint8_t md_sqlite_check_session_id(struct md_writer_sqlite *mws)
 
     if (md_sqlite_update_session_id_db(mws, UPDATE_EVENT_SESSION_ID) ||
         md_sqlite_update_session_id_db(mws, UPDATE_UPDATES_SESSION_ID) ||
+        md_sqlite_update_session_id_db(mws, UPDATE_GPS_SESSION_ID) ||
         md_sqlite_update_session_id_db(mws, UPDATE_SYSTEM_SESSION_ID)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update session id in database\n");
         mws->timeout_handle->intvl = DEFAULT_TIMEOUT;
@@ -764,6 +768,7 @@ static void md_sqlite_handle_timeout(void *ptr)
 
         if (md_sqlite_update_nodeid_db(mws, UPDATE_EVENT_ID) ||
             md_sqlite_update_nodeid_db(mws, UPDATE_UPDATES_ID) ||
+            md_sqlite_update_nodeid_db(mws, UPDATE_GPS_ID) ||
             md_sqlite_update_nodeid_db(mws, UPDATE_SYSTEM_ID)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Could not update node id in database\n");
 
