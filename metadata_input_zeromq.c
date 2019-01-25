@@ -406,14 +406,17 @@ static uint8_t md_input_zeromq_init(void *ptr, json_object* config)
     json_object* subconfig;
     if (json_object_object_get_ex(config, "zmq_input", &subconfig)) {
         json_object_object_foreach(subconfig, key, val) {
-            if (!strcmp(key, "conn")) 
+            if (!strcmp(key, "conn")) {
                 miz->md_zmq_mask |= META_TYPE_CONNECTION;
-            else if (!strcmp(key, "pos")) 
+	    } else if (!strcmp(key, "pos")) {
                 miz->md_zmq_mask |= META_TYPE_POS;
-            else if (!strcmp(key, "iface")) 
+	    } else if (!strcmp(key, "iface")) {
                 miz->md_zmq_mask |= META_TYPE_INTERFACE;
-            else if (!strcmp(key, "radio"))
+	    } else if (!strcmp(key, "radio")) {
                 miz->md_zmq_mask |= META_TYPE_RADIO;
+	    } else if (!strcmp(key, "system")) {
+		miz->md_zmq_mask |= META_TYPE_SYSTEM;
+	    }
         }
     }
 
@@ -432,6 +435,7 @@ void md_zeromq_input_usage()
     fprintf(stderr, "  \"pos\":\t\tReceive ZeroMQ position events\n");
     fprintf(stderr, "  \"iface\":\t\tReceive ZeroMQ interface events\n");
     fprintf(stderr, "  \"radio\":\t\tReceive ZeroMQ radio events (QXDM + neigh. cells)\n");
+    fprintf(stderr, "  \"system\":\t\tReceive ZeroMQ system events (modem restarts)\n");
     fprintf(stderr, "},\n");
 }
 
