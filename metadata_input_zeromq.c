@@ -337,7 +337,8 @@ static uint8_t md_input_zeromq_config(struct md_input_zeromq *miz)
 
     if (((miz->md_zmq_mask & META_TYPE_INTERFACE) ||
         (miz->md_zmq_mask & META_TYPE_POS) ||
-        (miz->md_zmq_mask & META_TYPE_RADIO)) &&
+        (miz->md_zmq_mask & META_TYPE_RADIO) ||
+	(miz->md_zmq_mask & META_TYPE_SYSTEM)) &&
         zmq_connect(miz->zmq_socket, "ipc:///tmp/nl_pub") == -1)
     {
         META_PRINT_SYSLOG(miz->parent, LOG_ERR, "Can't connect to NL ZMQ publisher\n");
@@ -351,14 +352,21 @@ static uint8_t md_input_zeromq_config(struct md_input_zeromq *miz)
         return RETVAL_FAILURE;
     }
 
-    if (miz->md_zmq_mask & META_TYPE_INTERFACE)
+    if (miz->md_zmq_mask & META_TYPE_INTERFACE) {
         subscribe_for_topic(ZMQ_NL_INTERFACE_TOPIC, miz);
+    }
 
-    if (miz->md_zmq_mask & META_TYPE_RADIO)
+    if (miz->md_zmq_mask & META_TYPE_RADIO) {
         subscribe_for_topic(ZMQ_NL_RADIOEVENT_TOPIC, miz);
+    }
 
-    if (miz->md_zmq_mask & META_TYPE_POS)
+    if (miz->md_zmq_mask & META_TYPE_POS) {
         subscribe_for_topic(ZMQ_NL_GPS_TOPIC, miz);
+    }
+
+    if (miz->md_zmq_mask & META_TYPE_SYSTEM) {
+        subscribe_for_topic(ZMQ_NL_SYSTEMEVENT_TOPIC, miz);
+    }
 
     if (miz->md_zmq_mask & META_TYPE_CONNECTION) {
         subscribe_for_topic(ZMQ_DLB_METADATA_TOPIC, miz);
