@@ -284,6 +284,8 @@ static int32_t md_inventory_execute_update_usage(struct md_writer_sqlite *mws,
                                               uint64_t date_start)
 {
     const char *no_iccid_str = "0";
+    char *sql_stmt_str;
+
     sqlite3_stmt *stmt = mws->update_usage;
 
     sqlite3_clear_bindings(stmt);
@@ -319,7 +321,12 @@ static int32_t md_inventory_execute_update_usage(struct md_writer_sqlite *mws,
         }
     }
 
-    META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Update query: %s\n", sqlite3_expanded_sql(stmt));
+    sql_stmt_str = sqlite3_expanded_sql(stmt);
+
+    if (sql_stmt_str) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Update query: %s\n", sql_stmt_str);
+        sqlite3_free(sql_stmt_str);
+    }
 
     return sqlite3_step(stmt);
 }
