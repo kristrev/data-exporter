@@ -107,6 +107,7 @@
                             "PRIMARY KEY(NodeId,Timestamp,Sequence))"
 
 #define CREATE_USAGE_SQL    "CREATE TABLE IF NOT EXISTS DataUse(" \
+                            "NodeId INTEGER NOT NULL," \
                             "DeviceId TEXT NOT NULL," \
                             "NetworkAddressFamily INTEGER NOT NULL," \
                             "EventType INTEGER NOT NULL," \
@@ -152,10 +153,10 @@
                              ",Sequence,Boottime) " \
                              "VALUES (?,?,?,?)"
 
-#define INSERT_USAGE        "INSERT INTO DataUse(DeviceId,NetworkAddressFamily,EventType,EventParam" \
+#define INSERT_USAGE        "INSERT INTO DataUse(NodeId, DeviceId,NetworkAddressFamily,EventType,EventParam" \
                             ",SimCardIccid" \
                             ",SimCardImsi,Timestamp,RxData,TxData) " \
-                            "VALUES (?,?,?,?,?,?,?,?,?)"
+                            "VALUES (?, ?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_REBOOT_EVENT "INSERT INTO RebootEvent(NodeId, BootCount," \
                             "BootMultiplier, Timestamp, Sequence, EventType, DeviceId)"\
@@ -203,6 +204,10 @@
 
 #define UPDATE_GPS_ID   "UPDATE GpsUpdate SET " \
                             "NodeId=? "\
+                            "WHERE NodeId=0"
+
+#define UPDATE_USAGE_ID "UPDATE DataUse SET " \
+                            "NodeId=? " \
                             "WHERE NodeId=0"
 
 #define UPDATE_EVENT_TSTAMP "UPDATE NetworkEvent SET " \
