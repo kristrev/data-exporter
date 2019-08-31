@@ -239,9 +239,10 @@ static int32_t md_inventory_execute_insert_usage(struct md_writer_sqlite *mws,
                                               struct md_conn_event *mce,
                                               uint64_t date_start)
 {
-    uint8_t interface_id_idx = 1;
+    uint8_t interface_id_idx = 2;
     sqlite3_stmt *stmt = mws->insert_usage;
     const char *no_iccid_str = "0";
+    char *sql_stmt_str;
 
     sqlite3_clear_bindings(stmt);
     sqlite3_reset(stmt);
@@ -275,6 +276,13 @@ static int32_t md_inventory_execute_insert_usage(struct md_writer_sqlite *mws,
         sqlite3_bind_int64(stmt, 10, mce->tx_bytes)) {
         META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind values to INSERT usage query\n");
         return SQLITE_ERROR;
+    }
+
+    sql_stmt_str = sqlite3_expanded_sql(stmt);
+
+    if (sql_stmt_str) {
+        META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Insert query: %s\n", sql_stmt_str);
+        sqlite3_free(sql_stmt_str);
     }
 
     return sqlite3_step(stmt);
