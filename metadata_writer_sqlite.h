@@ -60,7 +60,7 @@
                             "NetworkAddressFamily INTEGER NOT NULL," \
                             "NetworkAddress TEXT NOT NULL," \
                             "PRIMARY KEY(SessionId,SessionIdMultip,"\
-                            "SimCardIccid,SimCardImsi,Timestamp,"\
+                            "SimCardIccid,SimCardImsi,InterfaceId,Timestamp,"\
                             "Sequence))"
 
 #define CREATE_UPDATE_SQL   "CREATE TABLE IF NOT EXISTS NetworkUpdates(" \
