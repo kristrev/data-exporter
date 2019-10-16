@@ -396,14 +396,14 @@ static int16_t md_inventory_get_last_update(struct md_writer_sqlite *mws,
     if (mws->api_version == 2 && mce->interface_type == INTERFACE_MODEM) {
         if (sqlite3_bind_text(stmt, 4, mce->interface_id /*SimCardIccid*/, strlen(mce->interface_id), SQLITE_STATIC) ||
             sqlite3_bind_text(stmt, 5, mce->imsi, strlen(mce->imsi), SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 6, mce->imei /*InterfaceId*/, strlen(mce->imei), SQLITE_STATIC)) {
+            sqlite3_bind_text(stmt, 3, mce->imei /*InterfaceId*/, strlen(mce->imei), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind IMEI\n");
             return SQLITE_ERROR;
         }
     } else {
         if (sqlite3_bind_text(stmt, 4, no_iccid_str /*SimCardIccid*/, strlen(no_iccid_str), SQLITE_STATIC) ||
             sqlite3_bind_text(stmt, 5, no_iccid_str /*SimCardImsi*/, strlen(no_iccid_str), SQLITE_STATIC) ||
-            sqlite3_bind_text(stmt, 6, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
+            sqlite3_bind_text(stmt, 3, mce->interface_id, strlen(mce->interface_id), SQLITE_STATIC)) {
             META_PRINT_SYSLOG(mws->parent, LOG_ERR, "Failed to bind interface id\n");
             return SQLITE_ERROR;
         }
