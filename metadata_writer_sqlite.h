@@ -40,6 +40,8 @@
                             "NodeId INTEGER NOT NULL," \
                             "SessionId INTEGER NOT NULL," \
                             "SessionIdMultip INTEGER NOT NULL," \
+                            "SimCardIccid TEXT NOT NULL," \
+                            "SimCardImsi TEXT NOT NULL," \
                             "Timestamp INTEGER NOT NULL," \
                             "Sequence INTEGER NOT NULL," \
                             "L3SessionId INTEGER NOT NULL," \
@@ -57,13 +59,16 @@
                             "NetworkProvider INT," \
                             "NetworkAddressFamily INTEGER NOT NULL," \
                             "NetworkAddress TEXT NOT NULL," \
-                            "PRIMARY KEY(SessionId,SessionIdMultip,Timestamp,"\
+                            "PRIMARY KEY(SessionId,SessionIdMultip,"\
+                            "SimCardIccid,SimCardImsi,InterfaceId,Timestamp,"\
                             "Sequence))"
 
 #define CREATE_UPDATE_SQL   "CREATE TABLE IF NOT EXISTS NetworkUpdates(" \
                             "NodeId INTEGER NOT NULL," \
                             "SessionId INTEGER NOT NULL," \
                             "SessionIdMultip INTEGER NOT NULL," \
+                            "SimCardIccid TEXT NOT NULL," \
+                            "SimCardImsi TEXT NOT NULL," \
                             "Timestamp INTEGER NOT NULL," \
                             "Sequence INTEGER NOT NULL," \
                             "L3SessionId INTEGER NOT NULL," \
@@ -81,6 +86,7 @@
                             "NetworkProvider INT," \
                             "EventValueStr TEXT, " \
                             "PRIMARY KEY(SessionId,SessionIdMultip,"\
+                            "SimCardIccid,SimCardImsi,"\
                             "L3SessionId,L4SessionId,InterfaceId,"\
                             "NetworkAddressFamily,NetworkAddress))"
 
@@ -130,18 +136,18 @@
                             "PRIMARY KEY(BootCount,BootMultiplier,Timestamp,Sequence))"
 
 #define INSERT_EVENT        "INSERT INTO NetworkEvent(NodeId,SessionId,"\
-                            "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
+                            "SessionIdMultip,SimCardIccid,SimCardImsi,Timestamp,Sequence,L3SessionId,"\
                             "L4SessionId,EventType,EventParam,EventValue,"\
                             "HasIp,Connectivity,ConnectionMode,Quality,InterfaceType,"\
                             "InterfaceIdType,InterfaceId,NetworkProvider,NetworkAddressFamily,"\
                             "NetworkAddress) " \
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_UPDATE       "INSERT INTO NetworkUpdates(NodeId,SessionId,"\
-                            "SessionIdMultip,Timestamp,Sequence,L3SessionId,"\
+                            "SessionIdMultip,SimCardIccid,SimCardImsi,Timestamp,Sequence,L3SessionId,"\
                             "L4SessionId,EventType,EventParam,HasIp,Connectivity,ConnectionMode,Quality"\
                             ",InterfaceType,InterfaceId,NetworkAddressFamily,NetworkAddress,NetworkProvider,EventValueStr) " \
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
 #define INSERT_GPS_EVENT    "INSERT INTO GpsUpdate(NodeId,BootCount" \
                             ",BootMultiplier,Timestamp" \
@@ -165,8 +171,9 @@
 #define SELECT_LAST_UPDATE  "SELECT HasIp,Connectivity,ConnectionMode,Quality "\
                             " FROM NetworkUpdates WHERE "\
                             "L3SessionId=? AND "\
-                            "L4SessionId=? AND InterfaceId=? AND "\
-                            "NetworkAddressFamily=? AND "\
+                            "L4SessionId=? AND InterfaceId=? "\
+                            "AND SimCardIccid=? AND SimCardImsi=? "\
+                            "AND NetworkAddressFamily=? AND "\
                             "NetworkAddress=? ORDER BY Timestamp DESC LIMIT 1;"
 
 //The reason NetworkAddress is used here, is that we first identify by L3/L4
@@ -182,6 +189,7 @@
                             "Quality=?,EventValueStr=? " \
                             "WHERE "\
                             "L3SessionId=? AND L4SessionId=? " \
+                            "AND SimCardIccid=? AND SimCardImsi=?"\
                             "AND NetworkAddressFamily=? AND "\
                             "NetworkAddress=? AND InterfaceId=?"
 
