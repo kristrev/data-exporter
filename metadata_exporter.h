@@ -65,10 +65,13 @@
 #define DEFAULT_MCCMNC        0
 #define DEFAULT_LAC          -1
 #define DEFAULT_CID          -1
-#define DEFAULT_LTE_PCI      -1
 #define DEFAULT_MODE         -1
 #define DEFAULT_SUBMODE      -1
 #define DEFAULT_DEVICE_STATE -1
+
+#define DEFAULT_TX_POWER      0
+#define DEFAULT_IOT_EARFCN    0
+#define DEFAULT_IOT_CELEVEL   0
 
 enum iface_event {
     IFACE_EVENT_DEV_STATE=1,
@@ -79,7 +82,13 @@ enum iface_event {
     IFACE_EVENT_UPDATE,
     IFACE_EVENT_IP_ADDR_CHANGE,
     IFACE_EVENT_LOC_CHANGE,
-    IFACE_EVENT_NW_MCCMNC_CHANGE
+    IFACE_EVENT_NW_MCCMNC_CHANGE,
+    IFACE_EVENT_NSM,
+    IFACE_EVENT_SYSTEM,
+    IFACE_EVENT_LTE_CA,
+    IFACE_EVENT_EARFCN_CHANGE,
+    IFACE_EVENT_CELEVEL_CHANGE,
+    IFACE_EVENT_TX_POWER_CHANGE
 };
 
 enum conn_event {
@@ -191,6 +200,9 @@ struct md_iface_event {
     uint16_t lte_freq;
     uint16_t lac;
     uint16_t lte_pci;
+    uint16_t tx_power;
+    uint16_t iot_earfcn;
+    uint16_t iot_celevel;
     int8_t rssi;
     int8_t ecio;
     int8_t lte_rssi;

@@ -140,6 +140,13 @@ uint8_t parse_iface_event(struct json_object *meta_obj, struct md_iface_event *m
             mie->enodeb_id = json_object_get_int(val);
         } else if (!strcmp(key, "ca_info")) {
             mie->ca_info = json_object_to_json_string_ext(val, JSON_C_TO_STRING_PLAIN);
+
+        } else if (!strcmp(key, "tx_power")) {
+            mie->tx_power = (int32_t) json_object_get_int(val);
+        } else if (!strcmp(key, "earfcn")) {
+            mie->iot_earfcn = (uint32_t) json_object_get_int(val);
+        } else if (!strcmp(key, "celevel")) {
+            mie->iot_celevel = (uint8_t) json_object_get_int(val);
         }
     }
 
@@ -557,6 +564,10 @@ void init_iface_event(struct md_iface_event *mie)
     mie->enodeb_id = DEFAULT_ENODEBID;
     mie->device_mode = DEFAULT_MODE;
     mie->device_submode = DEFAULT_SUBMODE;
+
+    mie->tx_power = DEFAULT_TX_POWER;
+    mie->iot_earfcn = DEFAULT_IOT_EARFCN;
+    mie->iot_celevel = DEFAULT_IOT_CELEVEL;
 }
 
 void init_conn_event(struct md_conn_event* mce)
