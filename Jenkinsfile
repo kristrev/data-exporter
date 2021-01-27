@@ -1,6 +1,6 @@
 import java.text.SimpleDateFormat
 jobName = "metadata-exporter"
-version = "0.1.50"
+version = "0.1.51"
 build_dir = "build"
 buildPackageName = "meta-exporter"
 
@@ -15,7 +15,7 @@ node ('dockerslave') {
             doGenerateSubmoduleConfigurations: false,
             extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'metadata-exporter-alt']],
             submoduleCfg: [],
-            userRemoteConfigs: [[url: 'git@github.com:kristrev/data-exporter.git']]])
+            userRemoteConfigs: [[url: 'git@github.com:MONROE-PROJECT/data-exporter.git']]])
         gitCommit = sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
         shortCommit = gitCommit.take(6)
         commitChangeset = sh(returnStdout: true, script: 'git diff-tree --no-commit-id --name-status -r HEAD').trim()
@@ -35,7 +35,7 @@ node ('dockerslave') {
 
     stage ('Build') {
         dir(build_dir) {
-            sh "cmake ../metadata-exporter-alt -DNNE=1 -DSQLITE3=1 -DZEROMQ_WRITER=1 -DGPS_NSB=1 -DMUNIN=1 -DSYSEVENT=1 && make && make package"
+            sh "cmake ../metadata-exporter-alt -DNNE=1 -DSQLITE3=1 -DZEROMQ_WRITER=1 -DZEROMQ_RELAY=1 -DGPS_NSB=1 -DMUNIN=1 -DSYSEVENT=1 && make && make package"
         }
         sh "chmod +x versionize/versionize.sh; cp versionize/versionize.sh build/"
         dir(build_dir) {
