@@ -64,7 +64,7 @@ static void md_input_gpsd_handle_event(void *ptr, int32_t fd, uint32_t events)
     struct md_input_gpsd *mig = ptr;
     struct md_gps_event gps_event;
 
-    if (gps_read(&(mig->gps_data)) <= 0) {
+    if (gps_read(&mig->gps_data, NULL, 0) <= 0) {
         META_PRINT_SYSLOG(mig->parent, LOG_ERR, "Failed to read data from GPS\n");
         gps_close(&(mig->gps_data));
 
